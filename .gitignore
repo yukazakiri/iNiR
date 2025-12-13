@@ -1,16 +1,10 @@
 # Editor/IDE
 .ii-backup.patch
-.amazonq
 AGENTS.md
 .kiro
 .vscode
 *.swp
 *~
-.context
-.dots
-
-# Docs (internal)
-docs/OPTIMIZATION.md
 
 # Python
 __pycache__/
