@@ -71,10 +71,16 @@ ShellRoot {
         }
     }
 
-    // IPC for settings - use unique config IDs to prevent multiple instances
+    // IPC for settings
+    // Track if settings is already open to prevent duplicates
+    property bool _settingsOpen: false
+    
     IpcHandler {
         target: "settings"
         function open(): void {
+            if (root._settingsOpen) return
+            root._settingsOpen = true
+            
             // Use waffle settings if enabled and panel family is waffle
             if (Config.options?.panelFamily === "waffle" && Config.options?.waffles?.settings?.useMaterialStyle !== true) {
                 waffleSettingsProcess.running = true
@@ -85,13 +91,17 @@ ShellRoot {
     }
     Process {
         id: settingsProcess
-        // -c ii-settings ensures only one instance can run
-        command: ["qs", "-c", "ii-settings", "-p", Quickshell.shellPath("settings.qml")]
+        command: ["qs", "-n", "-p", Quickshell.shellPath("settings.qml")]
+        onRunningChanged: {
+            if (!running) root._settingsOpen = false
+        }
     }
     Process {
         id: waffleSettingsProcess
-        // -c ii-waffle-settings ensures only one instance can run
-        command: ["qs", "-c", "ii-waffle-settings", "-p", Quickshell.shellPath("waffleSettings.qml")]
+        command: ["qs", "-n", "-p", Quickshell.shellPath("waffleSettings.qml")]
+        onRunningChanged: {
+            if (!running) root._settingsOpen = false
+        }
     }
 
     // === Panel Loaders ===
