@@ -158,6 +158,8 @@ Singleton {
         id: subscriber
         running: true
         command: ["nmcli", "monitor"]
+        // Auto-restart if the monitor process dies (can happen after lockscreen/suspend)
+        onRunningChanged: if (!running) running = true
         stdout: SplitParser {
             onRead: root.update()
         }
