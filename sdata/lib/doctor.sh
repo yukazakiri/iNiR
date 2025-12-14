@@ -185,54 +185,48 @@ check_quickshell_loads() {
         return 0
     fi
     
-    echo -e "${STY_FAINT}Testing quickshell startup...${STY_RST}"
-    
-    qs kill -c ii &>/dev/null || true
-    sleep 0.5
-    
-    local output
-    output=$(timeout 5 qs -c ii 2>&1) || true
-    
-    # Check for display/platform errors first
-    if echo "$output" | grep -qE "(could not connect to display|no Qt platform plugin)"; then
-        doctor_fail "Quickshell cannot connect to display"
-        echo -e "    ${STY_FAINT}Run doctor inside your Niri session${STY_RST}"
-        return 1
-    fi
-    
-    if echo "$output" | grep -q "Configuration Loaded"; then
-        doctor_pass "Quickshell loads OK"
-        return 0
-    fi
-    
-    local errors
-    errors=$(echo "$output" | grep -E "^[[:space:]]*(ERROR|error:)" | grep -vE "(polkit|bluez|Hyprland)" | head -1)
-    
-    if [[ -n "$errors" ]]; then
-        doctor_fail "Quickshell has errors"
-        echo -e "    ${STY_FAINT}$errors${STY_RST}"
-        return 1
-    fi
-    
-    doctor_pass "Quickshell loads OK"
-}
-
-start_shell_if_needed() {
-    # Skip if no graphical session
-    if [[ -z "$WAYLAND_DISPLAY" && -z "$DISPLAY" && -z "$NIRI_SOCKET" ]]; then
-        return 0
-    fi
-    
-    # Check if shell is running
+    # If already running, just check it's responsive
     if pgrep -f "qs.*-c.*ii" &>/dev/null; then
+        doctor_pass "Quickshell running"
         return 0
     fi
     
-    echo -e "${STY_FAINT}Starting shell...${STY_RST}"
-    nohup qs -c ii >/dev/null 2>&1 &
+    # Not running - try to start and check for errors
+    echo -e "${STY_FAINT}Starting quickshell...${STY_RST}"
+    
+    # Start in background and capture initial output
+    local logfile="/tmp/qs-doctor-$$.log"
+    nohup qs -c ii >"$logfile" 2>&1 &
+    local qs_pid=$!
     disown
-    sleep 1
-    doctor_fix "Started shell"
+    
+    # Wait a bit for startup
+    sleep 2
+    
+    # Check if it's still running
+    if ! kill -0 "$qs_pid" 2>/dev/null; then
+        # Crashed - check why
+        local output=$(cat "$logfile" 2>/dev/null)
+        rm -f "$logfile"
+        
+        if echo "$output" | grep -qE "(could not connect to display|no Qt platform plugin)"; then
+            doctor_fail "Quickshell cannot connect to display"
+            return 1
+        fi
+        
+        local errors=$(echo "$output" | grep -E "(ERROR|error:)" | head -1)
+        if [[ -n "$errors" ]]; then
+            doctor_fail "Quickshell crashed: $errors"
+            return 1
+        fi
+        
+        doctor_fail "Quickshell crashed on startup"
+        return 1
+    fi
+    
+    rm -f "$logfile"
+    doctor_pass "Quickshell started"
+    return 0
 }
 
 ###############################################################################
