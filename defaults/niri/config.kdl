@@ -295,3 +295,4 @@ layer-rule {
     place-within-backdrop true
     opacity 1.0
 }
+}
