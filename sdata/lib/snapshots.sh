@@ -249,8 +249,11 @@ check_remote_updates() {
     # Fetch silently
     git -C "$REPO_ROOT" fetch origin --quiet 2>/dev/null || return 1
     
+    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
+    
     local local_commit=$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)
-    local remote_commit=$(git -C "$REPO_ROOT" rev-parse origin/dev 2>/dev/null || git -C "$REPO_ROOT" rev-parse origin/main 2>/dev/null)
+    local remote_commit=$(git -C "$REPO_ROOT" rev-parse "origin/${branch}" 2>/dev/null)
     
     if [[ "$local_commit" == "$remote_commit" ]]; then
         return 1  # No updates
@@ -260,7 +263,8 @@ check_remote_updates() {
 }
 
 show_pending_commits() {
-    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "dev")
+    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
     local remote="origin/${branch}"
     
     echo -e "${STY_CYAN}New commits available:${STY_RST}"
@@ -272,6 +276,7 @@ show_pending_commits() {
 }
 
 get_remote_commit() {
-    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "dev")
+    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
     git -C "$REPO_ROOT" rev-parse --short "origin/${branch}" 2>/dev/null || echo "unknown"
 }

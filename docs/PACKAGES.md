@@ -173,12 +173,15 @@ Fonts, theming, and utilities.
 
 ## Optional
 
-Not installed by default, but useful.
+Not installed by default, but useful. The shell handles their absence gracefully.
 
-| Package | Purpose |
-|---------|---------|
-| `cava` | Audio visualizer (in ii-niri-audio) |
-| `easyeffects` | Audio effects |
-| `warp-cli` | Cloudflare WARP |
-| `ollama` | Local LLM |
-| `mpvpaper` | Video wallpapers |
+| Package | Purpose | Used by |
+|---------|---------|---------|
+| `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles panel |
+| `blueman` | Bluetooth manager GUI | Bluetooth settings button |
+| `ollama` | Local LLM for AI chat | Sidebar AI assistant |
+| `mpvpaper` | Video wallpapers | Wallpaper selector |
+| `cava` | Audio visualizer | Bar widget (optional) |
+| `easyeffects` | Audio effects | Quick toggles panel |
+
+> **Note:** `cava` and `easyeffects` are included in `ii-niri-audio` but are optional features. The toggles will be hidden if the packages aren't installed.

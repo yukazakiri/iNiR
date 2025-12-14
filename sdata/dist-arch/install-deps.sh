@@ -98,8 +98,7 @@ AUR_PACKAGES=(
   google-breakpad
   qt6-avif-image-plugin
   
-  # System & Tools
-  illogical-impulse-python
+  # Note: Python deps are handled via uv + requirements.txt, not AUR packages
 )
 
 # Critical fonts (UI breaks without these)

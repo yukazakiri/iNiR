@@ -182,8 +182,11 @@ get_remote_commit() {
         return 1
     fi
     
+    local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
+    
     git -C "$REPO_ROOT" fetch --quiet 2>/dev/null
-    git -C "$REPO_ROOT" rev-parse --short origin/main 2>/dev/null || echo "unknown"
+    git -C "$REPO_ROOT" rev-parse --short "origin/${branch}" 2>/dev/null || echo "unknown"
 }
 
 #####################################################################################

@@ -5,17 +5,20 @@ pkgdesc='illogical-impulse on Niri - Audio Dependencies'
 arch=(any)
 license=(MIT)
 depends=(
+  # PipeWire audio stack
   pipewire
   pipewire-pulse
   pipewire-alsa
-  jack  # Accepts pipewire-jack OR jack2
+  pipewire-jack
   wireplumber
+  
+  # Media control
   playerctl
   libdbusmenu-gtk3
   pavucontrol
-  # Audio visualizer
-  cava
-  # Audio effects
-  easyeffects
+  
+  # Optional but included
+  cava         # Audio visualizer widget
+  easyeffects  # Audio effects toggle
 )
 
