@@ -21,6 +21,8 @@ Singleton {
     property bool supported: CompositorService.isHyprland || CompositorService.isNiri
     property bool _wlsunsetAvailable: false
     property bool _wlsunsetWarned: false
+    property bool _niriRestartInProgress: false
+    property bool _niriRestartQueued: false
     property bool shouldBeOn
     property bool firstEvaluation: true
     property bool active: false
@@ -42,12 +44,37 @@ Singleton {
         root.manualActive = undefined;
         root.firstEvaluation = true;
         if (CompositorService.isNiri && root.active) {
-            if (root._wlsunsetAvailable) {
-                niriKillProc.running = true
-                niriStartProc.running = true
-            }
+            scheduleNiriRestart()
         }
         reEvaluate();
+    }
+
+    Timer {
+        id: niriRestartTimer
+        interval: 160
+        repeat: false
+        onTriggered: root._restartNiriWlsunset()
+    }
+
+    function scheduleNiriRestart() {
+        if (!CompositorService.isNiri) return;
+        if (!root.active) return;
+        if (!root._wlsunsetAvailable) return;
+        root._niriRestartQueued = true
+        niriRestartTimer.restart()
+    }
+
+    function _restartNiriWlsunset() {
+        if (!CompositorService.isNiri) return;
+        if (!root.active) return;
+        if (!root._wlsunsetAvailable) return;
+        if (root._niriRestartInProgress) return;
+
+        root._niriRestartInProgress = true
+        root._niriRestartQueued = false
+
+        // Ensure old instance is gone before starting a new one.
+        niriKillProc.running = true
     }
 
     Component.onCompleted: {
@@ -130,6 +157,27 @@ Singleton {
         id: niriKillProc
         running: false
         command: ["/usr/bin/pkill", "wlsunset"]
+        onExited: (exitCode, exitStatus) => {
+            if (!CompositorService.isNiri) {
+                root._niriRestartInProgress = false
+                return
+            }
+            if (!root.active || !root._wlsunsetAvailable) {
+                root._niriRestartInProgress = false
+                return
+            }
+
+            // Start with latest config-derived command
+            niriStartProc.running = true
+
+            // If more slider events happened meanwhile, schedule another restart.
+            Qt.callLater(() => {
+                root._niriRestartInProgress = false
+                if (root._niriRestartQueued) {
+                    niriRestartTimer.restart()
+                }
+            })
+        }
     }
 
     function inBetween(t, from, to) {
@@ -271,33 +319,25 @@ Singleton {
                 return;
             }
             if (CompositorService.isNiri) {
-                if (!root._wlsunsetAvailable) return;
-                niriKillProc.running = true
-                niriStartProc.running = true
+                root.scheduleNiriRestart()
             }
         }
 
         function onFromChanged() {
             if (CompositorService.isNiri && root.active) {
-                if (!root._wlsunsetAvailable) return;
-                niriKillProc.running = true
-                niriStartProc.running = true
+                root.scheduleNiriRestart()
             }
         }
 
         function onToChanged() {
             if (CompositorService.isNiri && root.active) {
-                if (!root._wlsunsetAvailable) return;
-                niriKillProc.running = true
-                niriStartProc.running = true
+                root.scheduleNiriRestart()
             }
         }
 
         function onAutomaticChanged() {
             if (CompositorService.isNiri && root.active) {
-                if (!root._wlsunsetAvailable) return;
-                niriKillProc.running = true
-                niriStartProc.running = true
+                root.scheduleNiriRestart()
             }
         }
     }
