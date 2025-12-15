@@ -812,7 +812,7 @@ ContentPage {
         ConfigSwitch {
             buttonIcon: "image"
             text: Translation.tr('Enable Wallhaven sidebar')
-            checked: Config.options.sidebar?.wallhaven?.enable ?? false
+            checked: Config.options.sidebar?.wallhaven?.enable ?? true
             onCheckedChanged: {
                 if (!Config.options.sidebar.wallhaven) Config.options.sidebar.wallhaven = ({})
                 Config.options.sidebar.wallhaven.enable = checked;

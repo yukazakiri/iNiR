@@ -510,7 +510,7 @@
       "enable": true
     },
     "wallhaven": {
-      "enable": false,
+      "enable": true,
       "limit": 24,
       "apiKey": ""
     }
@@ -722,6 +722,9 @@
       "showMedia": true,
       "showQuickActions": true,
       "weatherHideLocation": false
+    },
+    "taskView": {
+      "mode": "centered"
     }
   },
   "familyTransitionAnimation": true,
