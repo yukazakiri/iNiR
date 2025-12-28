@@ -32,6 +32,10 @@ Item {
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
     property bool editMode: false
+    
+    // Debounce timers to prevent accidental double-clicks
+    property bool reloadButtonEnabled: true
+    property bool settingsButtonEnabled: true
 
     function focusActiveItem() {
         if (bottomWidgetGroup && bottomWidgetGroup.focusActiveItem) {
@@ -315,6 +319,7 @@ Item {
                 ? ColorUtils.transparentize(Appearance.colors.colLayer1, Appearance.aurora.subSurfaceTransparentize)
                 : Appearance.colors.colLayer1
             padding: 4
+            spacing: 8  // Increased from default 5 to reduce accidental clicks
 
             QuickToggleButton {
                 toggled: root.editMode
@@ -326,9 +331,21 @@ Item {
                 }
             }
             QuickToggleButton {
+                id: reloadButton
                 toggled: false
+                enabled: root.reloadButtonEnabled
+                opacity: enabled ? 1.0 : 0.5
                 buttonIcon: "restart_alt"
                 onClicked: {
+                    if (!root.reloadButtonEnabled) {
+                        console.log("[SidebarRight] Reload button still on cooldown, ignoring click");
+                        return;
+                    }
+                    
+                    console.log("[SidebarRight] Reload button clicked");
+                    root.reloadButtonEnabled = false;
+                    reloadButtonCooldown.restart();
+                    
                     if (CompositorService.isHyprland) {
                         Hyprland.dispatch("reload");
                     } else if (CompositorService.isNiri) {
@@ -340,15 +357,38 @@ Item {
                     text: Translation.tr("Reload Quickshell")
                 }
             }
+            
+            Timer {
+                id: reloadButtonCooldown
+                interval: 500
+                onTriggered: {
+                    root.reloadButtonEnabled = true;
+                    console.log("[SidebarRight] Reload button cooldown finished");
+                }
+            }
             QuickToggleButton {
+                id: settingsButton
                 toggled: false
+                enabled: root.settingsButtonEnabled
+                opacity: enabled ? 1.0 : 0.5
                 buttonIcon: "settings"
                 onClicked: {
+                    if (!root.settingsButtonEnabled) {
+                        console.log("[SidebarRight] Settings button still on cooldown, ignoring click");
+                        return;
+                    }
+                    
+                    console.log("[SidebarRight] Settings button clicked");
+                    root.settingsButtonEnabled = false;
+                    settingsButtonCooldown.restart();
+                    
                     if (CompositorService.isNiri) {
                         const wins = NiriService.windows || []
+                        console.log("[SidebarRight] Checking for existing settings window among", wins.length, "windows");
                         for (let i = 0; i < wins.length; i++) {
                             const w = wins[i]
                             if (w.title === "illogical-impulse Settings" && w.app_id === "org.quickshell") {
+                                console.log("[SidebarRight] Found existing settings window, focusing it");
                                 GlobalStates.sidebarRightOpen = false;
                                 Qt.callLater(() => {
                                     NiriService.focusWindow(w.id)
@@ -356,8 +396,10 @@ Item {
                                 return
                             }
                         }
+                        console.log("[SidebarRight] No existing settings window found");
                     }
                     
+                    console.log("[SidebarRight] Opening new settings window via IPC");
                     GlobalStates.sidebarRightOpen = false;
                     Qt.callLater(() => {
                         Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]);
@@ -365,6 +407,15 @@ Item {
                 }
                 StyledToolTip {
                     text: Translation.tr("Settings")
+                }
+            }
+            
+            Timer {
+                id: settingsButtonCooldown
+                interval: 500
+                onTriggered: {
+                    root.settingsButtonEnabled = true;
+                    console.log("[SidebarRight] Settings button cooldown finished");
                 }
             }
             QuickToggleButton {
