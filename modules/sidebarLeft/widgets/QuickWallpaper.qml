@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import Quickshell
+import Quickshell.Io
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -13,15 +14,51 @@ import "root:"
 Item {
     id: root
     implicitHeight: card.implicitHeight + Appearance.sizes.elevationMargin
-    visible: Wallpapers.wallpapers.length > 0
+    visible: wallpapersList.length > 0
 
     readonly property real cardPadding: 12
     readonly property real itemSpacing: 8
     readonly property real itemWidth: 130
     readonly property real itemHeight: 78  // ~16:10 aspect
     readonly property bool showHeader: Config.options?.sidebar?.widgets?.quickWallpaper?.showHeader ?? true
-
-    Component.onCompleted: Wallpapers.load()
+    readonly property string wallpapersPath: `${FileUtils.trimFileProtocol(Directories.pictures)}/Wallpapers`
+    
+    property var wallpapersList: []
+    
+    // Scan on sidebar open
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged() {
+            if (GlobalStates.sidebarLeftOpen) {
+                root.scanDirectory()
+            }
+        }
+    }
+    
+    Component.onCompleted: scanDirectory()
+    
+    function scanDirectory() {
+        scanProc.running = true
+    }
+    
+    Process {
+        id: scanProc
+        // Use %C@ (ctime - when file was added/changed) instead of %T@ (mtime - content modification)
+        command: ["/usr/bin/fish", "-c", `find '${root.wallpapersPath}' -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.avif' -o -iname '*.bmp' -o -iname '*.svg' \\) -printf '%C@\\t%p\\n'`]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                const lines = data.trim().split("\n").filter(l => l.length > 0)
+                // Sort by ctime (newest first)
+                lines.sort((a, b) => {
+                    const timeA = parseFloat(a.split("\t")[0])
+                    const timeB = parseFloat(b.split("\t")[0])
+                    return timeB - timeA
+                })
+                root.wallpapersList = lines.map(l => l.split("\t")[1]).filter(p => p && p.length > 0)
+            }
+        }
+    }
 
     StyledRectangularShadow { target: card; visible: !Appearance.inirEverywhere && !Appearance.auroraEverywhere }
 
@@ -74,7 +111,11 @@ Item {
                     colRipple: Appearance.inirEverywhere ? Appearance.inir.colLayer2Active 
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive 
                         : Appearance.colors.colLayer2Active
-                    onClicked: Wallpapers.randomFromCurrentFolder()
+                    onClicked: {
+                        if (root.wallpapersList.length === 0) return
+                        const randomIndex = Math.floor(Math.random() * root.wallpapersList.length)
+                        Wallpapers.select(root.wallpapersList[randomIndex])
+                    }
                     contentItem: Item {
                         MaterialSymbol {
                             anchors.centerIn: parent
@@ -141,6 +182,12 @@ Item {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
 
+                    // Smooth scroll animation
+                    Behavior on contentX {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                    }
+
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                         onWheel: event => {
@@ -152,7 +199,7 @@ Item {
                         }
                     }
 
-                    model: Wallpapers.wallpapers
+                    model: root.wallpapersList
 
                     delegate: Item {
                         id: wallpaperDelegate
@@ -192,11 +239,14 @@ Item {
                                 }
                             }
 
-                            ThumbnailImage {
+                            Image {
                                 anchors.fill: parent
-                                sourcePath: wallpaperDelegate.filePath
-                                fallbackToDownscaledSource: true
+                                source: wallpaperDelegate.filePath ? `file://${wallpaperDelegate.filePath}` : ""
                                 fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: false
+                                sourceSize.width: root.itemWidth * 2
+                                sourceSize.height: root.itemHeight * 2
                             }
 
                             // Hover overlay
