@@ -72,11 +72,13 @@ MouseArea {
                         Connections {
                             target: Wallpapers
                             function onThumbnailGenerated(directory) {
+                                if (thumbnailImage.status !== Image.Error) return;
                                 if (FileUtils.parentDirectory(thumbnailImage.sourcePath) !== directory) return;
                                 thumbnailImage.source = "";
                                 thumbnailImage.source = thumbnailImage.thumbnailPath;
                             }
                             function onThumbnailGeneratedFile(filePath) {
+                                if (thumbnailImage.status !== Image.Error) return;
                                 if (Qt.resolvedUrl(thumbnailImage.sourcePath) !== Qt.resolvedUrl(filePath)) return;
                                 thumbnailImage.source = "";
                                 thumbnailImage.source = thumbnailImage.thumbnailPath;
@@ -91,21 +93,6 @@ MouseArea {
                                 radius: Appearance.rounding.small
                             }
                         }
-                    }
-                }
-
-                Loader {
-                    id: thumbnailPlaceholderLoader
-                    active: root.useThumbnail
-                        && Wallpapers.thumbnailGenerationRunning
-                        && thumbnailImageLoader.active
-                        && thumbnailImageLoader.item
-                        && thumbnailImageLoader.item.status !== Image.Ready
-                    anchors.fill: parent
-                    sourceComponent: Rectangle {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.small
-                        color: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
                     }
                 }
 

@@ -12,14 +12,8 @@ import qs.modules.common.functions
 StyledImage {
     id: root
 
-    property bool generateThumbnail: false
+    property bool generateThumbnail: true
     required property string sourcePath
-    property bool fallbackToDownscaledSource: true
-    readonly property string sourceUrl: {
-        if (!sourcePath || sourcePath.length === 0) return "";
-        const resolved = String(Qt.resolvedUrl(sourcePath));
-        return resolved.startsWith("file://") ? resolved : ("file://" + resolved);
-    }
     property string thumbnailSizeName: Images.thumbnailSizeNameForDimensions(sourceSize.width, sourceSize.height)
     property string thumbnailPath: {
         if (sourcePath.length == 0) return "";
@@ -28,9 +22,7 @@ StyledImage {
         const md5Hash = Qt.md5(`file://${encodedUrlWithoutFileProtocol}`);
         return `${Directories.genericCache}/thumbnails/${thumbnailSizeName}/${md5Hash}.png`;
     }
-    
-    // Try thumbnail first, fall back to source
-    source: ""
+    source: thumbnailPath
 
     asynchronous: true
     smooth: true
@@ -41,29 +33,24 @@ StyledImage {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
-    onStatusChanged: {
-        if (status === Image.Error && source === thumbnailPath) {
-            // Thumbnail failed, try fallback
-            if (fallbackToDownscaledSource && sourceUrl.length > 0) {
-                source = sourceUrl;
-            } else {
-                source = "";
+    onSourceSizeChanged: {
+        if (!root.generateThumbnail) return;
+        thumbnailGeneration.running = false;
+        thumbnailGeneration.running = true;
+    }
+    Process {
+        id: thumbnailGeneration
+        command: {
+            const maxSize = Images.thumbnailSizes[root.thumbnailSizeName];
+            return ["bash", "-c", 
+                `[ -f '${FileUtils.trimFileProtocol(root.thumbnailPath)}' ] && exit 0 || { magick '${root.sourcePath}' -resize ${maxSize}x${maxSize} '${FileUtils.trimFileProtocol(root.thumbnailPath)}' && exit 1; }`
+            ]
+        }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 1) { // Force reload if thumbnail had to be generated
+                root.source = "";
+                root.source = root.thumbnailPath; // Force reload
             }
-        }
-    }
-
-    onThumbnailPathChanged: {
-        if (!thumbnailPath || thumbnailPath.length === 0) {
-            source = "";
-            return;
-        }
-        // Try to load thumbnail - if it fails, onStatusChanged handles fallback
-        source = thumbnailPath;
-    }
-
-    Component.onCompleted: {
-        if (thumbnailPath && thumbnailPath.length > 0) {
-            source = thumbnailPath;
         }
     }
 }
