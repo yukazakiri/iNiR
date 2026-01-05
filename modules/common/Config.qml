@@ -137,6 +137,13 @@ Singleton {
             property JsonObject appearance: JsonObject {
                 property string theme: "auto" // Theme preset ID: "auto" for wallpaper-based, or preset name like "gruvbox-dark", "catppuccin-mocha", "custom", etc.
                 property string globalStyle: "material" // "material" | "cards" | "aurora" | "inir"
+                // Corner style preference per global style (0=Hug, 1=Float, 2=Rect, 3=Card)
+                property JsonObject globalStyleCornerStyles: JsonObject {
+                    property int material: 1
+                    property int cards: 3
+                    property int aurora: 0
+                    property int inir: 1
+                }
                 property bool extraBackgroundTint: true
                 property JsonObject customTheme: JsonObject {
                     property bool darkmode: true
@@ -605,6 +612,8 @@ Singleton {
             property JsonObject media: JsonObject {
                 // Attempt to remove dupes (the aggregator playerctl one and browsers' native ones when there's plasma browser integration)
                 property bool filterDuplicatePlayers: true
+                // Popup mode: "dock" (bottom overlay, default) or "bar" (anchored to bar widget)
+                property string popupMode: "dock"
             }
 
             property JsonObject networking: JsonObject {

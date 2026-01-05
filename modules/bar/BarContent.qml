@@ -48,7 +48,7 @@ Item { // Bar content region
 
     // Background shadow
     Loader {
-        active: !root.inirEverywhere && !Appearance.gameModeMinimal && Config.options.bar.showBackground && (Config.options.bar.cornerStyle === 1 || Config.options.bar.cornerStyle === 3) && Config.options.bar.floatStyleShadow
+        active: !root.inirEverywhere && !Appearance.auroraEverywhere && !Appearance.gameModeMinimal && Config.options.bar.showBackground && (Config.options.bar.cornerStyle === 1 || Config.options.bar.cornerStyle === 3) && Config.options.bar.floatStyleShadow
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
@@ -60,7 +60,9 @@ Item { // Bar content region
         id: barBackground
         readonly property bool auroraEverywhere: Appearance.auroraEverywhere
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-        readonly property bool floatingStyle: auroraEverywhere || Config.options.bar.cornerStyle === 1 || Config.options.bar.cornerStyle === 3
+        readonly property int cornerStyle: Config.options.bar.cornerStyle
+        // Float (1) and Card (3) are floating; Aurora makes everything floating except Hug and Rect
+        readonly property bool floatingStyle: (cornerStyle === 1 || cornerStyle === 3) || (auroraEverywhere && cornerStyle !== 0 && cornerStyle !== 2)
         
         anchors {
             fill: parent
@@ -72,13 +74,61 @@ Item { // Bar content region
         readonly property QtObject blendedColors: root.blendedColors
         
         visible: Config.options.bar.showBackground && !gameModeMinimal
-        color: root.inirEverywhere ? Appearance.inir.colLayer0
-            : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
-            : (root.cardStyleEverywhere ? Appearance.colors.colLayer1 : (Config.options.bar.cornerStyle === 3 ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0))
-        radius: root.inirEverywhere ? Appearance.inir.roundingNormal
-            : floatingStyle ? (Config.options.bar.cornerStyle === 3 ? Appearance.rounding.normal : Appearance.rounding.windowRounding) : 0
-        border.width: root.inirEverywhere ? 1 : (floatingStyle ? 1 : 0)
-        border.color: root.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
+        
+        // Color logic per global style and corner style
+        color: {
+            if (root.inirEverywhere) {
+                return Appearance.inir.colLayer0
+            }
+            if (auroraEverywhere) {
+                // Aurora: use solid base for non-floating, blended for floating
+                return ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
+            }
+            // Material/Cards
+            if (root.cardStyleEverywhere || cornerStyle === 3) {
+                return Appearance.colors.colLayer1
+            }
+            return Appearance.colors.colLayer0
+        }
+        
+        // Radius logic per global style and corner style
+        radius: {
+            if (root.inirEverywhere) {
+                // Inir: use inir rounding for Float/Card, 0 for Hug/Rect
+                if (cornerStyle === 1 || cornerStyle === 3) {
+                    return Appearance.inir.roundingNormal
+                }
+                return 0
+            }
+            if (floatingStyle) {
+                // Float or Card floating
+                return cornerStyle === 3 ? Appearance.rounding.normal : Appearance.rounding.windowRounding
+            }
+            return 0
+        }
+        
+        // Border logic per global style
+        border.width: {
+            if (root.inirEverywhere) {
+                // Inir always has border for Float/Card
+                return (cornerStyle === 1 || cornerStyle === 3) ? 1 : 0
+            }
+            if (auroraEverywhere) {
+                // Aurora: border on floating styles
+                return floatingStyle ? 1 : 0
+            }
+            // Material: border only on Float/Card
+            return floatingStyle ? 1 : 0
+        }
+        border.color: {
+            if (root.inirEverywhere) {
+                return Appearance.inir.colBorder
+            }
+            if (auroraEverywhere) {
+                return Appearance.aurora.colTooltipBorder
+            }
+            return Appearance.colors.colLayer0Border
+        }
 
         clip: true
 

@@ -12,6 +12,60 @@ ContentPage {
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
 
+    // Conflict detection helpers
+    readonly property bool isCardStyle: Config.options?.bar?.cornerStyle === 3
+    readonly property bool isHugStyle: Config.options?.bar?.cornerStyle === 0
+    readonly property bool isFloatStyle: Config.options?.bar?.cornerStyle === 1
+    readonly property bool isRectStyle: Config.options?.bar?.cornerStyle === 2
+    readonly property bool isGlobalCards: Config.options?.dock?.cardStyle && Config.options?.sidebar?.cardStyle && isCardStyle
+    readonly property bool hasVignette: Config.options?.bar?.vignette?.enabled ?? false
+    readonly property bool isAutoHide: Config.options?.bar?.autoHide?.enable ?? false
+    readonly property bool isBorderless: Config.options?.bar?.borderless ?? false
+    readonly property bool showBackground: Config.options?.bar?.showBackground ?? true
+    
+    // Global style detection
+    readonly property string currentGlobalStyle: Config.options?.appearance?.globalStyle ?? "material"
+    readonly property bool isAurora: currentGlobalStyle === "aurora"
+    readonly property bool isInir: currentGlobalStyle === "inir"
+    readonly property bool isCards: currentGlobalStyle === "cards"
+    readonly property bool isMaterial: currentGlobalStyle === "material"
+
+    // Corner style compatibility per global style
+    readonly property bool hugNeedsBackground: isHugStyle && !showBackground
+    readonly property bool hugOnAurora: isHugStyle && isAurora
+    readonly property bool cardOnNonCards: isCardStyle && !isCards
+
+    // Helper component for conflict warnings
+    component ConflictNote: RowLayout {
+        property string text
+        property string icon: "info"
+        property bool warning: false
+        spacing: 6
+        Layout.fillWidth: true
+
+        readonly property color noteColor: {
+            if (warning) {
+                return Appearance.inirEverywhere ? Appearance.inir.colWarning
+                     : Appearance.colors.colYellow
+            }
+            return Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
+                 : Appearance.colors.colSubtext
+        }
+
+        MaterialSymbol {
+            text: parent.icon
+            iconSize: Appearance.font.pixelSize.small
+            color: parent.noteColor
+        }
+        StyledText {
+            Layout.fillWidth: true
+            text: parent.text
+            color: parent.noteColor
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            wrapMode: Text.WordWrap
+        }
+    }
+
     SettingsCardSection {
         visible: !root.isIiActive
         expanded: true
@@ -29,109 +83,21 @@ ContentPage {
         }
     }
 
-    SettingsCardSection {
-        visible: root.isIiActive
-        expanded: false
-        icon: "notifications"
-        title: Translation.tr("Notifications")
-
-        SettingsGroup {
-            SettingsSwitch {
-                buttonIcon: "counter_2"
-                text: Translation.tr("Unread indicator: show count")
-                checked: Config.options.bar.indicators.notifications.showUnreadCount
-                onCheckedChanged: {
-                    Config.options.bar.indicators.notifications.showUnreadCount = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Show the number of unread notifications instead of just a dot")
-                }
-            }
-        }
-    }
-
+    // ═══════════════════════════════════════════════════════════════════
+    // APPEARANCE & LAYOUT
+    // ═══════════════════════════════════════════════════════════════════
     SettingsCardSection {
         visible: root.isIiActive
         expanded: true
-        icon: "widgets"
-        title: Translation.tr("Bar modules")
-
-        SettingsGroup {
-            // Edge modules: simple toggles
-            ConfigRow {
-                uniform: true
-                SettingsSwitch {
-                    buttonIcon: "side_navigation"
-                    text: Translation.tr("Left sidebar button")
-                    checked: Config.options.bar.modules.leftSidebarButton
-                    onCheckedChanged: {
-                        Config.options.bar.modules.leftSidebarButton = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Show button to open AI chat and tools sidebar")
-                    }
-                }
-                SettingsSwitch {
-                    buttonIcon: "window"
-                    text: Translation.tr("Active window title")
-                    checked: Config.options.bar.modules.activeWindow
-                    onCheckedChanged: {
-                        Config.options.bar.modules.activeWindow = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Show the title of the currently focused window")
-                    }
-                }
-            }
-
-            ConfigRow {
-                uniform: true
-                SettingsSwitch {
-                    buttonIcon: "call_to_action"
-                    text: Translation.tr("Right sidebar button")
-                    checked: Config.options.bar.modules.rightSidebarButton
-                    onCheckedChanged: {
-                        Config.options.bar.modules.rightSidebarButton = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Show button to open quick settings and notifications sidebar")
-                    }
-                }
-                SettingsSwitch {
-                    buttonIcon: "shelf_auto_hide"
-                    text: Translation.tr("System tray")
-                    checked: Config.options.bar.modules.sysTray
-                    onCheckedChanged: {
-                        Config.options.bar.modules.sysTray = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Show system tray icons from running applications")
-                    }
-                }
-            }
-
-            SettingsDivider {}
-
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Weather settings are in Services → Weather")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smaller
-            }
-        }
-    }
-
-    SettingsCardSection {
-        visible: root.isIiActive
-        expanded: false
-        icon: "spoke"
-        title: Translation.tr("Positioning")
+        icon: "dashboard"
+        title: Translation.tr("Appearance & Layout")
 
         SettingsGroup {
             ConfigRow {
                 uniform: true
+
                 ContentSubsection {
-                    title: Translation.tr("Bar position")
+                    title: Translation.tr("Position")
 
                     ConfigSelectionArray {
                         currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
@@ -147,31 +113,14 @@ ContentPage {
                         ]
                     }
                 }
-                ContentSubsection {
-                    title: Translation.tr("Automatically hide")
 
-                    ConfigSelectionArray {
-                        currentValue: Config.options.bar.autoHide.enable
-                        onSelected: newValue => {
-                            Config.options.bar.autoHide.enable = newValue; // Update local copy
-                        }
-                        options: [
-                            { displayName: Translation.tr("No"), icon: "close", value: false },
-                            { displayName: Translation.tr("Yes"), icon: "check", value: true }
-                        ]
-                    }
-                }
-            }
-
-            ConfigRow {
-                uniform: true
                 ContentSubsection {
                     title: Translation.tr("Corner style")
 
                     ConfigSelectionArray {
                         currentValue: Config.options.bar.cornerStyle
                         onSelected: newValue => {
-                            Config.options.bar.cornerStyle = newValue; // Update local copy
+                            Config.options.bar.cornerStyle = newValue;
                         }
                         options: [
                             { displayName: Translation.tr("Hug"), icon: "line_curve", value: 0 },
@@ -181,6 +130,27 @@ ContentPage {
                         ]
                     }
                 }
+            }
+
+            // Corner style conflict notes
+            ConflictNote {
+                visible: root.hugNeedsBackground
+                warning: true
+                icon: "warning"
+                text: Translation.tr("Hug style requires background enabled to show the corner decorations.")
+            }
+
+            ConflictNote {
+                visible: root.isCardStyle && !root.isGlobalCards
+                warning: true
+                icon: "sync_problem"
+                text: Translation.tr("Card style here doesn't match dock/sidebar. Go to Themes → Global Style for consistency.")
+            }
+
+            SettingsDivider {}
+
+            ConfigRow {
+                uniform: true
 
                 ContentSubsection {
                     title: Translation.tr("Group style")
@@ -188,26 +158,54 @@ ContentPage {
                     ConfigSelectionArray {
                         currentValue: Config.options.bar.borderless
                         onSelected: newValue => {
-                            Config.options.bar.borderless = newValue; // Update local copy
+                            Config.options.bar.borderless = newValue;
                         }
                         options: [
                             { displayName: Translation.tr("Pills"), icon: "location_chip", value: false },
-                            { displayName: Translation.tr("Line-separated"), icon: "split_scene", value: true }
+                            { displayName: Translation.tr("Seamless"), icon: "split_scene", value: true }
                         ]
                     }
                 }
+
+                ContentSubsection {
+                    title: Translation.tr("Auto-hide")
+
+                    ConfigSelectionArray {
+                        currentValue: Config.options.bar.autoHide.enable
+                        onSelected: newValue => {
+                            Config.options.bar.autoHide.enable = newValue;
+                        }
+                        options: [
+                            { displayName: Translation.tr("Off"), icon: "visibility", value: false },
+                            { displayName: Translation.tr("On"), icon: "visibility_off", value: true }
+                        ]
+                    }
+                }
+            }
+
+            ConflictNote {
+                visible: root.isBorderless && root.isCardStyle
+                warning: true
+                icon: "warning"
+                text: Translation.tr("Seamless group style may look odd with Card corner style.")
             }
 
             SettingsDivider {}
 
             SettingsSwitch {
                 buttonIcon: "layers"
-                text: Translation.tr("Show bar background")
+                text: Translation.tr("Show background")
                 checked: Config.options.bar.showBackground
                 onCheckedChanged: Config.options.bar.showBackground = checked
                 StyledToolTip {
-                    text: Translation.tr("Show a background behind the bar")
+                    text: Translation.tr("Display a background behind the bar")
                 }
+            }
+
+            ConflictNote {
+                visible: !root.showBackground && root.isBorderless
+                icon: "lightbulb"
+                text: Translation.tr("No background + Seamless style = floating widgets look")
             }
 
             SettingsDivider {}
@@ -215,19 +213,19 @@ ContentPage {
             SettingsSwitch {
                 buttonIcon: "vignette"
                 text: Translation.tr("Vignette effect")
-                checked: Config.options?.bar?.vignette?.enabled ?? false
+                checked: root.hasVignette
                 onCheckedChanged: {
                     Config.setNestedValue("bar.vignette.enabled", checked)
                 }
                 StyledToolTip {
-                    text: Translation.tr("Add an elegant gradient from the screen edge toward the content")
+                    text: Translation.tr("Gradient shadow from screen edge")
                 }
             }
 
             ConfigSpinBox {
-                visible: Config.options?.bar?.vignette?.enabled ?? false
+                visible: root.hasVignette
                 icon: "opacity"
-                text: Translation.tr("Vignette intensity (%)")
+                text: Translation.tr("Intensity (%)")
                 value: Math.round((Config.options?.bar?.vignette?.intensity ?? 0.6) * 100)
                 from: 0
                 to: 100
@@ -235,15 +233,12 @@ ContentPage {
                 onValueChanged: {
                     Config.setNestedValue("bar.vignette.intensity", value / 100)
                 }
-                StyledToolTip {
-                    text: Translation.tr("Control the darkness of the vignette gradient")
-                }
             }
 
             ConfigSpinBox {
-                visible: Config.options?.bar?.vignette?.enabled ?? false
+                visible: root.hasVignette
                 icon: "blur_on"
-                text: Translation.tr("Vignette radius (%)")
+                text: Translation.tr("Radius (%)")
                 value: Math.round((Config.options?.bar?.vignette?.radius ?? 0.5) * 100)
                 from: 10
                 to: 100
@@ -251,168 +246,113 @@ ContentPage {
                 onValueChanged: {
                     Config.setNestedValue("bar.vignette.radius", value / 100)
                 }
-                StyledToolTip {
-                    text: Translation.tr("Control how far the gradient extends from the screen edge")
-                }
+            }
+
+            ConflictNote {
+                visible: root.hasVignette && root.isAutoHide
+                icon: "info"
+                text: Translation.tr("Vignette will hide along with the bar when auto-hide is active.")
             }
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // MODULES (what to show)
+    // ═══════════════════════════════════════════════════════════════════
     SettingsCardSection {
         visible: root.isIiActive
-        expanded: false
-        icon: "shelf_auto_hide"
-        title: Translation.tr("Tray")
-
-        SettingsGroup {
-            SettingsSwitch {
-                buttonIcon: "keep"
-                text: Translation.tr('Make icons pinned by default')
-                checked: Config.options.bar.tray.invertPinnedItems
-                onCheckedChanged: {
-                    Config.options.bar.tray.invertPinnedItems = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("New tray icons will be visible by default instead of hidden")
-                }
-            }
-            
-            SettingsSwitch {
-                buttonIcon: "colors"
-                text: Translation.tr('Tint icons')
-                checked: Config.options.bar.tray.monochromeIcons
-                onCheckedChanged: {
-                    Config.options.bar.tray.monochromeIcons = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Apply accent color tint to tray icons")
-                }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "bug_report"
-                text: Translation.tr('Show item ID in tooltip')
-                checked: Config.options.bar.tray.showItemId
-                onCheckedChanged: {
-                    Config.options.bar.tray.showItemId = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Show the internal ID of tray items (useful for debugging)")
-                }
-            }
-        }
-    }
-
-    SettingsCardSection {
-        visible: root.isIiActive
-        expanded: false
+        expanded: true
         icon: "widgets"
-        title: Translation.tr("Utility buttons")
+        title: Translation.tr("Modules")
 
         SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Toggle which widgets appear in the bar")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+            }
+
             ConfigRow {
                 uniform: true
                 SettingsSwitch {
-                    buttonIcon: "content_cut"
-                    text: Translation.tr("Screen snip")
-                    checked: Config.options.bar.utilButtons.showScreenSnip
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showScreenSnip = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Open the screen snipping tool")
-                    }
+                    buttonIcon: "side_navigation"
+                    text: Translation.tr("Left sidebar button")
+                    checked: Config.options.bar.modules.leftSidebarButton
+                    onCheckedChanged: Config.options.bar.modules.leftSidebarButton = checked
                 }
                 SettingsSwitch {
-                    buttonIcon: "colorize"
-                    text: Translation.tr("Color picker")
-                    checked: Config.options.bar.utilButtons.showColorPicker
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showColorPicker = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Pick a color from the screen")
-                    }
+                    buttonIcon: "call_to_action"
+                    text: Translation.tr("Right sidebar button")
+                    checked: Config.options.bar.modules.rightSidebarButton
+                    onCheckedChanged: Config.options.bar.modules.rightSidebarButton = checked
                 }
             }
+
             ConfigRow {
                 uniform: true
                 SettingsSwitch {
-                    buttonIcon: "keyboard"
-                    text: Translation.tr("Keyboard toggle")
-                    checked: Config.options.bar.utilButtons.showKeyboardToggle
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showKeyboardToggle = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Toggle virtual keyboard visibility")
-                    }
+                    buttonIcon: "window"
+                    text: Translation.tr("Active window title")
+                    checked: Config.options.bar.modules.activeWindow
+                    onCheckedChanged: Config.options.bar.modules.activeWindow = checked
                 }
                 SettingsSwitch {
-                    buttonIcon: "mic"
-                    text: Translation.tr("Mic toggle")
-                    checked: Config.options.bar.utilButtons.showMicToggle
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showMicToggle = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Toggle microphone mute state")
-                    }
+                    buttonIcon: "shelf_auto_hide"
+                    text: Translation.tr("System tray")
+                    checked: Config.options.bar.modules.sysTray
+                    onCheckedChanged: Config.options.bar.modules.sysTray = checked
                 }
             }
-            ConfigRow {
-                uniform: true
-                SettingsSwitch {
-                    buttonIcon: "dark_mode"
-                    text: Translation.tr("Dark/Light toggle")
-                    checked: Config.options.bar.utilButtons.showDarkModeToggle
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showDarkModeToggle = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Toggle system dark/light mode")
-                    }
-                }
-                SettingsSwitch {
-                    buttonIcon: "speed"
-                    text: Translation.tr("Performance Profile toggle")
-                    checked: Config.options.bar.utilButtons.showPerformanceProfileToggle
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Switch power profiles (Power Saver / Balanced / Performance)")
-                    }
-                }
-            }
-            ConfigRow {
-                uniform: true
-                SettingsSwitch {
-                    buttonIcon: "videocam"
-                    text: Translation.tr("Record")
-                    checked: Config.options.bar.utilButtons.showScreenRecord
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showScreenRecord = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Start/Stop screen recording")
-                    }
-                }
-                SettingsSwitch {
-                    buttonIcon: "edit_note"
-                    text: Translation.tr("Notepad")
-                    checked: Config.options.bar.utilButtons.showNotepad
-                    onCheckedChanged: {
-                        Config.options.bar.utilButtons.showNotepad = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Open quick notepad")
-                    }
-                }
+
+            SettingsDivider {}
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Weather configuration is in Services → Weather")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
             }
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // MEDIA
+    // ═══════════════════════════════════════════════════════════════════
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
+        icon: "music_note"
+        title: Translation.tr("Media")
+
+        SettingsGroup {
+            ContentSubsection {
+                title: Translation.tr("Popup mode")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.media?.popupMode ?? "dock"
+                    onSelected: newValue => {
+                        Config.setNestedValue("media.popupMode", newValue)
+                    }
+                    options: [
+                        { displayName: Translation.tr("Bottom overlay"), icon: "picture_in_picture", value: "dock" },
+                        { displayName: Translation.tr("From bar"), icon: "open_in_new", value: "bar" }
+                    ]
+                }
+            }
+
+            ConflictNote {
+                icon: "info"
+                text: Config.options?.media?.popupMode === "bar"
+                    ? Translation.tr("Classic style popup anchored to bar widget")
+                    : Translation.tr("Modern overlay at screen bottom")
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WORKSPACES
+    // ═══════════════════════════════════════════════════════════════════
     SettingsCardSection {
         visible: root.isIiActive
         expanded: false
@@ -436,66 +376,43 @@ ContentPage {
                 }
             }
 
-            SettingsSwitch {
-                buttonIcon: "counter_1"
-                text: Translation.tr('Always show numbers')
-                checked: Config.options.bar.workspaces.alwaysShowNumbers
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.alwaysShowNumbers = checked;
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "counter_1"
+                    text: Translation.tr("Always show numbers")
+                    checked: Config.options.bar.workspaces.alwaysShowNumbers
+                    onCheckedChanged: Config.options.bar.workspaces.alwaysShowNumbers = checked
+                    StyledToolTip {
+                        text: Translation.tr("Show numbers instead of only when Super is held")
+                    }
                 }
-                StyledToolTip {
-                    text: Translation.tr("Always display workspace numbers instead of only when Super is held")
-                }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "award_star"
-                text: Translation.tr('Show app icons')
-                checked: Config.options.bar.workspaces.showAppIcons
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.showAppIcons = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Show icons of apps running in each workspace")
+                SettingsSwitch {
+                    buttonIcon: "award_star"
+                    text: Translation.tr("Show app icons")
+                    checked: Config.options.bar.workspaces.showAppIcons
+                    onCheckedChanged: Config.options.bar.workspaces.showAppIcons = checked
                 }
             }
 
-            SettingsSwitch {
-                buttonIcon: "colors"
-                text: Translation.tr('Tint app icons')
-                checked: Config.options.bar.workspaces.monochromeIcons
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.monochromeIcons = checked;
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "colors"
+                    text: Translation.tr("Tint app icons")
+                    checked: Config.options.bar.workspaces.monochromeIcons
+                    onCheckedChanged: Config.options.bar.workspaces.monochromeIcons = checked
+                    enabled: Config.options.bar.workspaces.showAppIcons
+                    opacity: enabled ? 1 : 0.5
                 }
-                StyledToolTip {
-                    text: Translation.tr("Apply accent color tint to workspace app icons")
-                }
-            }
-
-            ConfigSpinBox {
-                icon: "view_column"
-                text: Translation.tr("Workspaces shown")
-                value: Config.options.bar.workspaces.shown
-                from: 1
-                to: 30
-                stepSize: 1
-                onValueChanged: {
-                    Config.options.bar.workspaces.shown = value;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Number of static workspaces to display in the bar")
-                }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "dynamic_feed"
-                text: Translation.tr("Dynamic workspace count")
-                checked: Config.options.bar.workspaces.dynamicCount
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.dynamicCount = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Automatically show only existing workspaces (Niri)")
+                SettingsSwitch {
+                    buttonIcon: "dynamic_feed"
+                    text: Translation.tr("Dynamic count")
+                    checked: Config.options.bar.workspaces.dynamicCount
+                    onCheckedChanged: Config.options.bar.workspaces.dynamicCount = checked
+                    StyledToolTip {
+                        text: Translation.tr("Only show existing workspaces (Niri)")
+                    }
                 }
             }
 
@@ -503,53 +420,60 @@ ContentPage {
                 buttonIcon: "all_inclusive"
                 text: Translation.tr("Wrap around")
                 checked: Config.options.bar.workspaces.wrapAround
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.wrapAround = checked;
-                }
+                onCheckedChanged: Config.options.bar.workspaces.wrapAround = checked
                 StyledToolTip {
-                    text: Translation.tr("Cycle from last to first workspace and vice versa")
+                    text: Translation.tr("Cycle from last to first and vice versa")
                 }
             }
 
-            ConfigSpinBox {
-                icon: "mouse"
-                text: Translation.tr("Scroll steps")
-                value: Config.options.bar.workspaces.scrollSteps
-                from: 1
-                to: 10
-                stepSize: 1
-                onValueChanged: {
-                    Config.options.bar.workspaces.scrollSteps = value;
+            SettingsDivider {}
+
+            ConfigRow {
+                uniform: true
+                ConfigSpinBox {
+                    icon: "view_column"
+                    text: Translation.tr("Shown")
+                    value: Config.options.bar.workspaces.shown
+                    from: 1
+                    to: 30
+                    stepSize: 1
+                    onValueChanged: Config.options.bar.workspaces.shown = value
+                    enabled: !Config.options.bar.workspaces.dynamicCount
+                    opacity: enabled ? 1 : 0.5
                 }
-                StyledToolTip {
-                    text: Translation.tr("Wheel steps required to switch workspace/column")
+                ConfigSpinBox {
+                    icon: "mouse"
+                    text: Translation.tr("Scroll steps")
+                    value: Config.options.bar.workspaces.scrollSteps
+                    from: 1
+                    to: 10
+                    stepSize: 1
+                    onValueChanged: Config.options.bar.workspaces.scrollSteps = value
                 }
             }
 
             ConfigSpinBox {
                 icon: "touch_long"
-                text: Translation.tr("Number show delay when pressing Super (ms)")
+                text: Translation.tr("Number reveal delay (ms)")
                 value: Config.options.bar.workspaces.showNumberDelay
                 from: 0
                 to: 1000
                 stepSize: 50
-                onValueChanged: {
-                    Config.options.bar.workspaces.showNumberDelay = value;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Delay before showing workspace numbers when holding Super key")
-                }
+                onValueChanged: Config.options.bar.workspaces.showNumberDelay = value
+                enabled: !Config.options.bar.workspaces.alwaysShowNumbers
+                opacity: enabled ? 1 : 0.5
             }
+
+            ConflictNote {
+                visible: Config.options.bar.workspaces.alwaysShowNumbers
+                icon: "info"
+                text: Translation.tr("Number reveal delay is ignored when 'Always show numbers' is enabled")
+            }
+
+            SettingsDivider {}
 
             ContentSubsection {
                 title: Translation.tr("Number style")
-
-                StyledText {
-                    visible: !Config.options?.bar?.workspaces?.alwaysShowNumbers
-                    text: Translation.tr("Enable 'Always show numbers' to see these styles")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                }
 
                 ConfigSelectionArray {
                     enabled: Config.options?.bar?.workspaces?.alwaysShowNumbers ?? false
@@ -563,6 +487,168 @@ ContentPage {
                         { displayName: Translation.tr("Japanese"), icon: "square_dot", value: '["一","二","三","四","五","六","七","八","九","十"]' },
                         { displayName: Translation.tr("Roman"), icon: "account_balance", value: '["I","II","III","IV","V","VI","VII","VIII","IX","X"]' }
                     ]
+                }
+            }
+
+            ConflictNote {
+                visible: !Config.options?.bar?.workspaces?.alwaysShowNumbers
+                icon: "lightbulb"
+                text: Translation.tr("Enable 'Always show numbers' to use number styles")
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SYSTEM TRAY
+    // ═══════════════════════════════════════════════════════════════════
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
+        icon: "shelf_auto_hide"
+        title: Translation.tr("System Tray")
+
+        SettingsGroup {
+            SettingsSwitch {
+                buttonIcon: "keep"
+                text: Translation.tr("Pin icons by default")
+                checked: Config.options.bar.tray.invertPinnedItems
+                onCheckedChanged: Config.options.bar.tray.invertPinnedItems = checked
+                StyledToolTip {
+                    text: Translation.tr("New tray icons are visible by default instead of hidden")
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "colors"
+                text: Translation.tr("Tint icons")
+                checked: Config.options.bar.tray.monochromeIcons
+                onCheckedChanged: Config.options.bar.tray.monochromeIcons = checked
+                StyledToolTip {
+                    text: Translation.tr("Apply accent color tint to tray icons")
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "bug_report"
+                text: Translation.tr("Show item ID in tooltip")
+                checked: Config.options.bar.tray.showItemId
+                onCheckedChanged: Config.options.bar.tray.showItemId = checked
+                StyledToolTip {
+                    text: Translation.tr("Useful for debugging tray issues")
+                }
+            }
+
+            ConflictNote {
+                visible: !Config.options.bar.modules.sysTray
+                warning: true
+                icon: "visibility_off"
+                text: Translation.tr("System tray is disabled in Modules section above")
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // UTILITY BUTTONS
+    // ═══════════════════════════════════════════════════════════════════
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
+        icon: "build"
+        title: Translation.tr("Utility Buttons")
+
+        SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Quick action buttons in the bar")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+            }
+
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "content_cut"
+                    text: Translation.tr("Screen snip")
+                    checked: Config.options.bar.utilButtons.showScreenSnip
+                    onCheckedChanged: Config.options.bar.utilButtons.showScreenSnip = checked
+                }
+                SettingsSwitch {
+                    buttonIcon: "colorize"
+                    text: Translation.tr("Color picker")
+                    checked: Config.options.bar.utilButtons.showColorPicker
+                    onCheckedChanged: Config.options.bar.utilButtons.showColorPicker = checked
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "videocam"
+                    text: Translation.tr("Screen record")
+                    checked: Config.options.bar.utilButtons.showScreenRecord
+                    onCheckedChanged: Config.options.bar.utilButtons.showScreenRecord = checked
+                }
+                SettingsSwitch {
+                    buttonIcon: "edit_note"
+                    text: Translation.tr("Notepad")
+                    checked: Config.options.bar.utilButtons.showNotepad
+                    onCheckedChanged: Config.options.bar.utilButtons.showNotepad = checked
+                }
+            }
+
+            SettingsDivider {}
+
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "keyboard"
+                    text: Translation.tr("Virtual keyboard")
+                    checked: Config.options.bar.utilButtons.showKeyboardToggle
+                    onCheckedChanged: Config.options.bar.utilButtons.showKeyboardToggle = checked
+                }
+                SettingsSwitch {
+                    buttonIcon: "mic"
+                    text: Translation.tr("Mic toggle")
+                    checked: Config.options.bar.utilButtons.showMicToggle
+                    onCheckedChanged: Config.options.bar.utilButtons.showMicToggle = checked
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                SettingsSwitch {
+                    buttonIcon: "dark_mode"
+                    text: Translation.tr("Dark/Light mode")
+                    checked: Config.options.bar.utilButtons.showDarkModeToggle
+                    onCheckedChanged: Config.options.bar.utilButtons.showDarkModeToggle = checked
+                }
+                SettingsSwitch {
+                    buttonIcon: "speed"
+                    text: Translation.tr("Power profile")
+                    checked: Config.options.bar.utilButtons.showPerformanceProfileToggle
+                    onCheckedChanged: Config.options.bar.utilButtons.showPerformanceProfileToggle = checked
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // NOTIFICATIONS
+    // ═══════════════════════════════════════════════════════════════════
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
+        icon: "notifications"
+        title: Translation.tr("Notifications")
+
+        SettingsGroup {
+            SettingsSwitch {
+                buttonIcon: "counter_2"
+                text: Translation.tr("Show unread count")
+                checked: Config.options.bar.indicators.notifications.showUnreadCount
+                onCheckedChanged: Config.options.bar.indicators.notifications.showUnreadCount = checked
+                StyledToolTip {
+                    text: Translation.tr("Show number instead of just a dot")
                 }
             }
         }

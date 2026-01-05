@@ -79,12 +79,32 @@ ContentPage {
                 ? Config.options.appearance.globalStyle
                 : derivedStyle
 
+            // Get corner style for current global style
+            function getCornerStyleForGlobalStyle(styleId) {
+                const styles = Config.options?.appearance?.globalStyleCornerStyles
+                if (!styles) return 1
+                switch (styleId) {
+                    case "material": return styles.material ?? 1
+                    case "cards": return styles.cards ?? 3
+                    case "aurora": return styles.aurora ?? 1
+                    case "inir": return styles.inir ?? 1
+                    default: return 1
+                }
+            }
+
+            // Save corner style for a global style
+            function setCornerStyleForGlobalStyle(styleId, cornerStyle) {
+                Config.setNestedValue(`appearance.globalStyleCornerStyles.${styleId}`, cornerStyle)
+            }
+
             function _applyGlobalStyle(styleId) {
                 console.log("[GlobalStyle] apply", styleId)
+                const cornerStyle = getCornerStyleForGlobalStyle(styleId)
+
                 if (styleId === "cards") {
                     Config.options.dock.cardStyle = true;
                     Config.options.sidebar.cardStyle = true;
-                    Config.options.bar.cornerStyle = 3;
+                    Config.options.bar.cornerStyle = cornerStyle;
                     Config.setNestedValue("appearance.transparency.enable", false)
                     return;
                 }
@@ -92,7 +112,7 @@ ContentPage {
                 if (styleId === "aurora") {
                     Config.options.dock.cardStyle = false;
                     Config.options.sidebar.cardStyle = false;
-                    if (Config.options.bar.cornerStyle === 3) Config.options.bar.cornerStyle = 1;
+                    Config.options.bar.cornerStyle = cornerStyle;
                     Config.setNestedValue("appearance.transparency.enable", true)
                     return;
                 }
@@ -100,7 +120,7 @@ ContentPage {
                 if (styleId === "inir") {
                     Config.options.dock.cardStyle = false;
                     Config.options.sidebar.cardStyle = false;
-                    if (Config.options.bar.cornerStyle === 3) Config.options.bar.cornerStyle = 1;
+                    Config.options.bar.cornerStyle = cornerStyle;
                     Config.setNestedValue("appearance.transparency.enable", false)
                     return;
                 }
@@ -108,23 +128,27 @@ ContentPage {
                 // material
                 Config.options.dock.cardStyle = false;
                 Config.options.sidebar.cardStyle = false;
-                if (Config.options.bar.cornerStyle === 3) Config.options.bar.cornerStyle = 1;
+                Config.options.bar.cornerStyle = cornerStyle;
                 Config.setNestedValue("appearance.transparency.enable", false)
             }
 
-            ConfigSelectionArray {
-                currentValue: globalStyleGroup.currentStyle
-                onSelected: (newValue) => {
-                    console.log("[GlobalStyle] selected", newValue)
-                    Config.setNestedValue("appearance.globalStyle", newValue)
-                    globalStyleGroup._applyGlobalStyle(newValue)
+            ContentSubsection {
+                title: Translation.tr("Style")
+
+                ConfigSelectionArray {
+                    currentValue: globalStyleGroup.currentStyle
+                    onSelected: (newValue) => {
+                        console.log("[GlobalStyle] selected", newValue)
+                        Config.setNestedValue("appearance.globalStyle", newValue)
+                        globalStyleGroup._applyGlobalStyle(newValue)
+                    }
+                    options: [
+                        { displayName: Translation.tr("Material"), icon: "tune", value: "material" },
+                        { displayName: Translation.tr("Cards"), icon: "branding_watermark", value: "cards" },
+                        { displayName: Translation.tr("Aurora"), icon: "blur_on", value: "aurora" },
+                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" }
+                    ]
                 }
-                options: [
-                    { displayName: Translation.tr("Material"), icon: "tune", value: "material" },
-                    { displayName: Translation.tr("Cards"), icon: "branding_watermark", value: "cards" },
-                    { displayName: Translation.tr("Aurora"), icon: "blur_on", value: "aurora" },
-                    { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" }
-                ]
             }
 
             StyledText {
