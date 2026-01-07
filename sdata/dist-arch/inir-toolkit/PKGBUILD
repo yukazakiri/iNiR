@@ -18,4 +18,5 @@ depends=(
   
   # Idle management
   swayidle
+  swaylock
 )

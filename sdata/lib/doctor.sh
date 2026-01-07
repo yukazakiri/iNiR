@@ -43,6 +43,7 @@ check_dependencies() {
         "easyeffects:easyeffects"
         "magick:imagemagick"
         "uv:uv"
+        "swaylock:swaylock"
     )
     
     for item in "${cmds[@]}"; do
