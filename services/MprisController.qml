@@ -24,12 +24,16 @@ Singleton {
 	property MprisPlayer activePlayer: trackedPlayer ?? players[0] ?? null;
 
 	// Detect if active player is YtMusic's mpv instance
-	// This helps MediaPlayerWidget avoid showing duplicate controls when YtMusicPlayerCard is visible
+	// Compare directly with YtMusic's tracked player for accurate detection
 	readonly property bool isYtMusicActive: {
-		if (!activePlayer || !YtMusic.currentVideoId) return false;
+		if (!activePlayer) return false;
+		// Direct comparison with YtMusic's mpv player reference
+		if (YtMusic.mpvPlayer && activePlayer === YtMusic.mpvPlayer) return true;
+		// Fallback: check if YtMusic is playing and this looks like its mpv
+		if (!YtMusic.currentVideoId) return false;
 		const id = (activePlayer.identity ?? "").toLowerCase();
 		const entry = (activePlayer.desktopEntry ?? "").toLowerCase();
-		return id === "mpv" || entry === "mpv" || id.includes("mpv") || entry.includes("mpv");
+		return (id === "mpv" || entry === "mpv") && YtMusic.isPlaying;
 	}
 	
 	property bool hasPlasmaIntegration: false

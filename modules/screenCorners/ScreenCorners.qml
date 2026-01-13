@@ -24,8 +24,17 @@ Scope {
         property var screen: QsWindow.window?.screen
         property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
         property bool fullscreen
-        visible: ((Config?.options?.appearance?.fakeScreenRounding ?? 0) === 1 || ((Config?.options?.appearance?.fakeScreenRounding ?? 0) === 2 && !fullscreen))
         property var corner
+
+        // Separate conditions for clarity
+        readonly property int fakeRoundingMode: Config?.options?.appearance?.fakeScreenRounding ?? 0
+        readonly property bool showFakeRounding: fakeRoundingMode === 1 || (fakeRoundingMode === 2 && !fullscreen)
+        readonly property bool cornerOpenEnabled: Config?.options?.sidebar?.cornerOpen?.enable ?? false
+        readonly property bool cornerOpenAtBottom: Config?.options?.sidebar?.cornerOpen?.bottom ?? false
+        readonly property bool cornerOpenMatchesPosition: cornerOpenAtBottom === cornerWidget.isBottom
+        readonly property bool shouldShowCornerOpen: cornerOpenEnabled && cornerOpenMatchesPosition && !fullscreen && !GameMode.active
+
+        visible: showFakeRounding || shouldShowCornerOpen
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {
@@ -56,19 +65,19 @@ Scope {
             rightVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.right) * 1
             bottomVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.bottom) * 1
 
-            implicitSize: Appearance.rounding.screenRounding
-            implicitHeight: Math.max(implicitSize, sidebarCornerOpenInteractionLoader.implicitHeight)
-            implicitWidth: Math.max(implicitSize, sidebarCornerOpenInteractionLoader.implicitWidth)
+            // Size for fake rounding visual (0 if disabled)
+            readonly property int roundingSize: cornerPanelWindow.showFakeRounding ? Appearance.rounding.screenRounding : 0
+            // Size for corner open interaction area
+            readonly property int cornerOpenWidth: Config.options?.sidebar?.cornerOpen?.cornerRegionWidth ?? 20
+            readonly property int cornerOpenHeight: Config.options?.sidebar?.cornerOpen?.cornerRegionHeight ?? 20
+
+            implicitSize: roundingSize
+            implicitWidth: Math.max(roundingSize, cornerPanelWindow.shouldShowCornerOpen ? cornerOpenWidth : 0)
+            implicitHeight: Math.max(roundingSize, cornerPanelWindow.shouldShowCornerOpen ? cornerOpenHeight : 0)
 
             Loader {
                 id: sidebarCornerOpenInteractionLoader
-                active: {
-                    if (!(Config.options?.sidebar?.cornerOpen?.enable ?? false)) return false;
-                    if (cornerPanelWindow.fullscreen) return false;
-                    // Disable corner interactions during GameMode to avoid input capture
-                    if (GameMode.active) return false;
-                    return ((Config.options?.sidebar?.cornerOpen?.bottom ?? false) == cornerWidget.isBottom);
-                }
+                active: cornerPanelWindow.shouldShowCornerOpen
                 anchors {
                     top: (cornerWidget.isTopLeft || cornerWidget.isTopRight) ? parent.top : undefined
                     bottom: (cornerWidget.isBottomLeft || cornerWidget.isBottomRight) ? parent.bottom : undefined
@@ -78,10 +87,11 @@ Scope {
 
                 sourceComponent: FocusedScrollMouseArea {
                     id: mouseArea
-                    implicitWidth: Config.options?.sidebar?.cornerOpen?.cornerRegionWidth ?? 20
-                    implicitHeight: Config.options?.sidebar?.cornerOpen?.cornerRegionHeight ?? 20
+                    implicitWidth: cornerWidget.cornerOpenWidth
+                    implicitHeight: cornerWidget.cornerOpenHeight
                     hoverEnabled: true
                     onPositionChanged: {
+                        if (Config.options?.sidebar?.cornerOpen?.clickless ?? false) return;
                         if (!(Config.options?.sidebar?.cornerOpen?.clicklessCornerEnd ?? false)) return;
                         const verticalOffset = Config.options?.sidebar?.cornerOpen?.clicklessCornerVerticalOffset ?? 10;
                         const correctX = (cornerWidget.isRight && mouseArea.mouseX >= mouseArea.width - 2) || (cornerWidget.isLeft && mouseArea.mouseX <= 2);
@@ -94,7 +104,8 @@ Scope {
                             screenCorners.actionForCorner[cornerPanelWindow.corner]();
                     }
                     onPressed: {
-                        screenCorners.actionForCorner[cornerPanelWindow.corner]();
+                        if (!(Config.options?.sidebar?.cornerOpen?.clickless ?? false))
+                            screenCorners.actionForCorner[cornerPanelWindow.corner]();
                     }
                     onScrollDown: {
                         if (!(Config.options?.sidebar?.cornerOpen?.valueScroll ?? false))
@@ -144,7 +155,7 @@ Scope {
             property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(modelData) : null
 
             // Hide when fullscreen
-            property list<HyprlandWorkspace> workspacesForMonitor: CompositorService.isHyprland 
+            property list<HyprlandWorkspace> workspacesForMonitor: CompositorService.isHyprland
                 ? Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
                 : []
             property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
