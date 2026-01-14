@@ -406,12 +406,20 @@ mkdir -p "$FONT_DIR"
 if ! fc-list | grep -qi "Material Symbols"; then
   echo -e "${STY_BLUE}[$0]: Downloading Material Symbols font...${STY_RST}"
   
-  # Direct download from Google Fonts GitHub repo
-  MATERIAL_URL="https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsOutlined%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf"
+  # Direct download from raw.githubusercontent (avoids redirect issues)
+  MATERIAL_URL="https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf"
   
-  if curl -fsSL -o "$FONT_DIR/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf" "$MATERIAL_URL"; then
-    fc-cache -f "$FONT_DIR" 2>/dev/null
+  # Use simple filename to avoid shell escaping issues
+  if curl -fsSL -o "$FONT_DIR/MaterialSymbolsOutlined.ttf" "$MATERIAL_URL"; then
+    fc-cache -fv "$FONT_DIR" 2>/dev/null
     echo -e "${STY_GREEN}[$0]: Material Symbols font installed.${STY_RST}"
+    
+    # Verify installation
+    if fc-list | grep -qi "Material Symbols"; then
+      echo -e "${STY_GREEN}[$0]: Material Symbols verified in font cache.${STY_RST}"
+    else
+      echo -e "${STY_YELLOW}[$0]: Font installed but not detected. Try logging out and back in.${STY_RST}"
+    fi
   else
     echo -e "${STY_YELLOW}[$0]: Could not download Material Symbols automatically.${STY_RST}"
     echo -e "${STY_YELLOW}Please download from: https://fonts.google.com/icons${STY_RST}"
