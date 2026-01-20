@@ -82,7 +82,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: -4
+        spacing: -1
 
         StyledText {
             Layout.fillWidth: true
