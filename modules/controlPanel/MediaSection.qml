@@ -25,8 +25,14 @@ Item {
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
 
+    // Use YtMusic data when active, otherwise use player data
+    readonly property string effectiveArtUrl: isYtMusicActive && YtMusic.currentThumbnail ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
+    readonly property string effectiveTitle: isYtMusicActive && YtMusic.currentTitle ? YtMusic.currentTitle : (player?.trackTitle ?? "")
+    readonly property string effectiveArtist: isYtMusicActive && YtMusic.currentArtist ? YtMusic.currentArtist : (player?.trackArtist ?? "")
+    readonly property bool effectiveIsPlaying: isYtMusicActive ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    
     property string artDownloadLocation: Directories.coverArt
-    property string artFileName: player?.trackArtUrl ? Qt.md5(player.trackArtUrl) : ""
+    property string artFileName: effectiveArtUrl ? Qt.md5(effectiveArtUrl) : ""
     property string artFilePath: artFileName ? `${artDownloadLocation}/${artFileName}` : ""
     property bool downloaded: false
     property string displayedArtFilePath: downloaded ? Qt.resolvedUrl(artFilePath) : ""
@@ -34,7 +40,7 @@ Item {
     readonly property int _maxRetries: 3
 
     function checkAndDownloadArt() {
-        if (!player?.trackArtUrl) {
+        if (!effectiveArtUrl) {
             downloaded = false
             _downloadRetryCount = 0
             return
@@ -54,8 +60,8 @@ Item {
         interval: 1000 * root._downloadRetryCount
         repeat: false
         onTriggered: {
-            if (root.player?.trackArtUrl && !root.downloaded) {
-                coverArtDownloader.targetFile = root.player.trackArtUrl
+            if (root.effectiveArtUrl && !root.downloaded) {
+                coverArtDownloader.targetFile = root.effectiveArtUrl
                 coverArtDownloader.artFilePath = root.artFilePath
                 coverArtDownloader.running = true
             }
@@ -70,8 +76,21 @@ Item {
     Connections {
         target: root.player
         function onTrackArtUrlChanged() {
-            root._downloadRetryCount = 0
-            root.checkAndDownloadArt()
+            if (!root.isYtMusicActive) {
+                root._downloadRetryCount = 0
+                root.checkAndDownloadArt()
+            }
+        }
+    }
+    
+    // Update when YtMusic thumbnail changes
+    Connections {
+        target: YtMusic
+        function onCurrentThumbnailChanged() {
+            if (root.isYtMusicActive) {
+                root._downloadRetryCount = 0
+                root.checkAndDownloadArt()
+            }
         }
     }
 
@@ -84,7 +103,7 @@ Item {
                 root._downloadRetryCount = 0
             } else {
                 root.downloaded = false
-                coverArtDownloader.targetFile = root.player?.trackArtUrl ?? ""
+                coverArtDownloader.targetFile = root.effectiveArtUrl
                 coverArtDownloader.artFilePath = root.artFilePath
                 coverArtDownloader.running = true
             }
@@ -266,7 +285,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || "—"
+                    text: StringUtils.cleanMusicTitle(root.effectiveTitle) || "—"
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.weight: Font.Medium
                     color: root.inirEverywhere ? root.jiraColText : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
@@ -277,7 +296,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.player?.trackArtist || ""
+                    text: root.effectiveArtist || ""
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: root.inirEverywhere ? root.jiraColTextSecondary : (root.blendedColors?.colSubtext ?? Appearance.colors.colSubtext)
                     elide: Text.ElideRight
