@@ -140,10 +140,22 @@ Scope {
                     }
                 }
 
-                transitions: Transition {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { properties: "y,opacity,scale"; duration: 350; easing.type: Easing.OutQuint }
-                }
+                transitions: [
+                    Transition {
+                        to: "visible"
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation { properties: "y"; duration: 350; easing.type: Easing.OutQuint }
+                        NumberAnimation { properties: "opacity"; duration: 250; easing.type: Easing.OutCubic }
+                        NumberAnimation { properties: "scale"; duration: 350; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+                    },
+                    Transition {
+                        from: "visible"
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation { properties: "y"; duration: 250; easing.type: Easing.InQuint }
+                        NumberAnimation { properties: "opacity"; duration: 200; easing.type: Easing.InCubic }
+                        NumberAnimation { properties: "scale"; duration: 250; easing.type: Easing.InBack; easing.overshoot: 1.0 }
+                    }
+                ]
 
                 ColumnLayout {
                     id: playerColumnLayout
@@ -152,19 +164,44 @@ Scope {
 
                     Repeater {
                         model: root.allPlayers
-                        delegate: PlayerControl {
+                        delegate: Item {
+                            id: playerDelegate
                             required property MprisPlayer modelData
                             required property int index
-                            // Filter in delegate to avoid rebuild flicker
-                            visible: MprisController.isRealPlayer(modelData)
-                            player: modelData
-                            visualizerPoints: root.visualizerPoints
+                            
+                            // Debounced visibility to prevent flicker during track changes
+                            property bool shouldShow: MprisController.isRealPlayer(modelData)
+                            property bool debouncedVisible: shouldShow
+                            
+                            onShouldShowChanged: {
+                                if (shouldShow) {
+                                    // Show immediately
+                                    hideDebounce.stop()
+                                    debouncedVisible = true
+                                } else {
+                                    // Delay hiding to allow track transition
+                                    hideDebounce.restart()
+                                }
+                            }
+                            
+                            Timer {
+                                id: hideDebounce
+                                interval: 500  // Wait 500ms before hiding
+                                onTriggered: playerDelegate.debouncedVisible = false
+                            }
+                            
+                            visible: debouncedVisible
                             implicitWidth: root.widgetWidth
                             implicitHeight: visible ? root.widgetHeight : 0
-                            radius: root.popupRounding
-                            // Screen position for aurora glass
-                            screenX: cardArea.x + (mediaControlsRoot.width - cardArea.width) / 2
-                            screenY: cardArea.y + index * (root.widgetHeight - Appearance.sizes.elevationMargin)
+                            
+                            PlayerControl {
+                                anchors.fill: parent
+                                player: playerDelegate.modelData
+                                visualizerPoints: root.visualizerPoints
+                                radius: root.popupRounding
+                                screenX: cardArea.x + (mediaControlsRoot.width - cardArea.width) / 2
+                                screenY: cardArea.y + playerDelegate.index * (root.widgetHeight - Appearance.sizes.elevationMargin)
+                            }
                         }
                     }
 

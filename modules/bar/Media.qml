@@ -137,6 +137,21 @@ Item {
                 id: mediaPopupContent
                 anchors.centerIn: parent
                 onCloseRequested: root.barMediaPopupVisible = false
+                
+                // Entry animation
+                opacity: 0
+                scale: 0.9
+                transformOrigin: Config.options.bar.bottom ? Item.Bottom : Item.Top
+                
+                Component.onCompleted: {
+                    entryAnim.start()
+                }
+                
+                ParallelAnimation {
+                    id: entryAnim
+                    NumberAnimation { target: mediaPopupContent; property: "opacity"; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: mediaPopupContent; property: "scale"; to: 1; duration: 250; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+                }
             }
         }
     }
