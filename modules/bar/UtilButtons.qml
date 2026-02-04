@@ -161,18 +161,75 @@ Item {
             }
         }
 
+        // Screen casting control button (PR #29 by levpr1c)
         Loader {
-            active: root.screenShareActive
+            active: Config.options?.bar?.utilButtons?.showScreenCast ?? false
             visible: active
             sourceComponent: CircleUtilButton {
+                id: screenCastButton
                 Layout.alignment: Qt.AlignVCenter
                 
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 1
-                    text: "visibility"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError
+                // Internal state for cyclic toggling, independent of external system sensors
+                property bool isCasting: false
+                
+                onClicked: {
+                    if (isCasting) {
+                        // Stop casting to the monitor
+                        Quickshell.execDetached(["niri", "msg", "action", "clear-dynamic-cast-target"])
+                        
+                        // Send notification with "video off" icon
+                        Quickshell.execDetached(["notify-send", "-i", "camera-video-off", "Screen Casting", "Casting stopped"])
+                        
+                        isCasting = false
+                    } else {
+                        // Use configured output or default to HDMI-A-1
+                        const output = Config.options?.bar?.utilButtons?.screenCastOutput ?? "HDMI-A-1"
+                        Quickshell.execDetached(["niri", "msg", "action", "set-dynamic-cast-monitor", output])
+                        
+                        // Send notification with "display" icon
+                        Quickshell.execDetached(["notify-send", "-i", "video-display", "Screen Casting", `Casting started on ${output}`])
+                        
+                        isCasting = true
+                    }
+                }
+                
+                Item {
+                    anchors.fill: parent
+                    
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Qt.AlignHCenter
+                        // Fill the icon when casting is active (matches mic button behavior)
+                        fill: screenCastButton.isCasting ? 1 : 0
+                        text: "visibility"
+                        iconSize: Appearance.font.pixelSize.large
+                        
+                        // Switch to error color when active
+                        color: screenCastButton.isCasting
+                            ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
+                            : (Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2)
+                    }
+                    
+                    // Pulsating indicator dot
+                    Rectangle {
+                        visible: screenCastButton.isCasting
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError
+                        anchors {
+                            top: parent.top
+                            right: parent.right
+                        }
+                        
+                        // Infinite blinking animation
+                        SequentialAnimation on opacity {
+                            running: screenCastButton.isCasting
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.4; duration: 800 }
+                            NumberAnimation { to: 1.0; duration: 800 }
+                        }
+                    }
                 }
             }
         }
