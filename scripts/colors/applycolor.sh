@@ -235,12 +235,15 @@ CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
   enable_terminal=$(jq -r '.appearance.wallpaperTheming.enableTerminal // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
   if [ "$enable_terminal" = "true" ]; then
-    apply_term &
+    # Generate config files for each terminal and reload them natively
+    # NOTE: apply_term (OSC via /dev/pts) is intentionally disabled.
+    # Writing escape sequences to PTYs is fragile and can crash terminals
+    # or processes sharing those PTYs. Instead, we rely on each terminal's
+    # native config reload mechanism (SIGUSR1, file watcher, remote control).
     apply_terminal_configs &
   fi
 else
   echo "Config file not found at $CONFIG_FILE. Applying terminal theming by default."
-  apply_term &
   apply_terminal_configs &
 fi
 
