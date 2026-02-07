@@ -138,6 +138,7 @@ OFFICIAL_PACKAGES=(
   niri
   cliphist
   gum
+  starship
   xwayland-satellite
   
   # Theming

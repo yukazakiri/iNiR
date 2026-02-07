@@ -212,6 +212,12 @@ if [[ -d "dots/.config/fuzzel" ]]; then
   log_success "Fuzzel config installed"
 fi
 
+# Starship (prompt)
+if [[ -f "defaults/starship/starship.toml" ]]; then
+  install_file__auto_backup "defaults/starship/starship.toml" "${XDG_CONFIG_HOME}/starship.toml"
+  log_success "Starship config installed"
+fi
+
 # GTK settings
 for gtkver in gtk-3.0 gtk-4.0; do
   if [[ -d "dots/.config/${gtkver}" ]]; then
