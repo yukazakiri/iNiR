@@ -22,7 +22,7 @@ ContentPage {
     readonly property bool isAutoHide: Config.options?.bar?.autoHide?.enable ?? false
     readonly property bool isBorderless: Config.options?.bar?.borderless ?? false
     readonly property bool showBackground: Config.options?.bar?.showBackground ?? true
-    
+
     // Global style detection
     readonly property string currentGlobalStyle: Config.options?.appearance?.globalStyle ?? "material"
     readonly property bool isAurora: currentGlobalStyle === "aurora"
@@ -216,7 +216,7 @@ ContentPage {
                     text: Translation.tr("Display a background behind the bar")
                 }
             }
-            
+
             SettingsSwitch {
                 buttonIcon: "touch_app"
                 text: Translation.tr("Show scroll hints")
@@ -674,7 +674,7 @@ ContentPage {
                     checked: Config.options.bar.utilButtons.showScreenCast
                     onCheckedChanged: Config.options.bar.utilButtons.showScreenCast = checked
                     StyledToolTip {
-                        text: Translation.tr("Adaptive screen cast button: control with 2+ monitors, indicator with 1 monitor")
+                        text: Translation.tr("Toggle Niri dynamic screen casting (mirroring) to a target output")
                     }
                 }
                 SettingsSwitch {
@@ -696,11 +696,11 @@ ContentPage {
                 // Empty slot for future button
                 Item { Layout.fillWidth: true }
             }
-            
+
             StyledText {
                 visible: Config.options.bar.utilButtons.showScreenCast
                 Layout.fillWidth: true
-                text: Translation.tr("With 2+ monitors: Interactive button to start/stop screen mirroring. With 1 monitor: Passive indicator showing active screencasts.")
+                text: Translation.tr("Toggle button to start/stop Niri dynamic casting (screen mirroring) to a target output.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 wrapMode: Text.WordWrap
@@ -709,14 +709,14 @@ ContentPage {
             MaterialTextArea {
                 visible: Config.options.bar.utilButtons.showScreenCast
                 Layout.fillWidth: true
-                placeholderText: "HDMI-A-2"
-                text: Config.options.bar.utilButtons.screenCastOutput
+                placeholderText: "HDMI-A-1"
+                text: Config.options?.bar?.utilButtons?.screenCastOutput ?? "HDMI-A-1"
                 wrapMode: TextEdit.NoWrap
                 onTextChanged: {
-                    Config.options.bar.utilButtons.screenCastOutput = text
+                    Config.setNestedValue("bar.utilButtons.screenCastOutput", text)
                 }
             }
-            
+
             StyledText {
                 visible: Config.options.bar.utilButtons.showScreenCast
                 Layout.fillWidth: true

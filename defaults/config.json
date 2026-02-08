@@ -56,7 +56,7 @@
         "termFgBoost": 0.35
       },
       "terminalColorAdjustments": {
-        "saturation": 0.40,
+        "saturation": 0.4,
         "brightness": 0.55,
         "harmony": 0.15
       },
@@ -261,7 +261,9 @@
       "showNotepad": true,
       "showPerformanceProfileToggle": false,
       "showScreenRecord": true,
-      "showScreenSnip": true
+      "showScreenSnip": true,
+      "showScreenCast": false,
+      "screenCastOutput": "HDMI-A-1"
     },
     "verbose": true,
     "vertical": false,

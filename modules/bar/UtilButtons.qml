@@ -15,29 +15,6 @@ Item {
     implicitWidth: rowLayout.implicitWidth + rowLayout.spacing * 2
     implicitHeight: rowLayout.implicitHeight
 
-    // Screen share: any video node linked
-    readonly property bool screenShareActive: (Pipewire.links?.values ?? []).some(link => {
-        const src = link?.source?.name ?? "";
-        const tgt = link?.target?.name ?? "";
-        return src === "niri" || tgt === "niri";
-    })
-    
-    // Count connected outputs for screen cast feature
-    property int connectedOutputs: 1
-    
-    Process {
-        id: outputCountProcess
-        command: ["niri", "msg", "outputs"]
-        running: CompositorService.isNiri
-        
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = this.text.split('\n');
-                root.connectedOutputs = lines.filter(line => line.trim().startsWith('Output "')).length;
-            }
-        }
-    }
-
     RowLayout {
         id: rowLayout
 
@@ -199,15 +176,15 @@ Item {
             sourceComponent: CircleUtilButton {
                 id: micButton
                 Layout.alignment: Qt.AlignVCenter
-                
+
                 readonly property bool isMuted: Pipewire.defaultAudioSource?.audio?.muted ?? false
                 readonly property bool isInUse: (Privacy.micActive || (Audio?.micBeingAccessed ?? false))
-                
+
                 onClicked: Quickshell.execDetached(["/usr/bin/wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
-                
+
                 Item {
                     anchors.fill: parent
-                    
+
                     MaterialSymbol {
                         anchors.centerIn: parent
                         horizontalAlignment: Qt.AlignHCenter
@@ -220,7 +197,7 @@ Item {
                              : Appearance.auroraEverywhere ? Appearance.m3colors.m3onSurface
                              : Appearance.colors.colOnLayer2)
                     }
-                    
+
                     Rectangle {
                         visible: micButton.isInUse && !micButton.isMuted
                         width: 6
@@ -228,7 +205,7 @@ Item {
                         radius: 3
                         color: Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError
                         anchors { top: parent.top; right: parent.right }
-                        
+
                         SequentialAnimation on opacity {
                             running: micButton.isInUse && !micButton.isMuted
                             loops: Animation.Infinite
@@ -240,72 +217,44 @@ Item {
             }
         }
 
-        // Screen casting control/indicator (PR #29 by levpr1c, enhanced)
-        // With 2+ monitors: Interactive button for dynamic cast (mirroring)
-        // With 1 monitor: Passive indicator showing active screencasts
+        // Screen casting toggle (PR #29 by levpr1c)
+        // Toggles Niri dynamic casting to configured output
         Loader {
-            active: (Config.options?.bar?.utilButtons?.showScreenCast ?? false) 
+            active: (Config.options?.bar?.utilButtons?.showScreenCast ?? false)
                     && CompositorService.isNiri
             visible: active
             sourceComponent: CircleUtilButton {
                 id: screenCastButton
                 Layout.alignment: Qt.AlignVCenter
-                
-                // Behavior depends on monitor count
-                readonly property bool isMultiMonitor: root.connectedOutputs >= 2
-                
-                // Multi-monitor: use persistent state for dynamic cast control
-                // Single monitor: use screenShareActive for passive indication
-                readonly property bool isCasting: isMultiMonitor 
-                    ? Persistent.states.screenCast.active
-                    : root.screenShareActive
-                
-                // Only clickable with multiple monitors
-                enabled: isMultiMonitor
-                opacity: isMultiMonitor ? 1.0 : (isCasting ? 1.0 : 0.6)
-                
+
+                readonly property bool isCasting: Persistent.states.screenCast.active
+
                 onClicked: {
-                    if (!isMultiMonitor) return // Safety check
-                    
+                    const output = Config.options?.bar?.utilButtons?.screenCastOutput ?? "HDMI-A-1"
+
                     if (isCasting) {
-                        // Stop casting to the monitor
                         Quickshell.execDetached(["niri", "msg", "action", "clear-dynamic-cast-target"])
-                        
-                        // Send notification with "video off" icon
-                        Quickshell.execDetached(["notify-send", "-i", "camera-video-off", "Screen Casting", "Casting stopped"])
-                        
                         Persistent.states.screenCast.active = false
                     } else {
-                        // Use configured output (default HDMI-A-1)
-                        const output = Config.options?.bar?.utilButtons?.screenCastOutput ?? "HDMI-A-1"
-                        
                         Quickshell.execDetached(["niri", "msg", "action", "set-dynamic-cast-monitor", output])
-                        
-                        // Send notification with "display" icon
-                        Quickshell.execDetached(["notify-send", "-i", "video-display", "Screen Casting", `Casting started on ${output}`])
-                        
                         Persistent.states.screenCast.active = true
                     }
                 }
-                
+
                 Item {
                     anchors.fill: parent
-                    
+
                     MaterialSymbol {
                         anchors.centerIn: parent
                         horizontalAlignment: Qt.AlignHCenter
-                        // Fill the icon when casting is active (matches mic button behavior)
                         fill: screenCastButton.isCasting ? 1 : 0
                         text: "visibility"
                         iconSize: Appearance.font.pixelSize.large
-                        
-                        // Switch to error color when active
                         color: screenCastButton.isCasting
                             ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
                             : (Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2)
                     }
-                    
-                    // Pulsating indicator dot
+
                     Rectangle {
                         visible: screenCastButton.isCasting
                         width: 6
@@ -316,8 +265,7 @@ Item {
                             top: parent.top
                             right: parent.right
                         }
-                        
-                        // Infinite blinking animation
+
                         SequentialAnimation on opacity {
                             running: screenCastButton.isCasting
                             loops: Animation.Infinite

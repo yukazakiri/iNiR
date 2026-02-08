@@ -18,7 +18,9 @@ Item { // Bar content region
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
-    readonly property int centerSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
+    readonly property int baseCenterSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
+    // Both center groups share the same width so workspaces stay perfectly centered
+    readonly property int centerSideModuleWidth: Math.max(baseCenterSideModuleWidth, rightCenterGroupContent.implicitWidth)
     readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
     readonly property color separatorColor: Appearance.colors.colOutlineVariant
 
@@ -68,7 +70,7 @@ Item { // Bar content region
         readonly property int cornerStyle: Config.options?.bar?.cornerStyle ?? 0
         // Float (1) and Card (3) are floating; Aurora makes everything floating except Hug and Rect
         readonly property bool floatingStyle: (cornerStyle === 1 || cornerStyle === 3) || (auroraEverywhere && cornerStyle !== 0 && cornerStyle !== 2)
-        
+
         anchors {
             fill: parent
             margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
@@ -77,9 +79,9 @@ Item { // Bar content region
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
 
         readonly property QtObject blendedColors: root.blendedColors
-        
+
         visible: (Config.options?.bar?.showBackground ?? true) && !gameModeMinimal
-        
+
         // Color logic per global style and corner style
         color: {
             if (root.inirEverywhere) {
@@ -95,7 +97,7 @@ Item { // Bar content region
             }
             return Appearance.colors.colLayer0
         }
-        
+
         // Radius logic per global style and corner style
         radius: {
             // Custom rounding override (-1 means use theme default)
@@ -116,7 +118,7 @@ Item { // Bar content region
             }
             return 0
         }
-        
+
         // Border logic per global style
         border.width: {
             if (root.inirEverywhere) {
@@ -217,8 +219,8 @@ Item { // Bar content region
             LeftSidebarButton { // Left sidebar button
                 visible: Config.options?.bar?.modules?.leftSidebarButton ?? true
                 Layout.alignment: Qt.AlignVCenter
-                colBackground: barLeftSideMouseArea.hovered 
-                    ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover) 
+                colBackground: barLeftSideMouseArea.hovered
+                    ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover)
                     : "transparent"
             }
 
