@@ -10,7 +10,7 @@ import Quickshell.Io
  * iNiR shell update checker service.
  * Periodically checks the git repo for new commits and exposes
  * update state to UI widgets. Separate from system Updates service.
- * 
+ *
  * NOTE: The config directory (~/.config/quickshell/ii) is NOT a git repo.
  * Users clone the repo elsewhere, run ./setup install, which copies files.
  * The actual repo location is stored in version.json during installation.
@@ -85,11 +85,13 @@ Singleton {
             loadRepoPathProc.running = true
         }
     }
-    
+
     // Load repo path from version.json
     Process {
         id: loadRepoPathProc
+        property bool _handledFallback: false
         running: false
+        onRunningChanged: if (running) _handledFallback = false
         command: ["cat", root.configDir + "/../illogical-impulse/version.json"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -107,17 +109,18 @@ Singleton {
                 }
                 // No repo_path in version.json, try to find it
                 print("[ShellUpdates] No repo_path in version.json, searching for repository...")
+                loadRepoPathProc._handledFallback = true
                 searchRepoProc.running = true
             }
         }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
+            if (exitCode !== 0 && !_handledFallback) {
                 print("[ShellUpdates] version.json not found, searching for repository...")
                 searchRepoProc.running = true
             }
         }
     }
-    
+
     // Search for repository in common locations
     Process {
         id: searchRepoProc
