@@ -93,354 +93,886 @@ ApplicationWindow {
     // Global settings search
     property string settingsSearchText: ""
     property var settingsSearchResults: []
-    
+
     // Spotlight effect for search results
     property var spotlightTarget: null
     property rect spotlightRect: Qt.rect(0, 0, 0, 0)
     property bool spotlightActive: false
 
-    // Índice de secciones principales de cada página para el buscador
+    // Índice de secciones y opciones individuales para el buscador.
+    // Cada entrada con targetLabel permite spotlight scroll-to en la página destino.
     property var settingsSearchIndex: [
-        // Quick
+        // =====================================================================
+        // Quick (page 0)
+        // =====================================================================
         {
-            pageIndex: 0,
-            pageName: pages[0].name,
+            pageIndex: 0, pageName: pages[0].name,
             section: Translation.tr("Wallpaper & Colors"),
             label: Translation.tr("Wallpaper & Colors"),
             description: Translation.tr("Wallpaper, palette and transparency settings"),
             keywords: ["wallpaper", "colors", "palette", "theme", "background"]
         },
         {
-            pageIndex: 0,
-            pageName: pages[0].name,
+            pageIndex: 0, pageName: pages[0].name,
             section: Translation.tr("Bar & screen"),
             label: Translation.tr("Bar & screen"),
             description: Translation.tr("Bar position and screen rounding"),
             keywords: ["bar", "position", "screen", "round", "corner"]
         },
 
-        // General
+        // =====================================================================
+        // General (page 1) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 1,
-            pageName: pages[1].name,
+            pageIndex: 1, pageName: pages[1].name,
             section: Translation.tr("Audio"),
             label: Translation.tr("Audio"),
             description: Translation.tr("Volume protection and limits"),
             keywords: ["audio", "volume", "earbang", "limit", "sound"]
         },
         {
-            pageIndex: 1,
-            pageName: pages[1].name,
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Audio"),
+            label: Translation.tr("Volume protection"),
+            description: Translation.tr("Prevent sudden volume spikes"),
+            keywords: ["volume", "protection", "earbang", "spike", "loud", "limit", "max"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Audio"),
+            label: Translation.tr("Max volume increase"),
+            description: Translation.tr("Maximum volume jump allowed per step"),
+            keywords: ["volume", "increase", "step", "max", "jump"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
             section: Translation.tr("Battery"),
             label: Translation.tr("Battery"),
             description: Translation.tr("Battery warnings and auto suspend thresholds"),
             keywords: ["battery", "low", "critical", "suspend", "full"]
         },
         {
-            pageIndex: 1,
-            pageName: pages[1].name,
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Battery"),
+            label: Translation.tr("Low battery threshold"),
+            description: Translation.tr("Percentage to show low battery warning"),
+            keywords: ["battery", "low", "warning", "threshold", "percentage"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Battery"),
+            label: Translation.tr("Critical battery"),
+            description: Translation.tr("Percentage for critical battery warning"),
+            keywords: ["battery", "critical", "danger", "threshold"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Battery"),
+            label: Translation.tr("Auto suspend"),
+            description: Translation.tr("Automatically suspend on critical battery"),
+            keywords: ["battery", "suspend", "sleep", "auto", "critical"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
             section: Translation.tr("Language"),
             label: Translation.tr("Language"),
             description: Translation.tr("Interface language and AI translations"),
-            keywords: ["language", "locale", "translation", "gemini"]
+            keywords: ["language", "locale", "translation", "gemini", "idioma", "español", "english"]
         },
         {
-            pageIndex: 1,
-            pageName: pages[1].name,
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Language"),
+            label: Translation.tr("UI Language"),
+            description: Translation.tr("Interface display language"),
+            keywords: ["language", "locale", "ui", "display", "idioma", "english", "spanish", "chinese", "japanese", "russian"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Policies"),
+            label: Translation.tr("AI Policy"),
+            description: Translation.tr("Enable or disable AI features"),
+            keywords: ["ai", "policy", "enable", "disable", "local", "privacy"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Policies"),
+            label: Translation.tr("Weeb Policy"),
+            description: Translation.tr("Anime and manga content visibility"),
+            keywords: ["weeb", "anime", "manga", "nsfw", "content", "policy"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
             section: Translation.tr("Sounds"),
             label: Translation.tr("Sounds"),
-            description: Translation.tr("Battery, Pomodoro and notifications sounds"),
-            keywords: ["sound", "notification", "pomodoro", "battery"]
+            description: Translation.tr("Battery, Pomodoro and notification sounds"),
+            keywords: ["sound", "notification", "pomodoro", "battery", "alert", "audio"]
         },
         {
-            pageIndex: 1,
-            pageName: pages[1].name,
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Sounds"),
+            label: Translation.tr("Notification sound"),
+            description: Translation.tr("Play sound when a notification arrives"),
+            keywords: ["sound", "notification", "alert", "ring", "chime"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
             section: Translation.tr("Time"),
             label: Translation.tr("Time"),
             description: Translation.tr("Clock format and seconds"),
             keywords: ["time", "clock", "24h", "12h", "format"]
         },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Time"),
+            label: Translation.tr("Clock format"),
+            description: Translation.tr("Time display format (e.g., hh:mm or h:mm AP)"),
+            keywords: ["time", "clock", "format", "24h", "12h", "am", "pm", "hour", "minute"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Time"),
+            label: Translation.tr("Show seconds"),
+            description: Translation.tr("Update clock every second"),
+            keywords: ["time", "seconds", "precision", "clock", "update"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Work Safety"),
+            label: Translation.tr("Work Safety"),
+            description: Translation.tr("Hide sensitive content on public networks"),
+            keywords: ["work", "safety", "nsfw", "public", "network", "hide", "clipboard", "wallpaper"]
+        },
 
-        // Bar
+        // =====================================================================
+        // Bar (page 2) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 2,
-            pageName: pages[2].name,
-            section: Translation.tr("Notifications"),
-            label: Translation.tr("Notifications"),
-            description: Translation.tr("Notification indicator in the bar"),
-            keywords: ["notifications", "unread", "indicator", "count"]
-        },
-        {
-            pageIndex: 2,
-            pageName: pages[2].name,
+            pageIndex: 2, pageName: pages[2].name,
             section: Translation.tr("Positioning"),
-            label: Translation.tr("Positioning"),
+            label: Translation.tr("Bar position"),
             description: Translation.tr("Bar position, auto hide and style"),
-            keywords: ["bar", "position", "auto hide", "corner", "style"]
+            keywords: ["bar", "position", "auto", "hide", "corner", "style", "top", "bottom", "float", "vertical"]
         },
         {
-            pageIndex: 2,
-            pageName: pages[2].name,
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Positioning"),
+            label: Translation.tr("Auto hide"),
+            description: Translation.tr("Automatically hide the bar"),
+            keywords: ["bar", "auto", "hide", "show", "hover", "reveal"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Positioning"),
+            label: Translation.tr("Corner style"),
+            description: Translation.tr("Bar corner style: hug, float, rectangle or card"),
+            keywords: ["bar", "corner", "style", "hug", "float", "rectangle", "card", "rounding"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Positioning"),
+            label: Translation.tr("Vertical bar"),
+            description: Translation.tr("Use vertical bar layout on the side"),
+            keywords: ["bar", "vertical", "side", "left", "orientation"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Positioning"),
+            label: Translation.tr("Bar background"),
+            description: Translation.tr("Show or hide bar background"),
+            keywords: ["bar", "background", "transparent", "show", "hide"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Positioning"),
+            label: Translation.tr("Blur background"),
+            description: Translation.tr("Enable glass blur behind the bar"),
+            keywords: ["bar", "blur", "glass", "background", "transparent"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification indicator"),
+            description: Translation.tr("Notification unread count in the bar"),
+            keywords: ["notifications", "unread", "indicator", "count", "badge", "bar"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
             section: Translation.tr("Tray"),
-            label: Translation.tr("Tray"),
+            label: Translation.tr("System tray"),
             description: Translation.tr("System tray icons behaviour"),
-            keywords: ["tray", "systray", "icons", "pinned"]
+            keywords: ["tray", "systray", "icons", "pinned", "monochrome"]
         },
         {
-            pageIndex: 2,
-            pageName: pages[2].name,
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Tray"),
+            label: Translation.tr("Monochrome tray icons"),
+            description: Translation.tr("Tint tray icons to match theme"),
+            keywords: ["tray", "monochrome", "tint", "icons", "theme", "color"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
             section: Translation.tr("Utility buttons"),
             label: Translation.tr("Utility buttons"),
             description: Translation.tr("Screen snip, color picker and toggles"),
-            keywords: ["screen snip", "color picker", "mic", "dark mode", "performance"]
+            keywords: ["screen", "snip", "color", "picker", "mic", "dark", "mode", "performance", "screenshot", "record", "notepad", "keyboard"]
         },
         {
-            pageIndex: 2,
-            pageName: pages[2].name,
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Utility buttons"),
+            label: Translation.tr("Screen record button"),
+            description: Translation.tr("Show screen record button in bar"),
+            keywords: ["screen", "record", "button", "bar", "recording", "video"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Utility buttons"),
+            label: Translation.tr("Dark mode toggle"),
+            description: Translation.tr("Show dark/light mode toggle in bar"),
+            keywords: ["dark", "mode", "light", "toggle", "bar", "theme"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
             section: Translation.tr("Workspaces"),
             label: Translation.tr("Workspaces"),
-            description: Translation.tr("Workspace count, numbers and icons"),
-            keywords: ["workspace", "numbers", "icons", "delays"]
+            description: Translation.tr("Workspace indicator count, numbers and icons"),
+            keywords: ["workspace", "numbers", "icons", "delays", "scroll", "indicator"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Workspaces"),
+            label: Translation.tr("App icons in workspaces"),
+            description: Translation.tr("Show app icons inside workspace indicators"),
+            keywords: ["workspace", "app", "icons", "show", "indicator"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Workspaces"),
+            label: Translation.tr("Monochrome workspace icons"),
+            description: Translation.tr("Tint workspace app icons to match theme"),
+            keywords: ["workspace", "monochrome", "icons", "tint", "theme"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Workspaces"),
+            label: Translation.tr("Scroll behavior"),
+            description: Translation.tr("Workspace or column scroll behavior"),
+            keywords: ["workspace", "scroll", "column", "behavior", "mouse", "touchpad"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Weather"),
+            label: Translation.tr("Bar weather"),
+            description: Translation.tr("Show weather in the bar"),
+            keywords: ["weather", "bar", "temperature", "enable"]
+        },
+        {
+            pageIndex: 2, pageName: pages[2].name,
+            section: Translation.tr("Bar modules"),
+            label: Translation.tr("Bar module layout"),
+            description: Translation.tr("Reorder and toggle bar modules"),
+            keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock"]
         },
 
-        // Background
+        // =====================================================================
+        // Background (page 3) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 3,
-            pageName: pages[3].name,
+            pageIndex: 3, pageName: pages[3].name,
             section: Translation.tr("Parallax"),
             label: Translation.tr("Parallax"),
             description: Translation.tr("Background parallax based on workspace and sidebar"),
-            keywords: ["parallax", "background", "zoom", "workspace"]
+            keywords: ["parallax", "background", "zoom", "workspace", "sidebar"]
         },
         {
-            pageIndex: 3,
-            pageName: pages[3].name,
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Parallax"),
+            label: Translation.tr("Workspace parallax"),
+            description: Translation.tr("Shift background when switching workspaces"),
+            keywords: ["parallax", "workspace", "shift", "scroll", "zoom"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
             section: Translation.tr("Effects"),
-            label: Translation.tr("Effects"),
+            label: Translation.tr("Wallpaper effects"),
             description: Translation.tr("Wallpaper blur and dim overlay"),
-            keywords: ["blur", "dim", "wallpaper", "effects"]
+            keywords: ["blur", "dim", "wallpaper", "effects", "overlay"]
         },
         {
-            pageIndex: 3,
-            pageName: pages[3].name,
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Effects"),
+            label: Translation.tr("Wallpaper blur"),
+            description: Translation.tr("Blur the wallpaper when windows are open"),
+            keywords: ["blur", "wallpaper", "background", "radius", "gaussian"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Effects"),
+            label: Translation.tr("Wallpaper dim"),
+            description: Translation.tr("Darken wallpaper overlay"),
+            keywords: ["dim", "wallpaper", "darken", "overlay", "opacity"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Effects"),
+            label: Translation.tr("Dynamic dim"),
+            description: Translation.tr("Extra dim when windows are present on workspace"),
+            keywords: ["dynamic", "dim", "windows", "workspace", "darken"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Backdrop"),
+            label: Translation.tr("Backdrop"),
+            description: Translation.tr("Panel backdrop wallpaper and effects"),
+            keywords: ["backdrop", "panel", "wallpaper", "blur", "vignette", "saturation"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Backdrop"),
+            label: Translation.tr("Backdrop vignette"),
+            description: Translation.tr("Vignette darkening effect on backdrop"),
+            keywords: ["backdrop", "vignette", "darken", "edges", "effect"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
             section: Translation.tr("Widget: Clock"),
-            label: Translation.tr("Widget: Clock"),
-            description: Translation.tr("Clock widget style and behaviour"),
-            keywords: ["clock", "widget", "cookie", "digital"]
+            label: Translation.tr("Background clock"),
+            description: Translation.tr("Clock widget on the desktop background"),
+            keywords: ["clock", "widget", "cookie", "digital", "background", "desktop"]
         },
         {
-            pageIndex: 3,
-            pageName: pages[3].name,
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Widget: Clock"),
+            label: Translation.tr("Clock style"),
+            description: Translation.tr("Cookie (analog) or digital clock"),
+            keywords: ["clock", "style", "cookie", "digital", "analog", "hands"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
             section: Translation.tr("Widget: Weather"),
-            label: Translation.tr("Widget: Weather"),
-            description: Translation.tr("Background weather widget"),
-            keywords: ["weather", "widget", "background"]
+            label: Translation.tr("Background weather widget"),
+            description: Translation.tr("Weather display on the desktop background"),
+            keywords: ["weather", "widget", "background", "temperature"]
+        },
+        {
+            pageIndex: 3, pageName: pages[3].name,
+            section: Translation.tr("Widget: Media"),
+            label: Translation.tr("Background media widget"),
+            description: Translation.tr("Media player controls on the desktop background"),
+            keywords: ["media", "widget", "background", "player", "music", "album"]
         },
 
-        // Themes
+        // =====================================================================
+        // Themes (page 4) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 4,
-            pageName: pages[4].name,
+            pageIndex: 4, pageName: pages[4].name,
             section: Translation.tr("Global Style"),
             label: Translation.tr("Global Style"),
             description: Translation.tr("Material, Cards, Aurora glass effect, Inir TUI style"),
             keywords: ["global", "style", "aurora", "inir", "material", "cards", "glass", "tui", "transparency", "blur"]
         },
         {
-            pageIndex: 4,
-            pageName: pages[4].name,
+            pageIndex: 4, pageName: pages[4].name,
             section: Translation.tr("Global Style"),
             label: Translation.tr("Aurora"),
             description: Translation.tr("Glass effect with wallpaper blur behind panels"),
-            keywords: ["aurora", "glass", "blur", "transparency", "style"]
+            keywords: ["aurora", "glass", "blur", "transparency", "style", "translucent"]
         },
         {
-            pageIndex: 4,
-            pageName: pages[4].name,
+            pageIndex: 4, pageName: pages[4].name,
             section: Translation.tr("Global Style"),
             label: Translation.tr("Inir"),
             description: Translation.tr("TUI-inspired style with accent borders"),
-            keywords: ["inir", "tui", "terminal", "borders", "style"]
+            keywords: ["inir", "tui", "terminal", "borders", "style", "minimal"]
         },
         {
-            pageIndex: 4,
-            pageName: pages[4].name,
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Global Style"),
+            label: Translation.tr("Material"),
+            description: Translation.tr("Material Design solid backgrounds"),
+            keywords: ["material", "solid", "style", "default", "google"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Global Style"),
+            label: Translation.tr("Cards"),
+            description: Translation.tr("Card-style elevated containers"),
+            keywords: ["cards", "card", "style", "elevated", "shadow"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
             section: Translation.tr("Theme Presets"),
             label: Translation.tr("Theme Presets"),
             description: Translation.tr("Predefined color themes like Gruvbox, Catppuccin, Nord, Dracula"),
-            keywords: ["theme", "preset", "gruvbox", "catppuccin", "nord", "dracula", "material", "colors", "palette"]
+            keywords: ["theme", "preset", "gruvbox", "catppuccin", "nord", "dracula", "material", "colors", "palette",
+                       "monokai", "solarized", "tokyo", "night", "everforest", "rose", "pine"]
         },
         {
-            pageIndex: 4,
-            pageName: pages[4].name,
+            pageIndex: 4, pageName: pages[4].name,
             section: Translation.tr("Auto Theme"),
             label: Translation.tr("Auto Theme"),
             description: Translation.tr("Automatic colors from wallpaper"),
-            keywords: ["auto", "wallpaper", "dynamic", "colors", "matugen"]
+            keywords: ["auto", "wallpaper", "dynamic", "colors", "matugen", "generate"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Custom Theme"),
+            label: Translation.tr("Custom Theme Editor"),
+            description: Translation.tr("Create and edit custom color themes"),
+            keywords: ["custom", "theme", "editor", "color", "create", "edit", "picker"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Typography"),
+            label: Translation.tr("Font settings"),
+            description: Translation.tr("Main font, title font, monospace font and size"),
+            keywords: ["font", "typography", "size", "family", "main", "title", "monospace", "scale"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Typography"),
+            label: Translation.tr("Font sync"),
+            description: Translation.tr("Sync fonts with GTK/KDE system apps"),
+            keywords: ["font", "sync", "gtk", "kde", "system", "apps"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Icons"),
+            label: Translation.tr("Icon theme"),
+            description: Translation.tr("System icon theme for tray and apps"),
+            keywords: ["icon", "theme", "tray", "system", "apps", "gtk"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Icons"),
+            label: Translation.tr("Dock icon theme"),
+            description: Translation.tr("Separate icon theme for the dock"),
+            keywords: ["dock", "icon", "theme", "separate", "override"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Terminal Theming"),
+            label: Translation.tr("Terminal theming"),
+            description: Translation.tr("Apply wallpaper colors to terminal emulators"),
+            keywords: ["terminal", "theme", "kitty", "alacritty", "foot", "wezterm", "ghostty", "konsole", "colors"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Transparency"),
+            label: Translation.tr("Transparency"),
+            description: Translation.tr("Panel and content transparency"),
+            keywords: ["transparency", "opacity", "translucent", "see-through", "glass"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Screen Rounding"),
+            label: Translation.tr("Fake screen rounding"),
+            description: Translation.tr("Rounded corners for the screen edges"),
+            keywords: ["screen", "rounding", "corners", "fake", "round", "edges"]
+        },
+        {
+            pageIndex: 4, pageName: pages[4].name,
+            section: Translation.tr("Theme Schedule"),
+            label: Translation.tr("Theme schedule"),
+            description: Translation.tr("Automatically switch themes at day/night times"),
+            keywords: ["theme", "schedule", "day", "night", "auto", "switch", "time"]
         },
 
-        // Interface
+        // =====================================================================
+        // Interface (page 5) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Crosshair overlay"),
             label: Translation.tr("Crosshair overlay"),
             description: Translation.tr("In-game crosshair overlay"),
-            keywords: ["crosshair", "overlay", "aim"]
+            keywords: ["crosshair", "overlay", "aim", "game", "fps"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Overlay"),
+            label: Translation.tr("Overlay"),
+            description: Translation.tr("Fullscreen overlay effects and animations"),
+            keywords: ["overlay", "darken", "scrim", "zoom", "animation", "opacity"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Overlay"),
+            label: Translation.tr("Overlay opacity"),
+            description: Translation.tr("Background opacity of overlay panels"),
+            keywords: ["overlay", "opacity", "background", "transparent", "panel"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Alt+Tab Switcher"),
+            label: Translation.tr("Alt+Tab Switcher"),
+            description: Translation.tr("Window switcher preset and behavior"),
+            keywords: ["alt", "tab", "switcher", "window", "preset", "default", "list", "compact"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Alt+Tab Switcher"),
+            label: Translation.tr("Alt+Tab preset"),
+            description: Translation.tr("Switcher style: default sidebar or centered list"),
+            keywords: ["alt", "tab", "preset", "style", "sidebar", "list", "compact"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Dock"),
             label: Translation.tr("Dock"),
             description: Translation.tr("Dock position and behaviour"),
             keywords: ["dock", "position", "pinned", "hover", "reveal", "desktop", "show"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Dock enable"),
+            description: Translation.tr("Enable or disable the dock"),
+            keywords: ["dock", "enable", "disable", "show", "hide"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Dock position"),
+            description: Translation.tr("Dock position: top, bottom, left, right"),
+            keywords: ["dock", "position", "top", "bottom", "left", "right"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Pinned apps"),
+            description: Translation.tr("Apps pinned to the dock"),
+            keywords: ["dock", "pinned", "apps", "pin", "favorite"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Dock"),
             label: Translation.tr("Show on desktop"),
             description: Translation.tr("Show dock when no window is focused"),
             keywords: ["dock", "desktop", "show", "focus", "window", "empty"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Dock"),
             label: Translation.tr("Window preview"),
             description: Translation.tr("Show window preview on hover"),
             keywords: ["dock", "preview", "hover", "window", "thumbnail"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Dock icon size"),
+            description: Translation.tr("Size of dock icons"),
+            keywords: ["dock", "icon", "size", "height"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Monochrome dock icons"),
+            description: Translation.tr("Tint dock icons to match theme"),
+            keywords: ["dock", "monochrome", "icons", "tint", "theme"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Dock"),
+            label: Translation.tr("Smart indicator"),
+            description: Translation.tr("Show which window is focused in the dock"),
+            keywords: ["dock", "smart", "indicator", "focused", "window", "dots"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Lock screen"),
             label: Translation.tr("Lock screen"),
             description: Translation.tr("Lock screen behaviour and style"),
-            keywords: ["lock", "screen", "hyprlock", "blur"]
+            keywords: ["lock", "screen", "hyprlock", "blur", "password", "security"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Lock screen"),
+            label: Translation.tr("Lock screen blur"),
+            description: Translation.tr("Blur effect on the lock screen wallpaper"),
+            keywords: ["lock", "blur", "radius", "zoom", "wallpaper"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Lock screen"),
+            label: Translation.tr("Keyring unlock"),
+            description: Translation.tr("Unlock keyring when unlocking the screen"),
+            keywords: ["lock", "keyring", "unlock", "security", "password", "gnome"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Notifications"),
             label: Translation.tr("Notifications"),
             description: Translation.tr("Notification timeouts and popup position"),
             keywords: ["notifications", "timeout", "popup", "position"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
-            section: Translation.tr("Region selector (screen snipping/Google Lens)"),
-            label: Translation.tr("Region selector (screen snipping/Google Lens)"),
-            description: Translation.tr("Screen snipping target regions and Lens behaviour"),
-            keywords: ["region", "selector", "snip", "lens", "screenshot"]
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification timeout"),
+            description: Translation.tr("Duration before notification auto-closes"),
+            keywords: ["notification", "timeout", "duration", "auto", "close", "dismiss"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification position"),
+            description: Translation.tr("Where popup notifications appear on screen"),
+            keywords: ["notification", "position", "popup", "corner", "top", "bottom", "left", "right"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Do Not Disturb"),
+            description: Translation.tr("Silence all notifications"),
+            keywords: ["notification", "dnd", "silent", "mute", "disturb", "quiet", "do not"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification badge sync"),
+            description: Translation.tr("Auto-sync badge count with popup list"),
+            keywords: ["notification", "badge", "sync", "count", "unread", "legacy"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Edge margin"),
+            description: Translation.tr("Spacing between notifications and screen edge"),
+            keywords: ["notification", "margin", "edge", "spacing", "gap"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Region selector (screen snipping/Google Lens)"),
+            label: Translation.tr("Region selector"),
+            description: Translation.tr("Screen snipping target regions and Lens behaviour"),
+            keywords: ["region", "selector", "snip", "lens", "screenshot", "google"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Sidebars"),
             label: Translation.tr("Sidebars"),
             description: Translation.tr("Sidebar toggles, sliders and corner open"),
-            keywords: ["sidebar", "quick toggles", "sliders", "corner"]
+            keywords: ["sidebar", "quick", "toggles", "sliders", "corner"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Sidebars"),
+            label: Translation.tr("Corner open"),
+            description: Translation.tr("Open sidebar by hovering screen corners"),
+            keywords: ["sidebar", "corner", "open", "hover", "edge", "clickless"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Sidebars"),
+            label: Translation.tr("Quick toggles style"),
+            description: Translation.tr("Classic or Android-style quick toggles"),
+            keywords: ["sidebar", "quick", "toggles", "style", "android", "classic"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Sidebars"),
+            label: Translation.tr("Keep sidebars loaded"),
+            description: Translation.tr("Keep sidebar content in memory for faster opening"),
+            keywords: ["sidebar", "loaded", "memory", "keep", "preload", "fast"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("On-screen display"),
-            label: Translation.tr("On-screen display"),
-            description: Translation.tr("OSD timeout"),
-            keywords: ["osd", "volume", "brightness", "timeout"]
+            label: Translation.tr("OSD timeout"),
+            description: Translation.tr("How long the volume/brightness OSD stays visible"),
+            keywords: ["osd", "volume", "brightness", "timeout", "duration"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Overview"),
             description: Translation.tr("Overview scale, rows and columns"),
-            keywords: ["overview", "grid", "rows", "columns"]
+            keywords: ["overview", "grid", "rows", "columns", "scale"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Overview"),
-            label: Translation.tr("Window previews"),
+            label: Translation.tr("Overview scale"),
+            description: Translation.tr("Size of workspace thumbnails in overview"),
+            keywords: ["overview", "scale", "size", "workspace", "thumbnail"]
+        },
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Overview"),
+            label: Translation.tr("Window previews in overview"),
             description: Translation.tr("Show window thumbnails in overview"),
             keywords: ["overview", "preview", "window", "thumbnail"]
         },
         {
-            pageIndex: 5,
-            pageName: pages[5].name,
+            pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Wallpaper selector"),
             label: Translation.tr("Wallpaper selector"),
             description: Translation.tr("Wallpaper picker behaviour"),
-            keywords: ["wallpaper", "selector", "file dialog"]
+            keywords: ["wallpaper", "selector", "file", "dialog", "picker"]
         },
 
-        // Services
+        // =====================================================================
+        // Services (page 6) — per-option entries
+        // =====================================================================
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("AI"),
             label: Translation.tr("AI"),
             description: Translation.tr("System prompt for sidebar AI"),
-            keywords: ["ai", "prompt", "system", "sidebar"]
+            keywords: ["ai", "prompt", "system", "sidebar", "chat"]
         },
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("AI"),
+            label: Translation.tr("AI system prompt"),
+            description: Translation.tr("Custom instructions for the AI assistant"),
+            keywords: ["ai", "prompt", "system", "instructions", "custom", "assistant"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("Music Recognition"),
             label: Translation.tr("Music Recognition"),
             description: Translation.tr("Song recognition timeout and interval"),
-            keywords: ["music", "recognition", "song", "timeout"]
+            keywords: ["music", "recognition", "song", "timeout", "shazam", "songrec"]
         },
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("Networking"),
-            label: Translation.tr("Networking"),
-            description: Translation.tr("Custom user agent string"),
-            keywords: ["network", "user agent", "http"]
+            label: Translation.tr("User agent"),
+            description: Translation.tr("Custom user agent string for web requests"),
+            keywords: ["network", "user", "agent", "http", "web", "request"]
         },
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("Resources"),
-            label: Translation.tr("Resources"),
-            description: Translation.tr("Polling interval for resource monitor"),
-            keywords: ["resources", "cpu", "memory", "interval"]
+            label: Translation.tr("Resource monitor interval"),
+            description: Translation.tr("Polling interval for CPU/RAM/disk monitor"),
+            keywords: ["resources", "cpu", "memory", "ram", "disk", "interval", "poll", "monitor"]
         },
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("Search"),
             label: Translation.tr("Search"),
-            description: Translation.tr("Prefix configuration and engines"),
-            keywords: ["search", "prefix", "engine", "web"]
+            description: Translation.tr("Search engine, prefix configuration"),
+            keywords: ["search", "prefix", "engine", "web", "google", "app", "launcher"]
         },
         {
-            pageIndex: 6,
-            pageName: pages[6].name,
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Search"),
+            label: Translation.tr("Search engine"),
+            description: Translation.tr("Default search engine URL"),
+            keywords: ["search", "engine", "url", "google", "duckduckgo", "web"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Search"),
+            label: Translation.tr("Search prefixes"),
+            description: Translation.tr("Type shortcuts: / for actions, > for apps, = for math"),
+            keywords: ["search", "prefix", "shortcut", "action", "app", "math", "emoji", "clipboard"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
             section: Translation.tr("Weather"),
             label: Translation.tr("Weather"),
             description: Translation.tr("Weather units, GPS and city"),
-            keywords: ["weather", "gps", "city", "fahrenheit"]
+            keywords: ["weather", "gps", "city", "fahrenheit", "celsius", "temperature", "units"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Idle & Power"),
+            label: Translation.tr("Idle & Power"),
+            description: Translation.tr("Screen off, lock and suspend timeouts"),
+            keywords: ["idle", "power", "screen", "off", "lock", "suspend", "sleep", "timeout"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Idle & Power"),
+            label: Translation.tr("Screen off timeout"),
+            description: Translation.tr("Time before screen turns off"),
+            keywords: ["screen", "off", "timeout", "idle", "dpms", "blank"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Idle & Power"),
+            label: Translation.tr("Lock timeout"),
+            description: Translation.tr("Time before screen locks"),
+            keywords: ["lock", "timeout", "idle", "auto", "security"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Night Light"),
+            label: Translation.tr("Night light"),
+            description: Translation.tr("Blue light filter / color temperature"),
+            keywords: ["night", "light", "blue", "filter", "color", "temperature", "warm", "redshift"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Night Light"),
+            label: Translation.tr("Night light schedule"),
+            description: Translation.tr("Automatic night light based on time"),
+            keywords: ["night", "light", "schedule", "auto", "time", "sunset", "sunrise"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("GameMode"),
+            label: Translation.tr("GameMode"),
+            description: Translation.tr("Auto-detect fullscreen games and reduce effects"),
+            keywords: ["game", "mode", "fullscreen", "performance", "fps", "auto", "detect", "animations", "effects"]
+        },
+        {
+            pageIndex: 6, pageName: pages[6].name,
+            section: Translation.tr("Applications"),
+            label: Translation.tr("Default applications"),
+            description: Translation.tr("Terminal, file manager, browser commands"),
+            keywords: ["apps", "applications", "terminal", "browser", "file", "manager", "discord", "default"]
         },
 
-        // Advanced
+        // =====================================================================
+        // Advanced (page 7)
+        // =====================================================================
         {
-            pageIndex: 7,
-            pageName: pages[7].name,
+            pageIndex: 7, pageName: pages[7].name,
             section: Translation.tr("Color generation"),
             label: Translation.tr("Color generation"),
-            description: Translation.tr("Wallpaper-based color theming"),
-            keywords: ["color", "generation", "theming", "wallpaper"]
+            description: Translation.tr("Wallpaper-based color theming and palette type"),
+            keywords: ["color", "generation", "theming", "wallpaper", "matugen", "palette"]
+        },
+        {
+            pageIndex: 7, pageName: pages[7].name,
+            section: Translation.tr("Color generation"),
+            label: Translation.tr("Palette type"),
+            description: Translation.tr("Material You palette algorithm variant"),
+            keywords: ["palette", "type", "scheme", "content", "expressive", "fidelity", "tonal", "spot", "monochrome"]
+        },
+        {
+            pageIndex: 7, pageName: pages[7].name,
+            section: Translation.tr("Terminal Colors"),
+            label: Translation.tr("Terminal color adjustments"),
+            description: Translation.tr("Fine-tune terminal theme colors"),
+            keywords: ["terminal", "color", "saturation", "brightness", "harmony", "adjustment"]
+        },
+        {
+            pageIndex: 7, pageName: pages[7].name,
+            section: Translation.tr("Performance"),
+            label: Translation.tr("Low power mode"),
+            description: Translation.tr("Reduce resource usage for low-end hardware"),
+            keywords: ["performance", "low", "power", "mode", "reduce", "battery", "laptop"]
+        },
+        {
+            pageIndex: 7, pageName: pages[7].name,
+            section: Translation.tr("Interactions"),
+            label: Translation.tr("Scrolling"),
+            description: Translation.tr("Touchpad and mouse scroll speed"),
+            keywords: ["scroll", "touchpad", "mouse", "speed", "fast", "slow", "sensitivity"]
         },
 
-        // Shortcuts
+        // =====================================================================
+        // Shortcuts (page 8)
+        // =====================================================================
         {
-            pageIndex: 8,
-            pageName: pages[8].name,
+            pageIndex: 8, pageName: pages[8].name,
             section: Translation.tr("Keyboard Shortcuts"),
             label: Translation.tr("Keyboard Shortcuts"),
             description: Translation.tr("Niri and ii keybindings reference"),
@@ -450,62 +982,103 @@ ApplicationWindow {
                        "overview", "settings", "wallpaper", "media", "play", "pause"]
         },
 
-        // Modules
+        // =====================================================================
+        // Modules (page 9)
+        // =====================================================================
         {
-            pageIndex: 9,
-            pageName: pages[9].name,
+            pageIndex: 9, pageName: pages[9].name,
             section: Translation.tr("Panel Modules"),
             label: Translation.tr("Panel Modules"),
             description: Translation.tr("Enable or disable shell modules"),
             keywords: ["modules", "panels", "enable", "disable", "bar", "sidebar", "overview"]
         },
         {
-            pageIndex: 9,
-            pageName: pages[9].name,
+            pageIndex: 9, pageName: pages[9].name,
+            section: Translation.tr("Panel Modules"),
+            label: Translation.tr("Enable notification popups"),
+            description: Translation.tr("Toggle notification toast popups"),
+            keywords: ["module", "notification", "popup", "toast", "enable", "disable"]
+        },
+        {
+            pageIndex: 9, pageName: pages[9].name,
+            section: Translation.tr("Panel Modules"),
+            label: Translation.tr("Enable dock"),
+            description: Translation.tr("Toggle dock panel"),
+            keywords: ["module", "dock", "enable", "disable", "panel"]
+        },
+        {
+            pageIndex: 9, pageName: pages[9].name,
+            section: Translation.tr("Panel Modules"),
+            label: Translation.tr("Enable overview"),
+            description: Translation.tr("Toggle workspace overview"),
+            keywords: ["module", "overview", "enable", "disable", "workspace"]
+        },
+        {
+            pageIndex: 9, pageName: pages[9].name,
+            section: Translation.tr("Panel Modules"),
+            label: Translation.tr("Enable sidebars"),
+            description: Translation.tr("Toggle left and right sidebars"),
+            keywords: ["module", "sidebar", "left", "right", "enable", "disable"]
+        },
+        {
+            pageIndex: 9, pageName: pages[9].name,
             section: Translation.tr("Alt+Tab Switcher"),
             label: Translation.tr("Alt+Tab Switcher"),
             description: Translation.tr("Window switcher style and behavior"),
             keywords: ["alt", "tab", "switcher", "windows", "thumbnails"]
         },
 
-        // Waffle Style
+        // =====================================================================
+        // Waffle Style (page 10)
+        // =====================================================================
         {
-            pageIndex: 10,
-            pageName: pages[10].name,
+            pageIndex: 10, pageName: pages[10].name,
             section: Translation.tr("Waffle Taskbar"),
             label: Translation.tr("Waffle Taskbar"),
             description: Translation.tr("Windows 11 style taskbar settings"),
             keywords: ["waffle", "taskbar", "windows", "bottom", "tray"]
         },
         {
-            pageIndex: 10,
-            pageName: pages[10].name,
+            pageIndex: 10, pageName: pages[10].name,
             section: Translation.tr("Waffle Start Menu"),
             label: Translation.tr("Waffle Start Menu"),
             description: Translation.tr("Start menu size and behavior"),
             keywords: ["waffle", "start", "menu", "apps", "pinned"]
         },
         {
-            pageIndex: 10,
-            pageName: pages[10].name,
+            pageIndex: 10, pageName: pages[10].name,
             section: Translation.tr("Waffle Action Center"),
             label: Translation.tr("Waffle Action Center"),
             description: Translation.tr("Quick toggles and action center"),
             keywords: ["waffle", "action", "center", "toggles", "quick"]
         },
         {
-            pageIndex: 10,
-            pageName: pages[10].name,
+            pageIndex: 10, pageName: pages[10].name,
             section: Translation.tr("Waffle Widgets"),
             label: Translation.tr("Waffle Widgets"),
             description: Translation.tr("Widgets panel settings"),
             keywords: ["waffle", "widgets", "panel", "weather", "calendar"]
         },
-
-        // About
         {
-            pageIndex: 11,
-            pageName: pages[11].name,
+            pageIndex: 10, pageName: pages[10].name,
+            section: Translation.tr("Waffle Alt+Tab"),
+            label: Translation.tr("Waffle Alt+Tab"),
+            description: Translation.tr("Waffle window switcher with thumbnails"),
+            keywords: ["waffle", "alt", "tab", "switcher", "thumbnails", "carousel"]
+        },
+        {
+            pageIndex: 10, pageName: pages[10].name,
+            section: Translation.tr("Waffle Background"),
+            label: Translation.tr("Waffle Background"),
+            description: Translation.tr("Waffle-specific wallpaper and backdrop settings"),
+            keywords: ["waffle", "background", "wallpaper", "backdrop", "effects"]
+        },
+
+        // =====================================================================
+        // About (page 11)
+        // =====================================================================
+        {
+            pageIndex: 11, pageName: pages[11].name,
             section: Translation.tr("About"),
             label: Translation.tr("About ii"),
             description: Translation.tr("Version info, credits and links"),
@@ -522,7 +1095,7 @@ ApplicationWindow {
 
         var terms = q.split(/\s+/).filter(t => t.length > 0);
         var results = [];
-        
+
         // Check if waffle family is active
         var isWaffleActive = Config.options?.panelFamily === "waffle";
         var wafflePageIndex = 10; // "Waffle Style" page index
@@ -530,12 +1103,12 @@ ApplicationWindow {
         // 1. Buscar en el índice estático de secciones (para navegación rápida a secciones)
         for (var i = 0; i < settingsSearchIndex.length; i++) {
             var entry = settingsSearchIndex[i];
-            
+
             // Skip Waffle Style page if waffle family is not active
             if (entry.pageIndex === wafflePageIndex && !isWaffleActive) {
                 continue;
             }
-            
+
             var label = (entry.label || "").toLowerCase();
             var desc = (entry.description || "").toLowerCase();
             var page = (entry.pageName || "").toLowerCase();
@@ -547,7 +1120,7 @@ ApplicationWindow {
 
             for (var j = 0; j < terms.length; j++) {
                 var term = terms[j];
-                if (label.indexOf(term) >= 0 || desc.indexOf(term) >= 0 || 
+                if (label.indexOf(term) >= 0 || desc.indexOf(term) >= 0 ||
                     page.indexOf(term) >= 0 || sect.indexOf(term) >= 0 || kw.indexOf(term) >= 0) {
                     matchCount++;
                     if (label.indexOf(term) === 0) score += 800;
@@ -584,7 +1157,7 @@ ApplicationWindow {
 
         // 3. Ordenar por score y eliminar duplicados
         results.sort((a, b) => b.score - a.score);
-        
+
         // Eliminar duplicados por label+section, preferring entries with optionId
         var seen = {};
         var unique = [];
@@ -610,57 +1183,57 @@ ApplicationWindow {
     property string pendingSpotlightSection: ""
     property int pendingSpotlightPageIndex: -1
     property var spotlightFlickable: null
-    
+
     function openSearchResult(entry) {
         // Clear search immediately
         settingsSearchText = "";
         if (settingsSearchField) {
             settingsSearchField.text = "";
         }
-        
+
         // Deactivate any existing spotlight
         deactivateSpotlight();
-        
+
         if (!entry || entry.pageIndex === undefined || entry.pageIndex < 0) {
             return;
         }
-        
+
         // Store spotlight target info
         pendingSpotlightOptionId = (entry.optionId !== undefined) ? entry.optionId : -1;
         pendingSpotlightLabel = entry.label || "";
         pendingSpotlightSection = entry.section || "";
         pendingSpotlightPageIndex = entry.pageIndex;
-        
+
         // Navigate to page (this triggers page load if needed)
         if (currentPage !== entry.pageIndex) {
             currentPage = entry.pageIndex;
         }
-        
+
         // Always try spotlight (with retry for lazy-loaded widgets)
         if (pendingSpotlightOptionId >= 0 || pendingSpotlightLabel.length > 0) {
             spotlightRetryCount = 0;
             spotlightPageLoadTimer.restart();
         }
     }
-    
+
     property int spotlightRetryCount: 0
     property int spotlightMaxRetries: 15
-    
+
     // Timer to wait for page load and widget registration
     Timer {
         id: spotlightPageLoadTimer
         interval: 150
         onTriggered: root.trySpotlight()
     }
-    
+
     function trySpotlight() {
         var control = null;
-        
+
         // Try by optionId first
         if (pendingSpotlightOptionId >= 0) {
             control = SettingsSearchRegistry.getControlById(pendingSpotlightOptionId);
         }
-        
+
         // Fallback: search in registry by various criteria
         if (!control && (pendingSpotlightLabel.length > 0 || pendingSpotlightSection.length > 0)) {
             var labelLower = pendingSpotlightLabel.toLowerCase();
@@ -668,13 +1241,13 @@ ApplicationWindow {
             // Remove page name prefix from section if present (e.g., "Themes › Global Style" -> "Global Style")
             var sectionParts = sectionLower.split(" › ");
             var sectionOnly = sectionParts.length > 1 ? sectionParts[sectionParts.length - 1] : sectionLower;
-            
+
             for (var i = 0; i < SettingsSearchRegistry.entries.length; i++) {
                 var e = SettingsSearchRegistry.entries[i];
                 if (e.pageIndex === pendingSpotlightPageIndex) {
                     var eLabelLower = (e.label || "").toLowerCase();
                     var eSectionLower = (e.section || "").toLowerCase();
-                    
+
                     // Exact label match
                     if (eLabelLower === labelLower) {
                         control = e.control;
@@ -698,7 +1271,7 @@ ApplicationWindow {
                 }
             }
         }
-        
+
         if (control) {
             doSpotlightForControl(control);
         } else if (spotlightRetryCount < spotlightMaxRetries) {
@@ -712,15 +1285,15 @@ ApplicationWindow {
             pendingSpotlightPageIndex = -1;
         }
     }
-    
+
     function doSpotlightForControl(control) {
         if (!control) return;
-        
+
         // Expand the section containing the control and collapse others
         if (typeof SettingsSearchRegistry !== "undefined") {
             SettingsSearchRegistry.expandSectionForControl(control);
         }
-        
+
         // Find the parent Flickable (ContentPage/StyledFlickable)
         var flick = findParentFlickable(control);
         if (!flick) {
@@ -729,52 +1302,52 @@ ApplicationWindow {
             pendingSpotlightPageIndex = -1;
             return;
         }
-        
+
         // Use mapToItem to get the control's position relative to the Flickable's contentItem
         // This accounts for all intermediate containers (ColumnLayout margins, etc.)
         var posInContent = control.mapToItem(flick.contentItem, 0, 0);
         var controlYInContent = posInContent.y;
-        
+
         // Calculate target scroll position to center the control in viewport
         var viewportHeight = flick.height;
         var controlHeight = control.height;
         var targetScrollY = controlYInContent - (viewportHeight / 2) + (controlHeight / 2);
-        
+
         // Clamp to valid scroll range
         var maxScroll = Math.max(0, flick.contentHeight - flick.height);
         targetScrollY = Math.max(0, Math.min(targetScrollY, maxScroll));
-        
+
         // Store the target scroll position for later verification
         spotlightTargetScrollY = targetScrollY;
-        
+
         // Scroll to position - set directly to bypass animation
         flick.contentY = targetScrollY;
-        
+
         // Store references for spotlight calculation
         spotlightTarget = control;
         spotlightFlickable = flick;
-        
+
         // Wait for layout to update after scroll
         spotlightShowTimer.restart();
     }
-    
+
     property real spotlightTargetScrollY: 0
-    
+
     Timer {
         id: spotlightShowTimer
         interval: 250  // Must be longer than scroll animation (200ms) + layout time
         onTriggered: root.showSpotlight()
     }
-    
+
     function showSpotlight() {
         if (!spotlightTarget || !spotlightFlickable) {
             deactivateSpotlight();
             return;
         }
-        
+
         var control = spotlightTarget;
         var flick = spotlightFlickable;
-        
+
         // Check if scroll animation is still running (contentY hasn't reached target)
         var scrollDiff = Math.abs(flick.contentY - spotlightTargetScrollY);
         if (scrollDiff > 2) {
@@ -782,15 +1355,15 @@ ApplicationWindow {
             spotlightShowTimer.restart();
             return;
         }
-        
+
         // Use mapToItem directly to get the control's visual position in contentContainer
         // This is the most reliable method as it accounts for all transformations
         var pos = control.mapToItem(contentContainer, 0, 0);
-        
+
         // Sanity check: control should be roughly centered vertically
         var expectedY = (contentContainer.height - control.height) / 2;
         var yDiff = Math.abs(pos.y - expectedY);
-        
+
         // If position is way off from center, something went wrong
         if (yDiff > contentContainer.height / 2) {
             // Fallback: recalculate scroll position
@@ -803,7 +1376,7 @@ ApplicationWindow {
             spotlightShowTimer.restart();
             return;
         }
-        
+
         var padding = 8;
         spotlightRect = Qt.rect(
             Math.max(0, pos.x - padding),
@@ -814,13 +1387,13 @@ ApplicationWindow {
         spotlightActive = true;
         pendingSpotlightOptionId = -1;
     }
-    
+
     function findParentFlickable(item) {
         var p = item ? item.parent : null;
         while (p) {
             // Check for Flickable properties (contentY, contentHeight, contentItem)
-            if (p.hasOwnProperty("contentY") && 
-                p.hasOwnProperty("contentHeight") && 
+            if (p.hasOwnProperty("contentY") &&
+                p.hasOwnProperty("contentHeight") &&
                 p.hasOwnProperty("contentItem")) {
                 return p;
             }
@@ -828,7 +1401,7 @@ ApplicationWindow {
         }
         return null;
     }
-    
+
     function deactivateSpotlight() {
         spotlightActive = false;
         spotlightTarget = null;
@@ -843,7 +1416,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         Config.readWriteDelay = 0 // Settings app always only sets one var at a time so delay isn't needed
-        
+
         const startPage = Quickshell.env("QS_SETTINGS_PAGE");
         if (startPage) root.currentPage = parseInt(startPage);
 
@@ -888,7 +1461,7 @@ ApplicationWindow {
                 if (event.key === Qt.Key_PageDown) {
                     root.currentPage = Math.min(root.currentPage + 1, root.pages.length - 1)
                     event.accepted = true;
-                } 
+                }
                 else if (event.key === Qt.Key_PageUp) {
                     root.currentPage = Math.max(root.currentPage - 1, 0)
                     event.accepted = true;
@@ -958,14 +1531,14 @@ ApplicationWindow {
                 Layout.preferredWidth: Math.min(560, root.width - 200)
                 Layout.preferredHeight: 48
                 radius: Appearance.rounding.full
-                color: settingsSearchField.activeFocus 
-                    ? Appearance.colors.colLayer1 
+                color: settingsSearchField.activeFocus
+                    ? Appearance.colors.colLayer1
                     : Appearance.colors.colLayer0
                 border.width: settingsSearchField.activeFocus ? 2 : 1
-                border.color: settingsSearchField.activeFocus 
-                    ? Appearance.colors.colPrimary 
+                border.color: settingsSearchField.activeFocus
+                    ? Appearance.colors.colPrimary
                     : Appearance.m3colors.m3outlineVariant
-                
+
                 Behavior on color { ColorAnimation { duration: 150 } }
                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -980,8 +1553,8 @@ ApplicationWindow {
                         id: settingsSearchIcon
                         Layout.alignment: Qt.AlignVCenter
                         iconSize: Appearance.font.pixelSize.huge
-                        shape: root.settingsSearchText.length > 0 
-                            ? MaterialShape.Shape.SoftBurst 
+                        shape: root.settingsSearchText.length > 0
+                            ? MaterialShape.Shape.SoftBurst
                             : MaterialShape.Shape.Cookie7Sided
                         text: root.settingsSearchResults.length > 0 ? "manage_search" : "search"
                     }
@@ -990,7 +1563,7 @@ ApplicationWindow {
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        
+
                         // Placeholder text (behind TextField, separate element)
                         StyledText {
                             id: searchPlaceholder
@@ -1005,13 +1578,13 @@ ApplicationWindow {
                             }
                             visible: settingsSearchField.text.length === 0 && !settingsSearchField.activeFocus
                         }
-                        
+
                         TextInput {
                             id: settingsSearchField
                             anchors.fill: parent
                             anchors.leftMargin: 12
                             verticalAlignment: Text.AlignVCenter
-                            
+
                             color: Appearance.colors.colOnLayer1
                             selectionColor: Appearance.colors.colPrimaryContainer
                             selectedTextColor: Appearance.colors.colOnPrimaryContainer
@@ -1019,14 +1592,14 @@ ApplicationWindow {
                                 family: Appearance.font.family.main
                                 pixelSize: Appearance.font.pixelSize.normal
                             }
-                            
+
                             // Custom cursor color
                             cursorVisible: activeFocus
                             cursorDelegate: Rectangle {
                                 visible: settingsSearchField.cursorVisible
                                 width: 2
                                 color: Appearance.colors.colPrimary
-                                
+
                                 SequentialAnimation on opacity {
                                     loops: Animation.Infinite
                                     running: settingsSearchField.cursorVisible
@@ -1034,13 +1607,13 @@ ApplicationWindow {
                                     NumberAnimation { to: 1; duration: 530 }
                                 }
                             }
-                            
+
                             text: root.settingsSearchText
                             onTextChanged: {
                                 root.settingsSearchText = text;
                                 root.recomputeSettingsSearchResults();
                             }
-                            
+
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Down && root.settingsSearchResults.length > 0) {
                                     resultsListView.forceActiveFocus();
@@ -1072,12 +1645,12 @@ ApplicationWindow {
                         visible: root.settingsSearchText.length > 0
                         opacity: visible ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
-                        
+
                         onClicked: {
                             settingsSearchField.text = "";
                             settingsSearchField.forceActiveFocus();
                         }
-                        
+
                         contentItem: MaterialSymbol {
                             anchors.centerIn: parent
                             text: "close"
@@ -1095,7 +1668,7 @@ ApplicationWindow {
                         visible: root.settingsSearchText.length > 0 && root.settingsSearchResults.length > 0
                         radius: Appearance.rounding.full
                         color: Appearance.colors.colPrimaryContainer
-                        
+
                         StyledText {
                             id: resultsCountText
                             anchors.centerIn: parent
@@ -1130,13 +1703,13 @@ ApplicationWindow {
                     contentHeight: navRail.implicitHeight
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    
+
                     NavigationRail {
                         id: navRail
                         width: navRailWrapper.implicitWidth
                         spacing: 10
                         expanded: false  // Default collapsed, user can expand with button
-                        
+
                         NavigationRailExpandButton {
                             focus: root.visible
                         }
@@ -1219,7 +1792,7 @@ ApplicationWindow {
                         // Start preloading other pages after a short delay
                         preloadTimer.start()
                     }
-                    
+
                     // Preload all pages for search - faster interval
                     Timer {
                         id: preloadTimer
@@ -1291,7 +1864,7 @@ ApplicationWindow {
                             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                             : Appearance.colors.colLayer1
                         border.width: 1
-                        border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder 
+                        border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
                             : Appearance.m3colors.m3outlineVariant
 
                         layer.enabled: true
@@ -1341,14 +1914,14 @@ ApplicationWindow {
                                 id: resultItem
                                 required property var modelData
                                 required property int index
-                                
+
                                 width: resultsListView.width
                                 implicitHeight: 52
                                 buttonRadius: Appearance.rounding.small
-                                
+
                                 colBackground: ListView.isCurrentItem ? Appearance.colors.colPrimaryContainer : "transparent"
                                 colBackgroundHover: Appearance.colors.colLayer2
-                                
+
                                 Keys.forwardTo: [resultsListView]
                                 onClicked: root.openSearchResult(modelData)
 
@@ -1361,14 +1934,14 @@ ApplicationWindow {
                                     // Page icon
                                     MaterialSymbol {
                                         text: {
-                                            var icons = ["instant_mix", "browse", "toast", "texture", "palette", 
-                                                        "bottom_app_bar", "settings", "construction", "keyboard", 
+                                            var icons = ["instant_mix", "browse", "toast", "texture", "palette",
+                                                        "bottom_app_bar", "settings", "construction", "keyboard",
                                                         "extension", "window", "info"];
                                             return icons[resultItem.modelData.pageIndex] || "settings";
                                         }
                                         iconSize: 20
-                                        color: resultItem.ListView.isCurrentItem 
-                                            ? Appearance.colors.colOnPrimaryContainer 
+                                        color: resultItem.ListView.isCurrentItem
+                                            ? Appearance.colors.colOnPrimaryContainer
                                             : Appearance.colors.colPrimary
                                     }
 
@@ -1386,8 +1959,8 @@ ApplicationWindow {
                                                 pixelSize: Appearance.font.pixelSize.small
                                                 weight: Font.Medium
                                             }
-                                            color: resultItem.ListView.isCurrentItem 
-                                                ? Appearance.colors.colOnPrimaryContainer 
+                                            color: resultItem.ListView.isCurrentItem
+                                                ? Appearance.colors.colOnPrimaryContainer
                                                 : Appearance.colors.colOnLayer1
                                             elide: Text.ElideRight
                                         }
@@ -1396,12 +1969,12 @@ ApplicationWindow {
                                         Row {
                                             Layout.fillWidth: true
                                             spacing: 4
-                                            
+
                                             StyledText {
                                                 text: resultItem.modelData.pageName || ""
                                                 font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem 
-                                                    ? Appearance.colors.colOnPrimaryContainer 
+                                                color: resultItem.ListView.isCurrentItem
+                                                    ? Appearance.colors.colOnPrimaryContainer
                                                     : Appearance.colors.colSubtext
                                                 opacity: 0.9
                                             }
@@ -1409,8 +1982,8 @@ ApplicationWindow {
                                                 visible: resultItem.modelData.section && resultItem.modelData.section !== resultItem.modelData.pageName
                                                 text: "chevron_right"
                                                 iconSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem 
-                                                    ? Appearance.colors.colOnPrimaryContainer 
+                                                color: resultItem.ListView.isCurrentItem
+                                                    ? Appearance.colors.colOnPrimaryContainer
                                                     : Appearance.colors.colSubtext
                                                 opacity: 0.6
                                                 anchors.verticalCenter: parent.verticalCenter
@@ -1419,8 +1992,8 @@ ApplicationWindow {
                                                 visible: resultItem.modelData.section && resultItem.modelData.section !== resultItem.modelData.pageName
                                                 text: resultItem.modelData.section || ""
                                                 font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem 
-                                                    ? Appearance.colors.colOnPrimaryContainer 
+                                                color: resultItem.ListView.isCurrentItem
+                                                    ? Appearance.colors.colOnPrimaryContainer
                                                     : Appearance.colors.colSubtext
                                                 opacity: 0.9
                                             }
@@ -1431,8 +2004,8 @@ ApplicationWindow {
                                     MaterialSymbol {
                                         text: "arrow_forward"
                                         iconSize: 16
-                                        color: resultItem.ListView.isCurrentItem 
-                                            ? Appearance.colors.colOnPrimaryContainer 
+                                        color: resultItem.ListView.isCurrentItem
+                                            ? Appearance.colors.colOnPrimaryContainer
                                             : Appearance.colors.colSubtext
                                         opacity: resultItem.hovered || resultItem.ListView.isCurrentItem ? 1 : 0
                                     }
@@ -1472,40 +2045,40 @@ ApplicationWindow {
                         }
                     }
                 }
-                
+
                 // Spotlight overlay - scrim with cutout for focused option
                 Item {
                     id: spotlightOverlay
                     anchors.fill: parent
                     visible: root.spotlightActive
                     z: 200
-                    
+
                     // Click anywhere to dismiss
                     MouseArea {
                         anchors.fill: parent
                         onClicked: root.deactivateSpotlight()
                     }
-                    
+
                     // Dark scrim with cutout using Canvas
                     Canvas {
                         id: spotlightCanvas
                         anchors.fill: parent
-                        
+
                         onPaint: {
                             var ctx = getContext("2d");
                             ctx.reset();
-                            
+
                             // Fill entire area with semi-transparent dark
                             ctx.fillStyle = Qt.rgba(0, 0, 0, 0.5);
                             ctx.fillRect(0, 0, width, height);
-                            
+
                             // Cut out the spotlight area (clear it)
                             if (root.spotlightActive && root.spotlightRect.width > 0) {
                                 ctx.globalCompositeOperation = "destination-out";
-                                
+
                                 var r = root.spotlightRect;
                                 var radius = Appearance.rounding.normal;
-                                
+
                                 // Draw rounded rectangle cutout
                                 ctx.beginPath();
                                 ctx.moveTo(r.x + radius, r.y);
@@ -1521,7 +2094,7 @@ ApplicationWindow {
                                 ctx.fill();
                             }
                         }
-                        
+
                         Connections {
                             target: root
                             function onSpotlightRectChanged() {
@@ -1532,7 +2105,7 @@ ApplicationWindow {
                             }
                         }
                     }
-                    
+
                     // Subtle border around the cutout
                     Rectangle {
                         visible: root.spotlightActive && root.spotlightRect.width > 0
@@ -1546,14 +2119,14 @@ ApplicationWindow {
                         border.color: Appearance.colors.colPrimary
                         opacity: 0.8
                     }
-                    
+
                     // Auto-dismiss after 2.5 seconds
                     Timer {
                         running: root.spotlightActive
                         interval: 2500
                         onTriggered: root.deactivateSpotlight()
                     }
-                    
+
                     // Keyboard dismiss
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -1561,7 +2134,7 @@ ApplicationWindow {
                             event.accepted = true;
                         }
                     }
-                    
+
                     Component.onCompleted: forceActiveFocus()
                 }
             }
