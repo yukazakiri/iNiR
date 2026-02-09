@@ -94,10 +94,27 @@ end
 # Setup colors on shell start
 __ii_setup_fish_colors
 
+# Function to reload kitty terminal colors
+function __ii_reload_kitty_theme
+    # Try to reload kitty config via remote control
+    if test -S /tmp/kitty
+        kitty @ --to unix:/tmp/kitty load-config 2>/dev/null
+        echo "Kitty theme reloaded"
+    else
+        # Try alternative socket locations
+        for socket in /tmp/kitty-*
+            if test -S $socket
+                kitty @ --to unix:$socket load-config 2>/dev/null
+            end
+        end
+    end
+end
+
 # Function to reload fish colors (call this when wallpaper changes)
 function ii_reload_fish_theme
     __ii_setup_fish_colors
-    echo "Fish theme synchronized with kitty wallpaper colors"
+    __ii_reload_kitty_theme
+    echo "Fish and kitty themes synchronized with wallpaper colors"
 end
 
 # Make reload function available globally
