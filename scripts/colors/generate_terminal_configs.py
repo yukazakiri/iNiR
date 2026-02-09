@@ -180,6 +180,7 @@ def fix_alacritty_import_order(config_path):
 
     import_line = 'import = ["~/.config/alacritty/colors.toml"]'
     general_import_pat = r"import\s*=\s*\[.*?colors\.toml.*?\]"
+    bare_import_pat = r"^import\s*=\s*\[.*?colors\.toml.*?\]"
 
     has_hardcoded_colors = bool(
         re.search(r"^\[colors\.(primary|normal|bright)\]", content, re.MULTILINE)
