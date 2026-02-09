@@ -148,11 +148,24 @@ reload_terminal_colors() {
   for term in "${terminals[@]}"; do
     case "$term" in
       kitty)
-        # Kitty: reload colors via remote control (works if allow_remote_control is enabled)
+        # Kitty: reload config via remote control (works if allow_remote_control is enabled)
+        # Using load-config instead of set-colors to reload tab bar colors and full theme
         if pgrep -x kitty &>/dev/null; then
-          kitty @ set-colors --all "$home/.config/kitty/current-theme.conf" 2>/dev/null && \
-            echo "[terminal-colors] Kitty: reloaded via remote control" || \
-            echo "[terminal-colors] Kitty: remote control not available (enable allow_remote_control in kitty.conf for live reload)"
+          # Try to reload via socket if available
+          if [ -S /tmp/kitty-socket ]; then
+            kitty @ --to unix:/tmp/kitty-socket load-config 2>/dev/null && \
+              echo "[terminal-colors] Kitty: reloaded config via /tmp/kitty-socket" || \
+              echo "[terminal-colors] Kitty: failed to reload via socket"
+          elif [ -S /tmp/kitty ]; then
+            kitty @ --to unix:/tmp/kitty load-config 2>/dev/null && \
+              echo "[terminal-colors] Kitty: reloaded config via /tmp/kitty" || \
+              echo "[terminal-colors] Kitty: failed to reload via socket"
+          else
+            # Fallback: try without socket (uses default)
+            kitty @ load-config 2>/dev/null && \
+              echo "[terminal-colors] Kitty: reloaded config" || \
+              echo "[terminal-colors] Kitty: remote control not available (enable allow_remote_control and listen_on in kitty.conf)"
+          fi
         fi
         ;;
       foot)
