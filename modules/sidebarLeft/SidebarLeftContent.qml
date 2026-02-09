@@ -18,7 +18,7 @@ Item {
     property int sidebarPadding: 10
     property int screenWidth: 1920
     property int screenHeight: 1080
-    
+
     // Delay content loading until after animation completes
     property bool contentReady: false
 
@@ -99,7 +99,7 @@ Item {
         }
 
         color: gameModeMinimal ? "transparent"
-             : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1) 
+             : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
              : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
         border.width: gameModeMinimal ? 0 : 1
         border.color: Appearance.colors.colLayer0Border
@@ -164,7 +164,7 @@ Item {
                 Layout.fillHeight: true
                 radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
                 color: Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.auroraEverywhere ? "transparent" 
+                     : Appearance.auroraEverywhere ? "transparent"
                      : Appearance.colors.colLayer1
                 border.width: Appearance.inirEverywhere ? 1 : 0
                 border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
@@ -181,7 +181,7 @@ Item {
                             Ai.ensureInitialized()
                         }
                     }
-                    interactive: !(currentItem?.editMode ?? false)
+                    interactive: !(currentItem?.editMode ?? false) && !(currentItem?.dragPending ?? false)
 
                     clip: true
                     layer.enabled: root.contentReady
