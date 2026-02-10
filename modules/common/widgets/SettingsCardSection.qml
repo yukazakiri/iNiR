@@ -86,10 +86,10 @@ Item {
             topMargin: SettingsMaterialPreset.cardRadius
             bottomMargin: SettingsMaterialPreset.cardRadius
         }
-        width: 3
-        radius: 1.5
+        width: 2
+        radius: 1
         color: Appearance.m3colors.m3primary
-        opacity: root.expanded ? 1 : 0
+        opacity: root.expanded ? 0.6 : 0
         z: 1
 
         Behavior on opacity {
@@ -105,13 +105,7 @@ Item {
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
         border.width: 1
-        border.color: root.expanded
-            ? Appearance.m3colors.m3outlineVariant
-            : SettingsMaterialPreset.cardBorderColor
-
-        Behavior on border.color {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-        }
+        border.color: SettingsMaterialPreset.cardBorderColor
 
         ColumnLayout {
             id: cardColumn
