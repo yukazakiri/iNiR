@@ -12,7 +12,7 @@ singleton Brightness 1.0 Brightness.qml
 singleton Cliphist 1.0 Cliphist.qml
 singleton CompositorService 1.0 CompositorService.qml
 singleton ConflictKiller 1.0 ConflictKiller.qml
-singleton DankSocket 1.0 DankSocket.qml
+DankSocket 1.0 DankSocket.qml
 singleton DateTime 1.0 DateTime.qml
 singleton EasyEffects 1.0 EasyEffects.qml
 singleton Emojis 1.0 Emojis.qml

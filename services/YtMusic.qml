@@ -574,7 +574,7 @@ Singleton {
     }
     
     function quickConnect(): void {
-        if (root.googleConnected || root.googleChecking) return
+        if (root.googleConnected) return
         root.googleError = ""
         root.googleChecking = true
         root._quickConnectIndex = 0
@@ -608,29 +608,36 @@ Singleton {
     
     Process {
         id: _quickConnectProc
+        property bool succeeded: false
         command: ["python3", Directories.scriptPath + "/ytmusic_auth.py", root.googleBrowser]
+        
+        onStarted: { succeeded = false }
         
         stdout: SplitParser {
             onRead: line => {
                 try {
                     const res = JSON.parse(line)
                     if (res.status === "success") {
+                        _quickConnectProc.succeeded = true
                         root.googleConnected = true
                         root.googleError = ""
                         root.customCookiesPath = res.cookies_path
                         Config.setNestedValue('sidebar.ytmusic.cookiesPath', res.cookies_path)
                         Config.setNestedValue('sidebar.ytmusic.browser', root.googleBrowser)
                         root.fetchUserProfile()
-                    } else {
-                        root.googleConnected = false
-                        root.googleError = res.message || Translation.tr("Connection failed.")
                     }
                 } catch (e) {}
             }
         }
         
         onExited: (code) => {
-            root.googleChecking = false
+            if (_quickConnectProc.succeeded) {
+                root.googleChecking = false
+                return
+            }
+            // Try next browser
+            root._quickConnectIndex++
+            root._tryNextBrowser()
         }
     }
     
@@ -866,8 +873,9 @@ Singleton {
     Connections {
         target: _detectBrowsersProc
         function onRunningChanged() {
-            if (!_detectBrowsersProc.running && root.autoConnectEnabled && !root.autoConnectAttempted) {
+            if (!_detectBrowsersProc.running && root.available && root.autoConnectEnabled && !root.autoConnectAttempted) {
                 root.autoConnectAttempted = true
+                console.log("[YtMusic] Browser detection done. Detected:", JSON.stringify(root.detectedBrowsers))
                 if (root.defaultBrowser && root.detectedBrowsers.includes(root.defaultBrowser)) {
                     Qt.callLater(() => root._checkGoogleConnection())
                 } else if (root.detectedBrowsers.length > 0) {
@@ -979,7 +987,14 @@ Singleton {
         }
         root.googleChecking = true
         root.googleError = ""
-        _googleCheckProc.running = true
+        if (root.customCookiesPath) {
+            // We have an exported cookies file — verify it directly
+            _googleCheckProc.running = true
+        } else {
+            // No cookies yet — quickConnect tries all detected browsers
+            // via the auth script (extract + verify)
+            root.quickConnect()
+        }
     }
 
     Timer {
@@ -1010,10 +1025,13 @@ Singleton {
         onExited: (code) => {
             root.available = (code === 0)
             console.log("[YtMusic] Dependencies check:", root.available ? "OK" : "FAILED")
-            // Only check connection after verifying dependencies are available
-            if (root.available) {
-                console.log("[YtMusic] Checking Google connection...")
-                Qt.callLater(_checkGoogleConnection)
+            // If browser detection already finished, trigger auto-connect now
+            if (root.available && !_detectBrowsersProc.running && root.autoConnectEnabled && !root.autoConnectAttempted) {
+                root.autoConnectAttempted = true
+                console.log("[YtMusic] Deps ready + browsers already detected:", JSON.stringify(root.detectedBrowsers))
+                if (root.detectedBrowsers.length > 0) {
+                    Qt.callLater(_checkGoogleConnection)
+                }
             }
         }
     }
@@ -1028,7 +1046,7 @@ Singleton {
             "--no-warnings",
             "-I", "1",
             "--print", "id",
-            "https://www.youtube.com/playlist?list=LL"
+            "https://www.youtube.com/feed/history"
         ]
         stdout: SplitParser {
             onRead: line => {
@@ -1047,8 +1065,8 @@ Singleton {
         }
         onExited: (code) => {
             console.log("[YtMusic] Connection check exited. Code:", code, "Connected:", (code === 0 && stdOutput.trim().length > 0))
-            root.googleChecking = false
             if (code === 0 && stdOutput.trim().length > 0) {
+                root.googleChecking = false
                 root.googleConnected = true
                 root.googleError = ""
                 console.log("[YtMusic] Successfully connected!")
@@ -1056,19 +1074,26 @@ Singleton {
                     _exportCookiesProc.running = true
                 }
             } else {
+                // If we tried a stored cookies file and it failed, clear it and try quickConnect
+                if (root.customCookiesPath) {
+                    console.log("[YtMusic] Stored cookies failed, clearing and trying quickConnect...")
+                    root.customCookiesPath = ""
+                    Config.setNestedValue('sidebar.ytmusic.cookiesPath', "")
+                    root.quickConnect()
+                    return
+                }
+                root.googleChecking = false
                 root.googleConnected = false
                 const err = errorOutput.toLowerCase()
                 console.log("[YtMusic] Connection failed. Error output:", errorOutput.substring(0, 200))
-                if (err.includes("playlist does not exist") || err.includes("sign in") || err.includes("403")) {
-                    root.googleError = Translation.tr("Not logged in. Sign in to music.youtube.com in %1, then try again.").arg(root.getBrowserDisplayName(root.googleBrowser))
+                if (err.includes("sign in") || err.includes("403") || err.includes("not found")) {
+                    root.googleError = Translation.tr("Could not connect. Log in to music.youtube.com in your browser first.")
                 } else if (err.includes("cookies") || err.includes("browser") || err.includes("keyring")) {
                     root.googleError = Translation.tr("Could not read cookies. Close %1 and try again.").arg(root.getBrowserDisplayName(root.googleBrowser))
                 } else if (err.includes("network") || err.includes("connection") || err.includes("unable to download")) {
                     root.googleError = Translation.tr("Network error. Check your internet connection.")
-                } else if (err.includes("unsupported browser")) {
-                    root.googleError = Translation.tr("%1 is not supported. Try Firefox or Chrome.").arg(root.getBrowserDisplayName(root.googleBrowser))
                 } else {
-                    root.googleError = Translation.tr("Not authenticated. Sign in to YouTube in your browser first.")
+                    root.googleError = Translation.tr("Could not connect. Log in to music.youtube.com in your browser first.")
                 }
             }
         }
