@@ -60,18 +60,20 @@ Singleton {
 
     function copy(entry) {
         root._log("[Cliphist] copy()", String(entry).slice(0, 120))
-        if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
+        root._selfCopy = true
+        if (root.cliphistBinary.includes("cliphist"))
             Quickshell.execDetached(["/usr/bin/bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | /usr/bin/wl-copy`]);
-        else { // Stash
+        else {
             const entryNumber = entry.split("\t")[0];
             Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | /usr/bin/wl-copy`]);
         }
     }
 
     function paste(entry) {
-        if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
+        root._selfCopy = true
+        if (root.cliphistBinary.includes("cliphist"))
             Quickshell.execDetached(["/usr/bin/bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | /usr/bin/wl-copy\n/usr/bin/wl-paste`]);
-        else { // Stash
+        else {
             const entryNumber = entry.split("\t")[0];
             Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | /usr/bin/wl-copy\n${root.pressPasteCommand}`]);
         }
@@ -133,16 +135,24 @@ Singleton {
     Connections {
         target: Quickshell
         function onClipboardTextChanged() {
+            // Skip refresh if clipboard text matches what we just copied ourselves
+            if (root._selfCopy) {
+                root._selfCopy = false;
+                return;
+            }
             delayedUpdateTimer.restart()
         }
     }
 
+    property bool _selfCopy: false
+
     Timer {
         id: delayedUpdateTimer
-        interval: 500 // Increased from 100 to reduce rapid updates
+        interval: 800
         repeat: false
         onTriggered: {
-            root.refresh()
+            // Only refresh if not already running a read
+            if (!readProc.running) root.refresh()
         }
     }
 

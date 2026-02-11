@@ -47,8 +47,19 @@ Rectangle {
     implicitHeight: imageHeight * scale
     implicitWidth: imageWidth * scale
 
+    // Lazy decode: only start when visible (avoids mass-spawning processes)
+    property bool _decoded: false
+    onVisibleChanged: {
+        if (visible && !_decoded && root.entry) {
+            _decoded = true;
+            decodeImageProcess.running = true;
+        }
+    }
     Component.onCompleted: {
-        decodeImageProcess.running = true;
+        if (visible && root.entry) {
+            _decoded = true;
+            decodeImageProcess.running = true;
+        }
     }
 
     Process {
@@ -58,7 +69,6 @@ Rectangle {
             if (exitCode === 0) {
                 root.source = imageDecodeFilePath;
             } else {
-                console.error("[CliphistImage] Failed to decode image for entry:", root.entry);
                 root.source = "";
             }
         }
