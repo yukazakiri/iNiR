@@ -1081,19 +1081,22 @@ Singleton {
                     property bool smootherMenuAnimations: true
                     property bool switchHandlePositionFix: true
                 }
-                property JsonObject altSwitcher: JsonObject {
-                    property string preset: "thumbnails"
-                    property bool noVisualUi: false
-                    property bool autoHide: true
-                    property int autoHideDelayMs: 500
-                    property bool closeOnFocus: true
-                    property bool useMostRecentFirst: true
-                    property bool quickSwitch: true
-                    property int thumbnailWidth: 280
-                    property int thumbnailHeight: 180
-                    property real scrimOpacity: 0.4
-                    property bool showOverviewWhileSwitching: false
-                }
+            property JsonObject altSwitcher: JsonObject {
+                property string preset: "default"
+                property bool noVisualUi: false
+                property bool monochromeIcons: false
+                property bool enableAnimation: true
+                property int animationDurationMs: 300
+                property real backgroundOpacity: 1.0
+                property real blurAmount: 0.0
+                property int scrimDim: 0
+                property int autoHideDelayMs: 300
+                property bool showOverviewWhileSwitching: false
+                property bool compactStyle: false
+                property string panelAlignment: "center"
+                property bool useM3Layout: false
+                property bool useMostRecentFirst: true
+            }
                 property JsonObject background: JsonObject {
                     property string wallpaperPath: "" // Empty = use main wallpaper
                     property string thumbnailPath: "" // Thumbnail for animated wallpapers (video/gif)
