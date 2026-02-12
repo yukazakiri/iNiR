@@ -73,45 +73,40 @@ migration_apply() {
     local applied_any=false
 
     # Add zoxide to Fish config
-    if [[ -f "$fish_config" ]] && ! grep -q "zoxide init fish" "$fish_config"; then
+    if [[ -f "$fish_config" ]] && ! grep -q "zoxide init.*fish" "$fish_config"; then
         cat >> "$fish_config" << 'EOF'
 
 # zoxide - smarter cd command (replaces cd)
 if command -v zoxide > /dev/null
-    zoxide init fish | source
-    alias cd z
+    zoxide init --cmd cd fish | source
 end
 EOF
         applied_any=true
     fi
 
     # Add zoxide to Bash config
-    if [[ -f "$bash_config" ]] && ! grep -q "zoxide init bash" "$bash_config"; then
+    if [[ -f "$bash_config" ]] && ! grep -q "zoxide init.*bash" "$bash_config"; then
         cat >> "$bash_config" << 'EOF'
 
 # zoxide - smarter cd command (replaces cd)
 if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init bash)"
-    alias cd='z'
+    eval "$(zoxide init --cmd cd bash)"
 elif [[ -x ~/.local/bin/zoxide ]]; then
-    eval "$(~/.local/bin/zoxide init bash)"
-    alias cd='z'
+    eval "$(~/.local/bin/zoxide init --cmd cd bash)"
 fi
 EOF
         applied_any=true
     fi
 
     # Add zoxide to Zsh config
-    if [[ -f "$zsh_config" ]] && ! grep -q "zoxide init zsh" "$zsh_config"; then
+    if [[ -f "$zsh_config" ]] && ! grep -q "zoxide init.*zsh" "$zsh_config"; then
         cat >> "$zsh_config" << 'EOF'
 
 # zoxide - smarter cd command (replaces cd)
 if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init zsh)"
-    alias cd='z'
+    eval "$(zoxide init --cmd cd zsh)"
 elif [[ -x ~/.local/bin/zoxide ]]; then
-    eval "$(~/.local/bin/zoxide init zsh)"
-    alias cd='z'
+    eval "$(~/.local/bin/zoxide init --cmd cd zsh)"
 fi
 EOF
         applied_any=true
