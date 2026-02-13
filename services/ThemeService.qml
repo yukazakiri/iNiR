@@ -18,6 +18,7 @@ Singleton {
     readonly property bool isStandaloneSettingsWindow: (Quickshell.env("QS_NO_RELOAD_POPUP") ?? "") === "1"
     readonly property bool defaultApplyExternal: !isStandaloneSettingsWindow
     readonly property bool vesktopEnabled: (Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true) !== false
+    readonly property bool vscodeEnabled: (Config.options?.appearance?.wallpaperTheming?.enableVscode ?? true) !== false
 
     onCurrentThemeChanged: {
         if (Config.ready) {
@@ -70,6 +71,15 @@ Singleton {
                     Quickshell.execDetached([
                         "/usr/bin/python3",
                         Directories.scriptPath + "/colors/system24_palette.py"
+                    ]);
+                });
+            }
+
+            if (applyExternal && vscodeEnabled) {
+                Qt.callLater(() => {
+                    Quickshell.execDetached([
+                        "/usr/bin/python3",
+                        Directories.scriptPath + "/colors/vscode_theme.py"
                     ]);
                 });
             }

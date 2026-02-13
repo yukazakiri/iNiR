@@ -2997,6 +2997,7 @@ Singleton {
     function applyExternalThemes(c) {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
         const enableVesktop = Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true;
+        const enableVscode = Config.options?.appearance?.wallpaperTheming?.enableVscode ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
         
         // Generate colors.json for Vesktop (if enabled)
@@ -3006,6 +3007,17 @@ Singleton {
                 Quickshell.execDetached([
                     "/usr/bin/python3",
                     Directories.scriptPath + "/colors/system24_palette.py"
+                ]);
+            });
+        }
+        
+        // Generate VSCode theme (if enabled)
+        if (enableVscode) {
+            generateColorsJson(c);
+            Qt.callLater(() => {
+                Quickshell.execDetached([
+                    "/usr/bin/python3",
+                    Directories.scriptPath + "/colors/vscode_theme.py"
                 ]);
             });
         }

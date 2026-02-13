@@ -401,6 +401,12 @@ switch() {
         if [[ "$enable_vesktop" != "false" ]]; then
             python3 "$SCRIPT_DIR/system24_palette.py"
         fi
+        
+        # Generate VSCode theme if enabled
+        enable_vscode=$(jq -r '.appearance.wallpaperTheming.enableVscode // true' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "true")
+        if [[ "$enable_vscode" != "false" ]]; then
+            python3 "$SCRIPT_DIR/vscode_theme.py"
+        fi
     fi
     
     # Always run applycolor.sh - it has its own checks for enableTerminal and enableAppsAndShell
