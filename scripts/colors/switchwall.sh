@@ -401,6 +401,10 @@ switch() {
         if [[ "$enable_vesktop" != "false" ]]; then
             python3 "$SCRIPT_DIR/system24_palette.py"
         fi
+        enable_spicetify=$(jq -r '.appearance.wallpaperTheming.enableSpicetify // true' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "true")
+        if [[ "$enable_spicetify" != "false" ]]; then
+            python3 "$SCRIPT_DIR/spicetify_palette.py"
+        fi
     fi
     
     # Always run applycolor.sh - it has its own checks for enableTerminal and enableAppsAndShell

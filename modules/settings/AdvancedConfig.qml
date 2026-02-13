@@ -57,6 +57,17 @@ ContentPage {
                     text: Translation.tr("Generate Discord theme from wallpaper colors (requires Vesktop with system24 theme)")
                 }
             }
+            SettingsSwitch {
+                buttonIcon: "music-note"
+                text: Translation.tr("Spicetify")
+                checked: Config.options.appearance.wallpaperTheming.enableSpicetify ?? true
+                onCheckedChanged: {
+                    Config.options.appearance.wallpaperTheming.enableSpicetify = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Generate Spotify theme from wallpaper colors (requires Spicetify)")
+                }
+            }
             ConfigRow {
                 uniform: true
                 SettingsSwitch {

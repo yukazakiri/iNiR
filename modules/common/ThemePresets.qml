@@ -3010,6 +3010,17 @@ Singleton {
             });
         }
         
+        // Generate Spicetify theme (if enabled)
+        const enableSpicetify = Config.options?.appearance?.wallpaperTheming?.enableSpicetify ?? true;
+        if (enableSpicetify) {
+            Qt.callLater(() => {
+                Quickshell.execDetached([
+                    "/usr/bin/python3",
+                    Directories.scriptPath + "/colors/spicetify_palette.py"
+                ]);
+            });
+        }
+        
         // Apply GTK theme (if enabled)
         if (enableAppsAndShell) {
             Qt.callLater(() => {

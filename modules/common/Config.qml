@@ -227,6 +227,7 @@ Singleton {
                     property bool enableQtApps: true
                     property bool enableTerminal: true
                     property bool enableVesktop: true
+                    property bool enableSpicetify: true
                     property JsonObject terminals: JsonObject {
                         property bool kitty: true
                         property bool alacritty: true

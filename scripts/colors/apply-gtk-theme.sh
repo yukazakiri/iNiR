@@ -441,3 +441,12 @@ if [[ "$enable_vesktop" != "false" && -f "$SCRIPT_DIR/system24_palette.py" ]]; t
     python3 "$SCRIPT_DIR/system24_palette.py"
     # Note: Vesktop auto-reloads CSS changes, no manual reload needed
 fi
+
+# Generate Spicetify theme if enabled
+enable_spicetify="true"
+if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq &>/dev/null; then
+    enable_spicetify=$(jq -r '.appearance.wallpaperTheming.enableSpicetify // true' "$SHELL_CONFIG_FILE")
+fi
+if [[ "$enable_spicetify" != "false" && -f "$SCRIPT_DIR/spicetify_palette.py" ]]; then
+    python3 "$SCRIPT_DIR/spicetify_palette.py"
+fi

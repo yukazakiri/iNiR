@@ -73,6 +73,16 @@ Singleton {
                     ]);
                 });
             }
+
+            const spicetifyEnabled = (Config.options?.appearance?.wallpaperTheming?.enableSpicetify ?? true) !== false;
+            if (applyExternal && spicetifyEnabled) {
+                Qt.callLater(() => {
+                    Quickshell.execDetached([
+                        "/usr/bin/python3",
+                        Directories.scriptPath + "/colors/spicetify_palette.py"
+                    ]);
+                });
+            }
         } else {
             root._log("[ThemeService] Applying manual theme:", currentTheme);
             ThemePresets.applyPreset(currentTheme, applyExternal);
