@@ -247,18 +247,11 @@ def _build_color_ini(colors: Dict[str, str]) -> str:
 def _build_user_css() -> str:
     """Generate minimal user.css for Material Design styling."""
 
-    return """/* iNiR Material - Minimal Material Design styling for Spicetify */
+    return """/* iNiR Material - Material Design styling for Spicetify */
 
-/* Rounded corners for cards and buttons */
-.main-card-card,
-.main-button-button,
-.x-categoryCard-CategoryCard {
+/* Rounded corners for cards */
+.main-card-card {
     border-radius: 12px !important;
-}
-
-/* Smoother transitions */
-*:not([class*="progress"]) {
-    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 """
 
