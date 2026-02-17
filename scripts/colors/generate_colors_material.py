@@ -290,6 +290,27 @@ if args.termscheme is not None:
 
         term_colors[color] = argb_to_hex(harmonized)
 
+# Fallback: derive term colors from material colors when no termscheme provided
+if not term_colors and material_colors:
+    term_colors = {
+        "term0": material_colors.get("surfaceVariant", "#282828"),
+        "term1": material_colors.get("error", "#CC241D"),
+        "term2": material_colors.get("secondary", "#98971A"),
+        "term3": material_colors.get("tertiary", "#D79921"),
+        "term4": material_colors.get("primary", "#458588"),
+        "term5": material_colors.get("tertiary", "#B16286"),
+        "term6": material_colors.get("secondary", "#689D6A"),
+        "term7": material_colors.get("onSurfaceVariant", "#A89984"),
+        "term8": material_colors.get("outline", "#928374"),
+        "term9": material_colors.get("error", "#FB4934"),
+        "term10": material_colors.get("secondary", "#B8BB26"),
+        "term11": material_colors.get("tertiary", "#FABD2F"),
+        "term12": material_colors.get("primary", "#83A598"),
+        "term13": material_colors.get("tertiary", "#D3869B"),
+        "term14": material_colors.get("secondary", "#8EC07C"),
+        "term15": material_colors.get("onSurface", "#EBDBB2"),
+    }
+
 if args.debug == False:
     print(f"$darkmode: {darkmode};")
     print(f"$transparent: {transparent};")
