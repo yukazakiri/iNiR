@@ -399,7 +399,8 @@
     "monochromeIcons": true,
     "pinnedApps": [
       "org.gnome.Nautilus",
-      "firefox"
+      "firefox",
+      "foot"
     ],
     "pinnedOnStartup": true,
     "showBackground": true,

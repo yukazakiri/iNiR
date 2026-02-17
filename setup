@@ -602,7 +602,7 @@ run_update() {
         done
 
         # Sync directories
-        for dir in modules services scripts assets translations sdata defaults; do
+        for dir in modules services scripts assets translations sdata defaults dots; do
             [[ -d "${II_SOURCE}/${dir}" ]] && mkdir -p "${II_TARGET}/${dir}" && rsync -a --delete "${II_SOURCE}/${dir}/" "${II_TARGET}/${dir}/"
         done
 

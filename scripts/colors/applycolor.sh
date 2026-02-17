@@ -249,16 +249,7 @@ else
   apply_gtk_kde &
 fi
 
-# Apply SDDM theming if enabled
-apply_sddm() {
-  if [ -f "$CONFIG_DIR/scripts/sddm/sync-sddm-theme.py" ]; then
-    python3 "$CONFIG_DIR/scripts/sddm/sync-sddm-theme.py" &
-  fi
-}
-
-if [ -f "$CONFIG_FILE" ]; then
-  enable_sddm=$(jq -r '.appearance.wallpaperTheming.enableSddm // false' "$CONFIG_FILE")
-  if [ "$enable_sddm" = "true" ]; then
-    apply_sddm &
-  fi
-fi
+# Apply ii-sddm-theme theming (auto-syncs via matugen post_hook)
+# The matugen template for iisddmtheme handles color generation.
+# generate_settings.py + sddm-theme-apply.sh are triggered by matugen's post_hook.
+# No manual sync needed here — matugen does it automatically on wallpaper change.

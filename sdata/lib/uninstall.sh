@@ -25,6 +25,8 @@ declare -A INIR_ONLY_PATHS=(
     ["${XDG_CONFIG_HOME}/vesktop/themes/ii-colors.css"]="iNiR Vesktop colors"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/system24.theme.css"]="iNiR Vesktop theme (alt)"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/ii-colors.css"]="iNiR Vesktop colors (alt)"
+    ["${XDG_CONFIG_HOME}/ii-sddm-theme"]="iNiR SDDM theme config"
+    ["${XDG_CACHE_HOME}/quickshell/sddm-theme"]="iNiR SDDM theme cache"
 )
 
 # Shared configs - may be used by other apps or user customizations
@@ -522,6 +524,12 @@ uninstall_show_manual_steps() {
     echo -e "  ${STY_YELLOW}•${STY_RST} ydotool service"
     echo -e "    ${STY_FAINT}Used by: automation tools, some Wayland apps${STY_RST}"
     echo ""
+    echo -e "  ${STY_YELLOW}•${STY_RST} SDDM theme: /usr/share/sddm/themes/ii-sddm-theme"
+    echo -e "    ${STY_FAINT}Used by: SDDM login screen${STY_RST}"
+    echo ""
+    echo -e "  ${STY_YELLOW}•${STY_RST} Sudoers entry: /etc/sudoers.d/sddm-theme-$(whoami)"
+    echo -e "    ${STY_FAINT}Used by: SDDM theme auto-apply on wallpaper change${STY_RST}"
+    echo ""
 
     if $ask && tui_confirm "Show commands to revert these changes?" "no"; then
         echo ""
@@ -535,6 +543,12 @@ uninstall_show_manual_steps() {
             echo -e "  ${STY_CYAN}# Disable ydotool${STY_RST}"
             echo -e "  systemctl --user disable ydotool"
         fi
+        echo ""
+        echo -e "  ${STY_CYAN}# Remove SDDM theme${STY_RST}"
+        echo -e "  sudo rm -rf /usr/share/sddm/themes/ii-sddm-theme"
+        echo ""
+        echo -e "  ${STY_CYAN}# Remove SDDM sudoers entry${STY_RST}"
+        echo -e "  sudo rm -f /etc/sudoers.d/sddm-theme-\$(whoami)"
         echo ""
     fi
 }
