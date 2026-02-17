@@ -3,7 +3,9 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Services.Notifications
 
@@ -138,7 +140,7 @@ MouseArea { // Notification group area
 
     StyledRectangularShadow {
         target: background
-        visible: popup && !Appearance.auroraEverywhere && !Appearance.inirEverywhere
+        visible: popup && !Appearance.inirEverywhere
     }
 
     Rectangle { // Background of the notification
@@ -146,16 +148,20 @@ MouseArea { // Notification group area
         anchors.left: parent.left
         width: parent.width
 
-        // For popup: solid color (no blur behind)
+        // For popup: glass blur for aurora/angel, solid for others
         // For sidebar: transparent to show parent's blur
-        color: Appearance.inirEverywhere ? (popup ? Appearance.inir.colLayer2 : Appearance.inir.colLayer1)
-            : Appearance.auroraEverywhere ? (popup ? Appearance.colors.colLayer2Base : "transparent")
+        color: Appearance.angelEverywhere ? (popup ? "transparent" : Appearance.angel.colGlassCard)
+            : Appearance.inirEverywhere ? (popup ? Appearance.inir.colLayer2 : Appearance.inir.colLayer1)
+            : Appearance.auroraEverywhere ? "transparent"
             : (popup ? ColorUtils.applyAlpha(Appearance.colors.colLayer2, 1 - Appearance.backgroundTransparency)
                      : Appearance.colors.colLayer2)
 
-        radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-        border.width: (Appearance.inirEverywhere || (Appearance.auroraEverywhere && popup)) ? 1 : 0
-        border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
+        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+            : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+            : (Appearance.inirEverywhere || (Appearance.auroraEverywhere && popup)) ? 1 : 0
+        border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
+            : Appearance.inirEverywhere ? Appearance.inir.colBorder
             : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : "transparent"
         anchors.leftMargin: root.xOffset
 
@@ -169,6 +175,17 @@ MouseArea { // Notification group area
         }
 
         clip: true
+
+        // Rounded corner clipping for glass blur
+        layer.enabled: root.popup && Appearance.auroraEverywhere && !Appearance.inirEverywhere
+        layer.effect: GE.OpacityMask {
+            maskSource: Rectangle {
+                width: background.width
+                height: background.height
+                radius: background.radius
+            }
+        }
+
         implicitHeight: root.expanded ?
             row.implicitHeight + padding * 2 :
             Math.min(80, row.implicitHeight + padding * 2)
@@ -183,6 +200,45 @@ MouseArea { // Notification group area
                 easing.type: root._contentAnim.type
                 easing.bezierCurve: root._contentAnim.bezierCurve
             }
+        }
+
+        // Glass blur layer — blurred wallpaper for aurora/angel popup
+        Image {
+            id: notifBlurredWallpaper
+            anchors.fill: parent
+            visible: root.popup && Appearance.auroraEverywhere && !Appearance.inirEverywhere
+            source: Wallpapers.effectiveWallpaperUrl
+            fillMode: Image.PreserveAspectCrop
+            cache: true
+            asynchronous: true
+
+            layer.enabled: Appearance.effectsEnabled
+            layer.effect: MultiEffect {
+                source: notifBlurredWallpaper
+                anchors.fill: source
+                saturation: Appearance.angelEverywhere
+                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
+                    : (Appearance.effectsEnabled ? 0.2 : 0)
+                blurEnabled: Appearance.effectsEnabled
+                blurMax: 100
+                blur: Appearance.effectsEnabled
+                    ? (Appearance.angelEverywhere ? Appearance.angel.blurIntensity : 1)
+                    : 0
+            }
+        }
+
+        // Glass tint overlay
+        Rectangle {
+            anchors.fill: parent
+            visible: root.popup && Appearance.auroraEverywhere && !Appearance.inirEverywhere
+            color: Appearance.angelEverywhere
+                ? ColorUtils.transparentize(Appearance.colors.colLayer0Base, Appearance.angel.overlayOpacity)
+                : ColorUtils.transparentize(Appearance.colors.colLayer0Base, Appearance.aurora.popupTransparentize)
+        }
+
+        // Angel partial border for popup
+        AngelPartialBorder {
+            targetRadius: background.radius
         }
 
         RowLayout { // Left column for icon, right column for content
