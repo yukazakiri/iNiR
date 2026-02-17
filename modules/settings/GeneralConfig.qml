@@ -311,7 +311,7 @@ ContentPage {
                 SettingsSwitch {
                     buttonIcon: "notifications"
                     text: Translation.tr("Notifications")
-                    checked: Config.options?.sounds?.notifications ?? false
+                    checked: Config.options?.sounds?.notifications ?? true
                     onCheckedChanged: {
                         Config.setNestedValue("sounds.notifications", checked);
                     }

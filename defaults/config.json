@@ -764,7 +764,7 @@
   },
   "sounds": {
     "battery": false,
-    "notifications": false,
+    "notifications": true,
     "pomodoro": false,
     "theme": "freedesktop"
   },

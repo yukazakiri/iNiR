@@ -974,7 +974,7 @@ Scope {
                 ConfigSwitch {
                     buttonIcon: "notifications_active"
                     text: Translation.tr("Sound effects")
-                    checked: Config.options?.sounds?.notifications ?? false
+                    checked: Config.options?.sounds?.notifications ?? true
                     onCheckedChanged: Config.setNestedValue("sounds.notifications", checked)
                 }
                 ConfigSwitch {
