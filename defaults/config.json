@@ -317,7 +317,7 @@
       "swapWarningThreshold": 85
     },
     "screenList": [],
-    "showBackground": false,
+    "showBackground": true,
     "topLeftIcon": "spark",
     "tray": {
       "filterPassive": true,
@@ -402,7 +402,7 @@
       "firefox"
     ],
     "pinnedOnStartup": true,
-    "showBackground": false,
+    "showBackground": true,
     "iconSize": 35,
     "separatePinnedFromRunning": true,
     "enableDragReorder": true
@@ -606,16 +606,8 @@
         "columns": 4,
         "toggles": [
           {
-            "size": 2,
-            "type": "audio"
-          },
-          {
-            "size": 2,
-            "type": "mic"
-          },
-          {
-            "size": 2,
-            "type": "easyEffects"
+            "size": 1,
+            "type": "nightLight"
           },
           {
             "size": 1,
@@ -623,15 +615,11 @@
           },
           {
             "size": 1,
-            "type": "nightLight"
+            "type": "screenSnip"
           },
           {
             "size": 1,
-            "type": "musicRecognition"
-          },
-          {
-            "size": 1,
-            "type": "cloudflareWarp"
+            "type": "colorPicker"
           }
         ]
       },
@@ -639,13 +627,13 @@
     },
     "translator": {
       "delay": 300,
-      "enable": true
+      "enable": false
     },
     "tools": {
       "enable": false
     },
     "ytmusic": {
-      "enable": true,
+      "enable": false,
       "autoConnect": true,
       "hideSyncBanner": false,
       "browser": "firefox",
@@ -693,8 +681,8 @@
       "media": true,
       "week": true,
       "context": true,
-      "note": true,
-      "launch": true,
+      "note": false,
+      "launch": false,
       "controls": true,
       "status": true,
       "crypto": false,
@@ -702,10 +690,10 @@
         "media",
         "week",
         "context",
-        "note",
-        "launch",
         "controls",
         "status",
+        "note",
+        "launch",
         "crypto"
       ],
       "spacing": 8,
