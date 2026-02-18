@@ -433,20 +433,20 @@ install_github_binary "matugen" "InioX/matugen" "x86_64.*tar.gz"
 
 # xwayland-satellite - X11 compatibility (try cargo-binstall first)
 if ! command -v xwayland-satellite &>/dev/null; then
-  echo -e "${STY_BLUE}[$0]: Installing xwayland-satellite...${STY_RST}"
+  log_info "Installing xwayland-satellite..."
   if command -v cargo-binstall &>/dev/null; then
     cargo-binstall -y xwayland-satellite
   elif command -v cargo &>/dev/null; then
     cargo install xwayland-satellite
   else
-    echo -e "${STY_YELLOW}[$0]: xwayland-satellite requires Rust. Install with: cargo install xwayland-satellite${STY_RST}"
+    log_warning "xwayland-satellite requires Rust — install with: cargo install xwayland-satellite"
   fi
 fi
 
 # darkly - Qt theme (download .rpm from GitHub)
 if ${INSTALL_FONTS:-true}; then
   if ! rpm -q darkly &>/dev/null; then
-    echo -e "${STY_BLUE}[$0]: Installing darkly theme from GitHub...${STY_RST}"
+    log_info "Installing darkly theme from GitHub..."
     DARKLY_RPM_URL=$(curl -s "https://api.github.com/repos/Bali10050/darkly/releases/latest" | \
       jq -r ".assets[] | select(.name | test(\"fc${FEDORA_VERSION}.*x86_64.rpm$\")) | .browser_download_url" | head -1)
     
@@ -459,7 +459,7 @@ if ${INSTALL_FONTS:-true}; then
     if [[ -n "$DARKLY_RPM_URL" && "$DARKLY_RPM_URL" != "null" ]]; then
       v sudo dnf install -y "$DARKLY_RPM_URL"
     else
-      echo -e "${STY_YELLOW}[$0]: darkly RPM not found for Fedora ${FEDORA_VERSION}${STY_RST}"
+      log_warning "darkly RPM not found for Fedora ${FEDORA_VERSION}"
     fi
   fi
 fi
@@ -467,7 +467,7 @@ fi
 #####################################################################################
 # Install uv (Python package manager)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing uv...${STY_RST}"
+tui_info "Installing uv (Python package manager)..."
 if ! command -v uv &>/dev/null; then
   # Try the official installer first (fastest)
   curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null || {
@@ -475,7 +475,7 @@ if ! command -v uv &>/dev/null; then
     if command -v cargo &>/dev/null; then
       cargo install uv
     else
-      echo -e "${STY_YELLOW}[$0]: Could not install uv. Install manually: https://github.com/astral-sh/uv${STY_RST}"
+      log_warning "Could not install uv. Install manually: https://github.com/astral-sh/uv"
     fi
   }
 fi
@@ -483,44 +483,44 @@ fi
 #####################################################################################
 # Install critical fonts
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing critical fonts...${STY_RST}"
+tui_info "Installing critical fonts..."
 
 FONT_DIR="$HOME/.local/share/fonts"
 mkdir -p "$FONT_DIR"
 
 # Material Symbols Rounded (icons) - this is the font iNiR actually uses
 if ! fc-list | grep -qi "Material Symbols Rounded"; then
-  echo -e "${STY_BLUE}[$0]: Downloading Material Symbols Rounded font...${STY_RST}"
+  log_info "Downloading Material Symbols Rounded font..."
   
   # Direct download from raw.githubusercontent
   MATERIAL_URL="https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf"
   
   if curl -fsSL -o "$FONT_DIR/MaterialSymbolsRounded.ttf" "$MATERIAL_URL"; then
     fc-cache -fv "$FONT_DIR" 2>/dev/null
-    echo -e "${STY_GREEN}[$0]: Material Symbols Rounded font installed.${STY_RST}"
+    log_success "Material Symbols Rounded font installed"
   else
-    echo -e "${STY_YELLOW}[$0]: Could not download Material Symbols Rounded.${STY_RST}"
-    echo -e "${STY_YELLOW}Please download from: https://fonts.google.com/icons${STY_RST}"
+    log_warning "Could not download Material Symbols Rounded"
+    log_warning "Download from: https://fonts.google.com/icons"
   fi
 fi
 
 # Also install Outlined variant (used by nts)
 if ! fc-list | grep -qi "Material Symbols Outlined"; then
-  echo -e "${STY_BLUE}[$0]: Downloading Material Symbols Outlined font...${STY_RST}"
+  log_info "Downloading Material Symbols Outlined font..."
   
   MATERIAL_URL="https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf"
   
   if curl -fsSL -o "$FONT_DIR/MaterialSymbolsOutlined.ttf" "$MATERIAL_URL"; then
     fc-cache -fv "$FONT_DIR" 2>/dev/null
-    echo -e "${STY_GREEN}[$0]: Material Symbols Outlined font installed.${STY_RST}"
+    log_success "Material Symbols Outlined font installed"
   else
-    echo -e "${STYLLOW}[$0]: Could not download Material Symbols Outlined.${STY_RST}"
+    log_warning "Could not download Material Symbols Outlined"
   fi
 fi
 
 # JetBrains Mono Nerd Font (if not installed via dnf)
 if ! fc-list | grep -qi "JetBrainsMono Nerd"; then
-  echo -e "${STY_BLUE}[$0]: Downloading JetBrains Mono Nerd Font...${STY_RST}"
+  log_info "Downloading JetBrains Mono Nerd Font..."
   
   NERD_FONTS_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
   TEMP_DIR="/tmp/nerdfonts-$$"
@@ -529,9 +529,9 @@ if ! fc-list | grep -qi "JetBrainsMono Nerd"; then
   if curl -fsSL -o "$TEMP_DIR/JetBrainsMono.zip" "$NERD_FONTS_URL"; then
     unzip -o "$TEMP_DIR/JetBrainsMono.zip" -d "$FONT_DIR" >/dev/null 2>&1
     fc-cache -f "$FONT_DIR"
-    echo -e "${STY_GREEN}[$0]: JetBrains Mono Nerd Font installed.${STY_RST}"
+    log_success "JetBrains Mono Nerd Font installed"
   else
-    echo -e "${STY_YELLOW}[$0]: Could not download JetBrains Mono Nerd Font.${STY_RST}"
+    log_warning "Could not download JetBrains Mono Nerd Font"
   fi
   
   rm -rf "$TEMP_DIR"
@@ -540,14 +540,14 @@ fi
 #####################################################################################
 # Icon themes (WhiteSur, MacTahoe)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing icon themes...${STY_RST}"
+tui_info "Installing icon themes..."
 
 ICON_DIR="$HOME/.local/share/icons"
 mkdir -p "$ICON_DIR"
 
 # WhiteSur icon theme
 if [[ ! -d "$ICON_DIR/WhiteSur-dark" ]]; then
-  echo -e "${STY_BLUE}[$0]: Installing WhiteSur icon theme...${STY_RST}"
+  log_info "Installing WhiteSur icon theme..."
   
   TEMP_DIR="/tmp/whitesur-icons-$$"
   mkdir -p "$TEMP_DIR"
@@ -561,9 +561,9 @@ if [[ ! -d "$ICON_DIR/WhiteSur-dark" ]]; then
       cp -r src/WhiteSur "$ICON_DIR/WhiteSur-dark" 2>/dev/null || true
     }
     cd - >/dev/null
-    echo -e "${STY_GREEN}[$0]: WhiteSur icon theme installed.${STY_RST}"
+    log_success "WhiteSur icon theme installed"
   else
-    echo -e "${STY_YELLOW}[$0]: Could not download WhiteSur icon theme.${STY_RST}"
+    log_warning "Could not download WhiteSur icon theme"
   fi
   
   rm -rf "$TEMP_DIR"
@@ -571,7 +571,7 @@ fi
 
 # MacTahoe icon theme (for dock)
 if [[ ! -d "$ICON_DIR/MacTahoe" ]]; then
-  echo -e "${STY_BLUE}[$0]: Installing MacTahoe icon theme...${STY_RST}"
+  log_info "Installing MacTahoe icon theme..."
   
   TEMP_DIR="/tmp/mactahoe-icons-$$"
   mkdir -p "$TEMP_DIR"
@@ -582,9 +582,9 @@ if [[ ! -d "$ICON_DIR/MacTahoe" ]]; then
     cd "$TEMP_DIR/MacTahoe-icon-theme-master" 2>/dev/null || cd "$TEMP_DIR/MacTahoe-icon-theme-main"
     ./install.sh -d "$ICON_DIR" >/dev/null 2>&1
     cd - >/dev/null
-    echo -e "${STY_GREEN}[$0]: MacTahoe icon theme installed.${STY_RST}"
+    log_success "MacTahoe icon theme installed"
   else
-    echo -e "${STY_YELLOW}[$0]: Could not download MacTahoe icon theme.${STY_RST}"
+    log_warning "Could not download MacTahoe icon theme"
   fi
   
   rm -rf "$TEMP_DIR"
@@ -593,11 +593,11 @@ fi
 #####################################################################################
 # Cursor themes
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing cursor themes...${STY_RST}"
+tui_info "Installing cursor themes..."
 
 # Bibata Modern cursors (popular, well-maintained)
 if [[ ! -d "$ICON_DIR/Bibata-Modern-Classic" ]]; then
-  echo -e "${STY_BLUE}[$0]: Installing Bibata cursor theme...${STY_RST}"
+  log_info "Installing Bibata cursor theme..."
   
   TEMP_DIR="/tmp/bibata-cursors-$$"
   mkdir -p "$TEMP_DIR"
@@ -606,14 +606,14 @@ if [[ ! -d "$ICON_DIR/Bibata-Modern-Classic" ]]; then
   if curl -fsSL -o "$TEMP_DIR/bibata-classic.tar.xz" \
     "https://github.com/ful1e5/Bibata_Cursor/releases/latest/download/Bibata-Modern-Classic.tar.xz"; then
     tar -xf "$TEMP_DIR/bibata-classic.tar.xz" -C "$ICON_DIR"
-    echo -e "${STY_GREEN}[$0]: Bibata Modern Classic cursor installed.${STY_RST}"
+    log_success "Bibata Modern Classic cursor installed"
   fi
   
   # Download Bibata Modern Ice (light)
   if curl -fsSL -o "$TEMP_DIR/bibata-ice.tar.xz" \
     "https://github.com/ful1e5/Bibata_Cursor/releases/latest/download/Bibata-Modern-Ice.tar.xz"; then
     tar -xf "$TEMP_DIR/bibata-ice.tar.xz" -C "$ICON_DIR"
-    echo -e "${STY_GREEN}[$0]: Bibata Modern Ice cursor installed.${STY_RST}"
+    log_success "Bibata Modern Ice cursor installed"
   fi
   
   rm -rf "$TEMP_DIR"
@@ -622,34 +622,34 @@ fi
 #####################################################################################
 # Optional fonts (nice to have)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing optional fonts...${STY_RST}"
+tui_info "Installing optional fonts..."
 
 # Space Grotesk
 if ! fc-list | grep -qi "Space Grotesk"; then
-  echo -e "${STY_BLUE}[$0]: Downloading Space Grotesk font...${STY_RST}"
+  log_info "Downloading Space Grotesk font..."
   curl -fsSL -o "$FONT_DIR/SpaceGrotesk.ttf" \
     "https://github.com/floriankarsten/space-grotesk/raw/master/fonts/ttf/SpaceGrotesk%5Bwght%5D.ttf" 2>/dev/null && \
-    echo -e "${STY_GREEN}[$0]: Space Grotesk installed.${STY_RST}"
+    log_success "Space Grotesk installed"
 fi
 
 # Rubik
 if ! fc-list | grep -qi "Rubik"; then
-  echo -e "${STY_BLUE}[$0]: Downloading Rubik font...${STY_RST}"
+  log_info "Downloading Rubik font..."
   curl -fsSL -o "$FONT_DIR/Rubik.ttf" \
     "https://github.com/googlefonts/rubik/raw/main/fonts/variable/Rubik%5Bwght%5D.ttf" 2>/dev/null && \
-    echo -e "${STY_GREEN}[$0]: Rubik installed.${STY_RST}"
+    log_success "Rubik installed"
 fi
 
 # Geist (used by default in iNiR)
 if ! fc-list | grep -qi "Geist"; then
-  echo -e "${STY_BLUE}[$0]: Downloading Geist font...${STY_RST}"
+  log_info "Downloading Geist font..."
   TEMP_DIR="/tmp/geist-font-$$"
   mkdir -p "$TEMP_DIR"
   if curl -fsSL -o "$TEMP_DIR/geist.zip" \
     "https://github.com/vercel/geist-font/releases/latest/download/Geist.zip"; then
     unzip -o "$TEMP_DIR/geist.zip" -d "$TEMP_DIR" >/dev/null 2>&1
     find "$TEMP_DIR" -name "*.ttf" -exec cp {} "$FONT_DIR/" \;
-    echo -e "${STY_GREEN}[$0]: Geist font installed.${STY_RST}"
+    log_success "Geist font installed"
   fi
   rm -rf "$TEMP_DIR"
 fi
@@ -660,25 +660,25 @@ fc-cache -f "$FONT_DIR" 2>/dev/null
 #####################################################################################
 # Install CLI tools (starship, eza)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing CLI tools...${STY_RST}"
+tui_info "Installing CLI tools..."
 
 # Starship prompt
 if ! command -v starship &>/dev/null; then
-  echo -e "${STY_BLUE}[$0]: Installing Starship prompt...${STY_RST}"
+  log_info "Installing Starship prompt..."
   mkdir -p ~/.local/bin
   curl -sS https://starship.rs/install.sh | sh -s -- -y -b ~/.local/bin 2>/dev/null || \
-    echo -e "${STY_YELLOW}[$0]: Could not install Starship.${STY_RST}"
+    log_warning "Could not install Starship"
 fi
 
 # Eza (modern ls replacement)
 if ! command -v eza &>/dev/null; then
-  echo -e "${STY_BLUE}[$0]: Installing Eza...${STY_RST}"
+  log_info "Installing Eza..."
   mkdir -p ~/.local/bin
   if curl -fsSL -o /tmp/eza.tar.gz \
     'https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-musl.tar.gz'; then
     tar -xzf /tmp/eza.tar.gz -C ~/.local/bin
     chmod +x ~/.local/bin/eza
-    echo -e "${STY_GREEN}[$0]: Eza installed.${STY_RST}"
+    log_success "Eza installed"
   fi
   rm -f /tmp/eza.tar.gz
 fi
@@ -686,7 +686,7 @@ fi
 #####################################################################################
 # Install adw-gtk3 theme
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing GTK themes...${STY_RST}"
+tui_info "Installing GTK themes..."
 
 if ! rpm -q adw-gtk3-theme &>/dev/null; then
   v sudo dnf install -y adw-gtk3-theme
@@ -695,7 +695,7 @@ fi
 #####################################################################################
 # Install polkit-e (for authentication dialogs)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing polkit agent...${STY_RST}"
+tui_info "Installing polkit agent..."
 
 if ! rpm -q polkit-kde &>/dev/null; then
   v sudo dnf install -y polkit-kde
@@ -704,7 +704,7 @@ fi
 #####################################################################################
 # Setup configuration files
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Setting up configuration files...${STY_RST}"
+tui_info "Setting up configuration files..."
 
 # GTK configuration
 setup-gtk-config "Bibata-Modern-Classic" "WhiteSur-dark" "adw-gtk3-dark" "Geist"
@@ -732,18 +732,18 @@ v install-python-packages
 # Post-install summary
 #####################################################################################
 echo ""
-echo -e "${STY_GREEN}════════════════════════════════════════════════════════════════${STY_RST}"
-echo -e "${STY_GREEN}  Fedora dependencies installed successfully!${STY_RST}"
-echo -e "${STY_GREEN}════════════════════════════════════════════════════════════════${STY_RST}"
+log_success "════════════════════════════════════════════════════════════════"
+log_success "  Fedora dependencies installed!"
+log_success "════════════════════════════════════════════════════════════════"
 echo ""
-echo -e "${STY_CYAN}Installed from COPR (no compilation):${STY_RST}"
+log_info "Installed from COPR (no compilation):"
 echo "  - quickshell (errornointernet/quickshell)"
 echo "  - niri (yalter/niri)"
 echo ""
-echo -e "${STY_CYAN}Installed from GitHub releases:${STY_RST}"
+log_info "Installed from GitHub releases:"
 echo "  - gum, cliphist, matugen, darkly, starship, eza"
 echo ""
-echo -e "${STY_CYAN}Themes configured:${STY_RST}"
+log_info "Themes configured:"
 echo "  - GTK: adw-gtk3-dark"
 echo "  - Icons: WhiteSur-dark, MacTahoe"
 echo "  - Cursor: Bibata-Modern-Classic"
@@ -751,12 +751,12 @@ echo "  - Qt/Kvantum: MaterialAdw + Darkly"
 echo ""
 
 # Verify critical commands
-echo -e "${STY_CYAN}Verifying installation:${STY_RST}"
+tui_info "Verifying installation:"
 for cmd in qs niri fish gum matugen cliphist starship eza; do
   if command -v "$cmd" &>/dev/null || command -v ~/.local/bin/$cmd &>/dev/null; then
-    echo -e "  ${STY_GREEN}✓${STY_RST} $cmd"
+    log_success "$cmd"
   else
-    echo -e "  ${STY_RED}✗${STY_RST} $cmd (not found)"
+    log_error "$cmd not found"
   fi
 done
 echo ""
@@ -764,7 +764,7 @@ echo ""
 # Detect and show polkit agent path
 POLKIT_AGENT=$(get-polkit-agent 2>/dev/null)
 if [[ -n "$POLKIT_AGENT" ]]; then
-  echo -e "${STY_CYAN}Polkit agent:${STY_RST} $POLKIT_AGENT"
-  echo -e "${STY_YELLOW}Note: Update your niri config spawn-at-startup if different.${STY_RST}"
+  log_info "Polkit agent: $POLKIT_AGENT"
+  log_info "Update your niri config spawn-at-startup if this differs"
 fi
 echo ""
