@@ -21,7 +21,7 @@ fi
 
 # Detect Fedora version
 FEDORA_VERSION=$(rpm -E %fedora)
-echo -e "${STY_CYAN}[$0]: Detected Fedora ${FEDORA_VERSION}${STY_RST}"
+tui_info "Detected Fedora ${FEDORA_VERSION}"
 
 #####################################################################################
 # Optional: install only a specific list of missing deps
@@ -104,27 +104,27 @@ esac
 #####################################################################################
 # Enable required COPR repositories
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Enabling COPR repositories...${STY_RST}"
+tui_info "Enabling COPR repositories..."
 
 # Quickshell (CRITICAL) - PRECOMPILED from errornointernet COPR (no compilation needed!)
 if ! dnf copr list --enabled 2>/dev/null | grep -q "errornointernet/quickshell"; then
-  echo -e "${STY_BLUE}[$0]: Enabling Quickshell COPR (precompiled packages)...${STY_RST}"
+  log_info "Enabling Quickshell COPR (precompiled)..."
   v sudo dnf copr enable -y errornointernet/quickshell || {
-    echo -e "${STY_RED}[$0]: Failed to enable Quickshell COPR. You may need to install manually.${STY_RST}"
-    echo -e "${STY_YELLOW}See: https://copr.fedorainfracloud.org/coprs/errornointernet/quickshell/${STY_RST}"
+    log_error "Failed to enable Quickshell COPR — install manually:"
+    log_warning "https://copr.fedorainfracloud.org/coprs/errornointernet/quickshell/"
   }
 fi
 
 # Niri compositor
 if ! dnf copr list --enabled 2>/dev/null | grep -q "yalter/niri"; then
-  echo -e "${STY_BLUE}[$0]: Enabling Niri COPR...${STY_RST}"
+  log_info "Enabling Niri COPR..."
   v sudo dnf copr enable -y yalter/niri
 fi
 
 #####################################################################################
 # Enable RPM Fusion (for ffmpeg, etc.)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Enabling RPM Fusion repositories...${STY_RST}"
+tui_info "Enabling RPM Fusion repositories..."
 
 if ! rpm -q rpmfusion-free-release &>/dev/null; then
   v sudo dnf install -y \
@@ -139,7 +139,7 @@ fi
 #####################################################################################
 # Install official repository packages
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing packages from repositories...${STY_RST}"
+tui_info "Installing packages from repositories..."
 
 # Core system packages (including Quickshell and Niri from COPR)
 FEDORA_CORE_PKGS=(
@@ -319,38 +319,38 @@ installflags=""
 $ask || installflags="-y --skip-unavailable"
 
 # Install core packages
-echo -e "${STY_BLUE}[$0]: Installing core packages (including Quickshell & Niri)...${STY_RST}"
+log_info "Installing core packages (Quickshell + Niri)..."
 v sudo dnf install $installflags "${FEDORA_CORE_PKGS[@]}"
 
 # Install Qt6 packages
-echo -e "${STY_BLUE}[$0]: Installing Qt6 packages...${STY_RST}"
+log_info "Installing Qt6 packages..."
 v sudo dnf install $installflags "${FEDORA_QT6_PKGS[@]}"
 
 # Install based on flags
 if ${INSTALL_AUDIO:-true}; then
-  echo -e "${STY_BLUE}[$0]: Installing audio packages...${STY_RST}"
+  log_info "Installing audio packages..."
   v sudo dnf install $installflags "${FEDORA_AUDIO_PKGS[@]}"
 fi
 
 if ${INSTALL_TOOLKIT:-true}; then
-  echo -e "${STY_BLUE}[$0]: Installing toolkit packages...${STY_RST}"
+  log_info "Installing toolkit packages..."
   v sudo dnf install $installflags "${FEDORA_TOOLKIT_PKGS[@]}"
 fi
 
 if ${INSTALL_SCREENCAPTURE:-true}; then
-  echo -e "${STY_BLUE}[$0]: Installing screen capture packages...${STY_RST}"
+  log_info "Installing screen capture packages..."
   v sudo dnf install $installflags "${FEDORA_SCREENCAPTURE_PKGS[@]}"
 fi
 
 if ${INSTALL_FONTS:-true}; then
-  echo -e "${STY_BLUE}[$0]: Installing font packages...${STY_RST}"
+  log_info "Installing font packages..."
   v sudo dnf install $installflags "${FEDORA_FONT_PKGS[@]}"
 fi
 
 #####################################################################################
 # Install packages from GitHub releases (precompiled binaries)
 #####################################################################################
-echo -e "${STY_CYAN}[$0]: Installing packages from GitHub releases...${STY_RST}"
+tui_info "Installing packages from GitHub releases..."
 
 ARCH=$(uname -m)
 case "$ARCH" in
@@ -367,18 +367,18 @@ install_github_binary() {
   local install_path="${4:-/usr/local/bin}"
   
   if command -v "$name" &>/dev/null; then
-    echo -e "${STY_GREEN}[$0]: $name already installed${STY_RST}"
+    log_success "$name already installed"
     return 0
   fi
   
-  echo -e "${STY_BLUE}[$0]: Installing $name from GitHub...${STY_RST}"
+  log_info "Installing $name from GitHub..."
   
   local download_url
   download_url=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" | \
     jq -r ".assets[] | select(.name | test(\"${asset_pattern}\")) | .browser_download_url" | head -1)
   
   if [[ -z "$download_url" || "$download_url" == "null" ]]; then
-    echo -e "${STY_YELLOW}[$0]: Could not find $name binary, skipping...${STY_RST}"
+    log_warning "Could not find $name binary, skipping"
     return 1
   fi
   
@@ -407,9 +407,9 @@ install_github_binary() {
         ;;
     esac
     sudo chmod +x "$install_path/$name" 2>/dev/null
-    echo -e "${STY_GREEN}[$0]: $name installed successfully${STY_RST}"
+    log_success "$name installed"
   else
-    echo -e "${STY_YELLOW}[$0]: Failed to download $name${STY_RST}"
+    log_warning "Failed to download $name"
   fi
   
   rm -rf "$temp_dir"
@@ -417,7 +417,7 @@ install_github_binary() {
 
 # gum - TUI tool (download .rpm from GitHub)
 if ! command -v gum &>/dev/null; then
-  echo -e "${STY_BLUE}[$0]: Installing gum from GitHub...${STY_RST}"
+  log_info "Installing gum from GitHub..."
   GUM_RPM_URL=$(curl -s "https://api.github.com/repos/charmbracelet/gum/releases/latest" | \
     jq -r '.assets[] | select(.name | test("linux.*x86_64.*rpm$")) | .browser_download_url' | head -1)
   if [[ -n "$GUM_RPM_URL" && "$GUM_RPM_URL" != "null" ]]; then
