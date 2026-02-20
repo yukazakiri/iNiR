@@ -160,6 +160,33 @@ for pkgdir in ./sdata/dist-arch/inir-*/; do
 done
 
 #####################################################################################
+# Pre-install: resolve quickshell package conflicts
+# quickshell-git and quickshell-bin conflict with quickshell (official extra repo).
+# pacman --noconfirm does NOT auto-remove conflicting packages — it aborts instead.
+#####################################################################################
+for qs_conflict in quickshell-git quickshell-bin; do
+  if pacman -Qi "$qs_conflict" &>/dev/null 2>&1; then
+    log_warning "$qs_conflict is installed and conflicts with quickshell (stable, extra repo)"
+    if $ask; then
+      if tui_confirm "Replace $qs_conflict with quickshell (stable)? (recommended)"; then
+        log_info "Removing $qs_conflict..."
+        v sudo pacman -Rdd --noconfirm "$qs_conflict" 2>/dev/null \
+          || v sudo pacman -R --noconfirm "$qs_conflict" \
+          || log_warning "Could not remove $qs_conflict — install may fail"
+      else
+        log_warning "Keeping $qs_conflict — removing quickshell from install list"
+        OFFICIAL_PACKAGES=("${OFFICIAL_PACKAGES[@]/quickshell/}")
+      fi
+    else
+      log_info "Non-interactive: replacing $qs_conflict with quickshell (stable)"
+      sudo pacman -Rdd --noconfirm "$qs_conflict" 2>/dev/null \
+        || sudo pacman -R --noconfirm "$qs_conflict" 2>/dev/null \
+        || log_warning "Could not remove $qs_conflict — install may fail"
+    fi
+  fi
+done
+
+#####################################################################################
 # Install official repo packages (NO COMPILATION NEEDED)
 #####################################################################################
 tui_info "Installing official repo packages..."
@@ -212,6 +239,9 @@ OFFICIAL_PACKAGES=(
   qt6-svg
   qt6-virtualkeyboard
   qt6-multimedia-ffmpeg
+
+  # Video wallpaper support (thumbnail + SDDM background extraction)
+  ffmpeg
 )
 
 installflags="--needed"
