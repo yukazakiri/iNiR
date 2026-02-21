@@ -13,6 +13,7 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import "root:modules/common/functions/md5.js" as MD5
 
 Variants {
     id: root
@@ -102,11 +103,10 @@ Variants {
             if (wallpaperIsVideo) {
                 const _dep = Wallpapers.videoFirstFrames // reactive binding
                 const ff = Wallpapers.getVideoFirstFramePath(wallpaperPathRaw)
-                if (ff) return ff
-                const configThumb = Config.options?.background?.thumbnailPath ?? ""
-                if (configThumb) return configThumb
+                // Cache-bust so ColorQuantizer reloads when the first frame appears.
+                if (ff) return ff + "?ff=1"
                 Wallpapers.ensureVideoFirstFrame(wallpaperPathRaw)
-                return ""
+                return Wallpapers._videoThumbDir + "/" + MD5.hash(wallpaperPathRaw) + ".jpg?ff=0"
             }
             return wallpaperPathRaw
         }

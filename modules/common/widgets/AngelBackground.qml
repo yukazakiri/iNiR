@@ -52,7 +52,8 @@ Rectangle {
         y: -root.screenY
         width: root.screenWidth
         height: root.screenHeight
-        visible: (root.auroraEverywhere || root.angelEverywhere) && !root.inirEverywhere
+        // Avoid showing a stale cached pixmap while the new source is still loading.
+        visible: (root.auroraEverywhere || root.angelEverywhere) && !root.inirEverywhere && status === Image.Ready
         source: root.wallpaperUrl
         fillMode: Image.PreserveAspectCrop
         cache: true
