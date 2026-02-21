@@ -1,3 +1,5 @@
+MenuBar=Disabled
+
 [DetailsMode]
 PreviewSize=32
 
@@ -20,3 +22,6 @@ ToolButtonStyle=IconOnly
 
 [PreviewSettings]
 Plugins=ffmpegthumbnailer,appimagethumbnail,audiothumbnail,avif,blenderthumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,directorythumbnail,fontthumbnail,heif,imagethumbnail,jpegthumbnail,jxl,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,mobithumbnail,opendocumentthumbnail,gsthumbnail,rawthumbnail,librsvg,svgthumbnail,ffmpegthumbs,gdk-pixbuf-thumbnailer,gsf-office
+
+[Toolbar mainToolBar]
+ToolButtonStyle=IconOnly
