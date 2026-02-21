@@ -344,9 +344,14 @@ Variants {
 
                     readonly property bool shouldPlay: bgRoot.enableAnimation && !GlobalStates.screenLocked && !Appearance._gameModeActive
 
+                    function pauseAndShowFirstFrame() {
+                        pause()
+                        seek(0) // Ensure first frame is displayed when paused
+                    }
+
                     onPlaybackStateChanged: {
                         if (playbackState === MediaPlayer.PlayingState && !shouldPlay) {
-                            pause()
+                            pauseAndShowFirstFrame()
                         }
                         if (playbackState === MediaPlayer.StoppedState && visible && shouldPlay) {
                             play()
@@ -356,14 +361,14 @@ Variants {
                     onShouldPlayChanged: {
                         if (visible && bgRoot.wallpaperIsVideo) {
                             if (shouldPlay) play()
-                            else pause()
+                            else pauseAndShowFirstFrame()
                         }
                     }
                     
                     onVisibleChanged: {
                         if (visible && bgRoot.wallpaperIsVideo) {
                             if (shouldPlay) play()
-                            else pause()
+                            else pauseAndShowFirstFrame()
                         } else {
                             pause()
                         }
@@ -373,7 +378,7 @@ Variants {
                         target: GlobalStates
                         function onScreenLockedChanged() {
                             if (!videoWallpaper.shouldPlay) {
-                                videoWallpaper.pause()
+                                videoWallpaper.pauseAndShowFirstFrame()
                             } else if (videoWallpaper.visible && bgRoot.wallpaperIsVideo) {
                                 videoWallpaper.play()
                             }
@@ -384,7 +389,7 @@ Variants {
                         target: GameMode
                         function onActiveChanged() {
                             if (!videoWallpaper.shouldPlay) {
-                                videoWallpaper.pause()
+                                videoWallpaper.pauseAndShowFirstFrame()
                             } else if (videoWallpaper.visible && bgRoot.wallpaperIsVideo) {
                                 videoWallpaper.play()
                             }
