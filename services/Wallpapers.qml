@@ -236,6 +236,9 @@ Singleton {
         }
 
         // Global wallpaper: use switchwall.sh for color generation + system theming
+        // Kill any previous switchwall process to prevent race conditions
+        // (old process finishing after new one would overwrite colors)
+        if (applyProc.running) applyProc.kill()
         applyProc.exec([
             Directories.wallpaperSwitchScriptPath,
             "--image", path,
