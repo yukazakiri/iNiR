@@ -10,6 +10,8 @@ set -l niri_bin /usr/bin/niri
 set -l jq_bin /usr/bin/jq
 set -l cliphist_bin /usr/bin/cliphist
 set -l head_bin /usr/bin/head
+set -l wlpaste_bin /usr/bin/wl-paste
+set -l wlcopy_bin /usr/bin/wl-copy
 
 # Parse arguments
 for arg in $argv
@@ -40,6 +42,37 @@ end
 if not test -x $head_bin
     echo "[capture-windows] missing head: $head_bin" 1>&2
     exit 127
+end
+
+# Preserve clipboard (best-effort) so previews never replace user clipboard.
+set -l saved_clip_mime ""
+set -l saved_clip_file ""
+if test -x $wlpaste_bin; and test -x $wlcopy_bin
+    set -l mime_list ($wlpaste_bin -l 2>/dev/null)
+    if test (count $mime_list) -gt 0
+        if contains -- "text/plain;charset=utf-8" $mime_list
+            set saved_clip_mime "text/plain;charset=utf-8"
+        else if contains -- "text/plain" $mime_list
+            set saved_clip_mime "text/plain"
+        else if contains -- "UTF8_STRING" $mime_list
+            set saved_clip_mime "UTF8_STRING"
+        else if contains -- "image/png" $mime_list
+            set saved_clip_mime "image/png"
+        end
+    end
+
+    if test -n "$saved_clip_mime"
+        set saved_clip_file (mktemp -t inir-clipboard.XXXXXX 2>/dev/null)
+        if test -n "$saved_clip_file"
+            $wlpaste_bin --type "$saved_clip_mime" > "$saved_clip_file" 2>/dev/null || begin
+                set saved_clip_mime ""
+                rm -f "$saved_clip_file" 2>/dev/null
+                set saved_clip_file ""
+            end
+        else
+            set saved_clip_mime ""
+        end
+    end
 end
 
 # Get all window IDs from Niri
@@ -128,6 +161,12 @@ while test $cleanup_count2 -lt 50
         break
     end
 end
+
+# Restore clipboard AFTER cleanup so screenshot-window side effects never persist.
+if test -n "$saved_clip_mime"; and test -n "$saved_clip_file"; and test -x $wlcopy_bin
+    $wlcopy_bin --type "$saved_clip_mime" < "$saved_clip_file" 2>/dev/null || true
+end
+rm -f "$saved_clip_file" 2>/dev/null || true
 
 set -l missing 0
 for id in $windows_to_capture

@@ -11,6 +11,8 @@ niri_bin="/usr/bin/niri"
 jq_bin="/usr/bin/jq"
 cliphist_bin="/usr/bin/cliphist"
 head_bin="/usr/bin/head"
+wl_paste_bin="/usr/bin/wl-paste"
+wl_copy_bin="/usr/bin/wl-copy"
 
 capture_all=false
 ids_to_capture=()
@@ -29,6 +31,35 @@ for bin in "$niri_bin" "$jq_bin" "$cliphist_bin" "$head_bin"; do
     exit 127
   fi
 done
+
+# Preserve clipboard (best-effort) so previews never replace user clipboard.
+saved_clip_mime=""
+saved_clip_file=""
+if [[ -x "$wl_paste_bin" && -x "$wl_copy_bin" ]]; then
+  mime_list="$($wl_paste_bin -l 2>/dev/null || true)"
+  if printf '%s\n' "$mime_list" | grep -qx "text/plain;charset=utf-8"; then
+    saved_clip_mime="text/plain;charset=utf-8"
+  elif printf '%s\n' "$mime_list" | grep -qx "text/plain"; then
+    saved_clip_mime="text/plain"
+  elif printf '%s\n' "$mime_list" | grep -qx "UTF8_STRING"; then
+    saved_clip_mime="UTF8_STRING"
+  elif printf '%s\n' "$mime_list" | grep -qx "image/png"; then
+    saved_clip_mime="image/png"
+  fi
+
+  if [[ -n "$saved_clip_mime" ]]; then
+    saved_clip_file="$(mktemp -t inir-clipboard.XXXXXX 2>/dev/null || true)"
+    if [[ -n "$saved_clip_file" ]]; then
+      if ! "$wl_paste_bin" --type "$saved_clip_mime" >"$saved_clip_file" 2>/dev/null; then
+        saved_clip_mime=""
+        rm -f "$saved_clip_file" 2>/dev/null || true
+        saved_clip_file=""
+      fi
+    else
+      saved_clip_mime=""
+    fi
+  fi
+fi
 
 mapfile -t all_windows < <("$niri_bin" msg -j windows 2>/dev/null | "$jq_bin" -r '.[].id')
 if [[ ${#all_windows[@]} -eq 0 ]]; then
@@ -105,6 +136,12 @@ while [[ $cleanup_count -lt $max_cleanup ]]; do
     break
   fi
 done
+
+# Restore clipboard AFTER cleanup so screenshot-window side effects never persist.
+if [[ -n "$saved_clip_mime" && -n "$saved_clip_file" && -x "$wl_copy_bin" ]]; then
+  "$wl_copy_bin" --type "$saved_clip_mime" <"$saved_clip_file" 2>/dev/null || true
+fi
+rm -f "$saved_clip_file" 2>/dev/null || true
 
 missing=0
 for id in "${windows_to_capture[@]}"; do
