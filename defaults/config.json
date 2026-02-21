@@ -10,6 +10,7 @@
     "blurAmount": 0.4,
     "compactStyle": false,
     "enableAnimation": false,
+    "enableBlurGlass": false,
     "monochromeIcons": false,
     "panelAlignment": "right",
     "scrimDim": 0,
@@ -124,9 +125,10 @@
         "termFgBoost": 0.35
       },
       "terminalColorAdjustments": {
-        "saturation": 0.4,
-        "brightness": 0.55,
-        "harmony": 0.4
+        "saturation": 0.65,
+        "brightness": 0.60,
+        "harmony": 0.4,
+        "backgroundBrightness": 0.50
       },
       "terminals": {
         "kitty": true,
@@ -135,7 +137,10 @@
         "wezterm": true,
         "ghostty": true,
         "konsole": true,
-        "starship": true
+        "starship": true,
+        "btop": true,
+        "lazygit": true,
+        "yazi": true
       }
     },
     "typography": {
@@ -154,6 +159,7 @@
   "apps": {
     "bluetooth": "blueman-manager",
     "discord": "discord",
+    "manageUser": "kcmshell6 kcm_users",
     "network": "nm-connection-editor",
     "networkEthernet": "nm-connection-editor",
     "taskManager": "missioncenter",
@@ -203,6 +209,12 @@
     },
     "thumbnailPath": "",
     "wallpaperPath": "",
+    "autoWallpaper": {
+      "enable": false,
+      "intervalMinutes": 30,
+      "generateColors": true,
+      "folder": ""
+    },
     "widgets": {
       "clock": {
         "cookie": {
@@ -845,7 +857,8 @@
     "showItemId": false,
     "invertPinnedItems": true,
     "pinnedItems": [],
-    "filterPassive": true
+    "filterPassive": true,
+    "extraProblematicApps": []
   },
   "shellUpdates": {
     "enabled": true,
@@ -863,7 +876,9 @@
     "skipped": false
   },
   "waffles": {
-    "settings": {},
+    "settings": {
+      "useMaterialStyle": false
+    },
     "tweaks": {
       "smootherMenuAnimations": true,
       "switchHandlePositionFix": true

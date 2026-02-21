@@ -105,7 +105,9 @@ check_dependencies() {
             doctor_pass "All required commands available"
         fi
     else
-        doctor_missing_deps=("${missing[@]}")
+        # Keep command identifiers here (qs, niri, wl-copy, etc.) because
+        # setup/update installers map these keys to distro package names.
+        doctor_missing_deps=("${missing_cmds[@]}")
         doctor_fail "Missing: ${missing[*]}"
         
         # Provide distro-specific install hints

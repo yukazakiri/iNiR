@@ -12,6 +12,27 @@ SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 MATUGEN_DIR="$XDG_CONFIG_HOME/matugen"
 terminalscheme="$SCRIPT_DIR/terminal/scheme-base.json"
 
+repair_matugen_colors_template() {
+    local user_template="$MATUGEN_DIR/templates/colors.json"
+    local default_template="$CONFIG_DIR/defaults/matugen/templates/colors.json"
+
+    # If user template is missing, restore from project defaults.
+    if [[ ! -f "$user_template" && -f "$default_template" ]]; then
+        mkdir -p "$MATUGEN_DIR/templates"
+        cp "$default_template" "$user_template"
+        return
+    fi
+
+    # Some broken installs ended up with commented tertiary lines in this template.
+    # Matugen then writes invalid JSON (comments included), breaking shell theming.
+    if [[ -f "$user_template" ]] && grep -qE '^\s*//\s*"tertiary"' "$user_template"; then
+        if [[ -f "$default_template" ]]; then
+            cp "$default_template" "$user_template"
+            echo "[switchwall.sh] Repaired invalid matugen colors template from defaults"
+        fi
+    fi
+}
+
 handle_kde_material_you_colors() {
     # Check if Qt app theming is enabled in config
     if [ -f "$SHELL_CONFIG_FILE" ]; then
@@ -36,6 +57,8 @@ handle_kde_material_you_colors() {
 
 pre_process() {
     local mode_flag="$1"
+    repair_matugen_colors_template
+
     # Set GNOME color-scheme if mode_flag is dark or light
     if [[ "$mode_flag" == "dark" ]]; then
         gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
@@ -346,7 +369,8 @@ switch() {
             fi
 
             # Extract first frame for thumbnail (used for color generation)
-            thumbnail="$THUMBNAIL_DIR/$(basename "$imgpath").jpg"
+            # Use md5sum hash of full path to avoid collisions between videos with same basename
+            thumbnail="$THUMBNAIL_DIR/$(echo -n "$imgpath" | md5sum | cut -d' ' -f1).jpg"
             ffmpeg -y -i "$imgpath" -vframes 1 "$thumbnail" 2>/dev/null
 
             if [ ! -f "$thumbnail" ]; then
@@ -414,7 +438,7 @@ switch() {
                 echo "[switchwall.sh] Using backdrop wallpaper for color generation ($panel_family): $backdrop_path"
                 # Check if backdrop is a video - use its thumbnail instead
                 if is_video "$backdrop_path"; then
-                    local backdrop_thumb="$THUMBNAIL_DIR/$(basename "$backdrop_path").jpg"
+                    local backdrop_thumb="$THUMBNAIL_DIR/$(echo -n "$backdrop_path" | md5sum | cut -d' ' -f1).jpg"
                     if [[ -f "$backdrop_thumb" ]]; then
                         matugen_args=(image "$backdrop_thumb")
                         generate_colors_material_args=(--path "$backdrop_thumb")
@@ -450,9 +474,10 @@ switch() {
     # Set harmony and related properties from terminalColorAdjustments
     if [ -f "$SHELL_CONFIG_FILE" ]; then
         # Read from terminalColorAdjustments (the unified config)
-        term_saturation=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.saturation // 0.40' "$SHELL_CONFIG_FILE")
-        term_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.55' "$SHELL_CONFIG_FILE")
+        term_saturation=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.saturation // 0.65' "$SHELL_CONFIG_FILE")
+        term_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.60' "$SHELL_CONFIG_FILE")
         term_harmony=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.harmony // 0.40' "$SHELL_CONFIG_FILE")
+        term_bg_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.backgroundBrightness // 0.50' "$SHELL_CONFIG_FILE")
         
         # Legacy props for backwards compatibility
         harmonize_threshold=$(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.harmonizeThreshold // 100' "$SHELL_CONFIG_FILE")
@@ -462,11 +487,12 @@ switch() {
         [[ "$term_saturation" != "null" && -n "$term_saturation" ]] && generate_colors_material_args+=(--term_saturation "$term_saturation")
         [[ "$term_brightness" != "null" && -n "$term_brightness" ]] && generate_colors_material_args+=(--term_brightness "$term_brightness")
         [[ "$term_harmony" != "null" && -n "$term_harmony" ]] && generate_colors_material_args+=(--harmony "$term_harmony")
+        [[ "$term_bg_brightness" != "null" && -n "$term_bg_brightness" ]] && generate_colors_material_args+=(--term_bg_brightness "$term_bg_brightness")
         [[ "$harmonize_threshold" != "null" && -n "$harmonize_threshold" ]] && generate_colors_material_args+=(--harmonize_threshold "$harmonize_threshold")
         [[ "$soften_colors" == "true" ]] && generate_colors_material_args+=(--soften)
     fi
 
-    matugen "${matugen_args[@]}"
+    matugen --config "$CONFIG_DIR/defaults/matugen/config.toml" "${matugen_args[@]}"
     if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
         _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
     else

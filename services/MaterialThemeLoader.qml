@@ -32,7 +32,23 @@ Singleton {
             return;
         }
 
-        const json = JSON.parse(fileContent)
+        if (!fileContent || fileContent.trim().length === 0) {
+            return
+        }
+
+        let json
+        try {
+            json = JSON.parse(fileContent)
+        } catch (e) {
+            // FileView can read while colors.json is being rewritten.
+            // Ignore transient parse errors and wait for next change event.
+            return
+        }
+
+        if (!json || typeof json !== "object" || !json.background) {
+            return
+        }
+
         for (const key in json) {
             if (json.hasOwnProperty(key)) {
                 // Convert snake_case to CamelCase

@@ -114,8 +114,9 @@ Singleton {
 
         // Queue async check → generate (with dedup)
         root._ffPending[videoPath] = true
-        const basename = videoPath.split("/").pop()
-        const expectedPath = root._videoThumbDir + "/" + basename + ".jpg"
+        // Use md5 hash of full path to match switchwall.sh and avoid basename collisions
+        const hash = MD5.hash(videoPath)
+        const expectedPath = root._videoThumbDir + "/" + hash + ".jpg"
         root._ffQueue.push({ videoPath: videoPath, outputPath: expectedPath })
         if (!_ffCheckProc.running && !_ffGenProc.running) _processNextFF()
     }
@@ -474,4 +475,78 @@ Singleton {
         id: thumbgenFallbackProc
         onExited: root.thumbnailGenerated(thumbgenProc.directory)
     }
+
+    // ── Auto wallpaper cycling ──────────────────────────────────────────
+    readonly property bool autoWallpaperEnabled: Config.options?.background?.autoWallpaper?.enable ?? false
+    readonly property int autoWallpaperInterval: Config.options?.background?.autoWallpaper?.intervalMinutes ?? 30
+    readonly property bool autoWallpaperGenerateColors: Config.options?.background?.autoWallpaper?.generateColors ?? true
+    readonly property string autoWallpaperFolder: Config.options?.background?.autoWallpaper?.folder ?? ""
+
+    Timer {
+        id: autoWallpaperTimer
+        interval: root.autoWallpaperInterval * 60 * 1000
+        running: root.autoWallpaperEnabled && !GlobalStates.screenLocked
+        repeat: true
+        onTriggered: root._cycleAutoWallpaper()
+    }
+
+    function _cycleAutoWallpaper() {
+        // Use custom folder or current folder
+        const customFolder = root.autoWallpaperFolder
+        if (customFolder && customFolder.length > 0) {
+            // Switch to custom folder temporarily, pick random, then switch back
+            const previousFolder = root.effectiveDirectory
+            _autoPickProc._previousFolder = previousFolder
+            _autoPickProc._targetFolder = customFolder
+            _autoPickProc.command = ["test", "-d", customFolder]
+            _autoPickProc.running = true
+            return
+        }
+        // Use current folder
+        if (folderModel.count === 0) return
+        _pickRandomAndApply()
+    }
+
+    function _pickRandomAndApply() {
+        if (folderModel.count === 0) return
+        const currentPath = Config.options?.background?.wallpaperPath ?? ""
+        let attempts = 0
+        let randomIndex, filePath
+        // Try to pick a different wallpaper than the current one
+        do {
+            randomIndex = Math.floor(Math.random() * folderModel.count)
+            filePath = folderModel.get(randomIndex, "filePath")
+            attempts++
+        } while (filePath === currentPath && attempts < 5 && folderModel.count > 1)
+
+        if (!filePath) return
+
+        if (root.autoWallpaperGenerateColors) {
+            root.apply(filePath, Appearance.m3colors.darkmode)
+        } else {
+            // Just change wallpaper path without running color generation
+            Config.setNestedValue("background.wallpaperPath", filePath)
+        }
+    }
+
+    Process {
+        id: _autoPickProc
+        property string _previousFolder: ""
+        property string _targetFolder: ""
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                // Folder exists, temporarily set it and pick random
+                root.directory = Qt.resolvedUrl(_autoPickProc._targetFolder)
+                // Wait for folder model to update before picking
+                _autoPickFolderDelay.restart()
+            }
+        }
+    }
+
+    Timer {
+        id: _autoPickFolderDelay
+        interval: 500
+        onTriggered: root._pickRandomAndApply()
+    }
+    // ── End auto wallpaper cycling ──────────────────────────────────────
 }
