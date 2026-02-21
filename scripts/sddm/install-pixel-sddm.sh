@@ -115,6 +115,14 @@ fi
 # Configure SDDM to use this theme (intelligent: optional if user has another theme)
 if should_apply_theme; then
     log_info "Configuring SDDM to use ${THEME_NAME}..."
+    
+    # Remove any existing Current= line from /etc/sddm.conf to avoid conflicts
+    # The drop-in /etc/sddm.conf.d/ only works if the main file doesn't override it
+    if [[ -f /etc/sddm.conf ]] && grep -q '^\s*Current\s*=' /etc/sddm.conf 2>/dev/null; then
+        log_info "Removing conflicting theme setting from /etc/sddm.conf..."
+        sudo sed -i '/^\s*Current\s*=/d' /etc/sddm.conf
+    fi
+    
     sudo mkdir -p /etc/sddm.conf.d
     sudo tee "${SDDM_CONF}" > /dev/null << SDDM_EOF
 [Theme]
