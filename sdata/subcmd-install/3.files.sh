@@ -331,6 +331,13 @@ if command -v dolphin &>/dev/null; then
     install_file "dots/.config/dolphinrc" "${XDG_CONFIG_HOME}/dolphinrc"
   fi
 
+  # KDE service menu (enables "Open terminal here" in Dolphin right-click)
+  if [[ -f "defaults/kde/kservicemenurc" ]]; then
+    install_file "defaults/kde/kservicemenurc" "${XDG_CONFIG_HOME}/kservicemenurc"
+  elif [[ -f "dots/.config/kservicemenurc" ]]; then
+    install_file "dots/.config/kservicemenurc" "${XDG_CONFIG_HOME}/kservicemenurc"
+  fi
+
   # Dolphin panel layout state
   # Dolphin stores panel visibility in dolphinstaterc which overrides dolphinrc.
   # Policy:
