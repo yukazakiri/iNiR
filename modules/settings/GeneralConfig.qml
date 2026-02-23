@@ -73,6 +73,151 @@ ContentPage {
 
     SettingsCardSection {
         expanded: false
+        icon: "devices"
+        title: Translation.tr("Displays")
+
+        SettingsGroup {
+            // Connected monitors info
+            Repeater {
+                model: Quickshell.screens
+
+                delegate: Item {
+                    required property var modelData
+                    required property int index
+                    readonly property string screenName: modelData.name ?? ""
+                    readonly property int screenW: modelData.width ?? 0
+                    readonly property int screenH: modelData.height ?? 0
+                    Layout.fillWidth: true
+                    implicitHeight: monitorRow.implicitHeight + 4
+
+                    RowLayout {
+                        id: monitorRow
+                        anchors {
+                            left: parent.left; right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            leftMargin: 8; rightMargin: 8
+                        }
+                        spacing: 10
+
+                        MaterialSymbol {
+                            text: "monitor"
+                            iconSize: Appearance.font.pixelSize.larger
+                            color: Appearance.colors.colPrimary
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            StyledText {
+                                text: screenName || ("Monitor " + (index + 1))
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                font.weight: Font.Medium
+                                color: Appearance.colors.colOnLayer1
+                            }
+                            StyledText {
+                                text: screenW + "×" + screenH
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                            }
+                        }
+                    }
+                }
+            }
+
+            SettingsDivider {}
+
+            ContentSubsection {
+                title: Translation.tr("Bar visibility")
+                tooltip: Translation.tr("Choose which monitors show the bar. All enabled = shown everywhere.")
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Repeater {
+                        model: Quickshell.screens
+
+                        SettingsSwitch {
+                            required property var modelData
+                            required property int index
+                            readonly property string screenName: modelData.name ?? ""
+                            Layout.fillWidth: true
+                            buttonIcon: "web_asset"
+                            text: screenName || ("Monitor " + (index + 1))
+                            checked: {
+                                const list = Config.options?.bar?.screenList ?? []
+                                return list.length === 0 || list.includes(screenName)
+                            }
+                            onCheckedChanged: {
+                                const screens = Quickshell.screens
+                                let current = [...(Config.options?.bar?.screenList ?? [])]
+                                if (current.length === 0 && !checked) {
+                                    current = screens.map(s => s.name).filter(Boolean)
+                                }
+                                if (checked && !current.includes(screenName)) {
+                                    current.push(screenName)
+                                } else if (!checked) {
+                                    current = current.filter(n => n !== screenName)
+                                }
+                                const allNames = screens.map(s => s.name).filter(Boolean)
+                                if (allNames.length > 0 && allNames.every(n => current.includes(n))) {
+                                    current = []
+                                }
+                                Config.setNestedValue("bar.screenList", current)
+                            }
+                        }
+                    }
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Dock visibility")
+                tooltip: Translation.tr("Choose which monitors show the dock. All enabled = shown everywhere.")
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Repeater {
+                        model: Quickshell.screens
+
+                        SettingsSwitch {
+                            required property var modelData
+                            required property int index
+                            readonly property string screenName: modelData.name ?? ""
+                            Layout.fillWidth: true
+                            buttonIcon: "call_to_action"
+                            text: screenName || ("Monitor " + (index + 1))
+                            checked: {
+                                const list = Config.options?.dock?.screenList ?? []
+                                return list.length === 0 || list.includes(screenName)
+                            }
+                            onCheckedChanged: {
+                                const screens = Quickshell.screens
+                                let current = [...(Config.options?.dock?.screenList ?? [])]
+                                if (current.length === 0 && !checked) {
+                                    current = screens.map(s => s.name).filter(Boolean)
+                                }
+                                if (checked && !current.includes(screenName)) {
+                                    current.push(screenName)
+                                } else if (!checked) {
+                                    current = current.filter(n => n !== screenName)
+                                }
+                                const allNames = screens.map(s => s.name).filter(Boolean)
+                                if (allNames.length > 0 && allNames.every(n => current.includes(n))) {
+                                    current = []
+                                }
+                                Config.setNestedValue("dock.screenList", current)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        expanded: false
         icon: "battery_android_full"
         title: Translation.tr("Battery")
 
