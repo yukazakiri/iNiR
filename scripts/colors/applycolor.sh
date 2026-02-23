@@ -242,27 +242,7 @@ apply_code_editors() {
         --terminals zed >> "$log_file" 2>&1
 
       if [ $? -eq 0 ]; then
-        echo "[code-editors] Zed theme generated" >> "$log_file" 2>/dev/null
-
-        # Update Zed settings.json to use iNiR themes as defaults
-        local zed_settings="$HOME/.config/zed/settings.json"
-        if [ -f "$zed_settings" ]; then
-          # Check if theme section exists
-          if ! jq -e '.theme' "$zed_settings" 2>/dev/null; then
-            # Add theme section if it doesn't exist
-            echo '{"theme": {"mode": "system", "light": "iNiR Light", "dark": "iNiR Dark"}}' > "$zed_settings.tmp" && mv "$zed_settings.tmp" "$zed_settings"
-            echo "[code-editors] Zed settings.json created with iNiR themes" >> "$log_file" 2>/dev/null
-          else
-            # Update existing theme section
-            # Use sed instead of jq because JSON has comments that jq can't parse
-            sed -i 's/"mode": "light"/"mode": "system"/' "$zed_settings" > "$zed_settings.tmp" && mv "$zed_settings.tmp" "$zed_settings"
-            echo "[code-editors] Zed settings.json updated with iNiR themes" >> "$log_file" 2>/dev/null
-          fi
-        else
-          # Create new settings.json with theme section
-          echo '{"theme": {"mode": "system", "light": "iNiR Light", "dark": "iNiR Dark"}}' > "$zed_settings"
-          echo "[code-editors] Zed settings.json created with iNiR themes" >> "$log_file" 2>/dev/null
-        fi
+        echo "[code-editors] Zed theme generated (Zed auto-reloads on file change)" >> "$log_file" 2>/dev/null
       else
         echo "[code-editors] ERROR: Failed to generate Zed theme" >> "$log_file" 2>/dev/null
       fi
@@ -307,6 +287,8 @@ else
 fi
 
 
+# Apply code editor themes (Zed, etc.)
+apply_code_editors &
 
 # Sync ii-pixel SDDM theme colors (if installed)
 SDDM_SYNC_SCRIPT="$SCRIPT_DIR/../sddm/sync-pixel-sddm.py"
