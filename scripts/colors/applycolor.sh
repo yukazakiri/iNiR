@@ -84,7 +84,7 @@ apply_term() {
 apply_terminal_configs() {
   # Generate terminal-specific config files (Kitty, Alacritty, Foot, WezTerm, Ghostty, Konsole)
   local log_file="$STATE_DIR/user/generated/terminal_colors.log"
-  
+
   if [ ! -f "$STATE_DIR/user/generated/material_colors.scss" ]; then
     echo "[terminal-colors] material_colors.scss not found. Skipping." | tee -a "$log_file" 2>/dev/null
     return
@@ -93,7 +93,7 @@ apply_terminal_configs() {
   # Single source of truth for all supported targets.
   # Mirrors TERMINAL_REGISTRY in generate_terminal_configs.py.
   # To add a new target: add it here + add generate_X_config() and registry entry in the Python script.
-  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi)
+  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi zed)
 
   # Build enabled list: config-enabled (default true) AND installed
   local enabled_terminals=()
@@ -102,7 +102,13 @@ apply_terminal_configs() {
     if [ -f "$CONFIG_FILE" ]; then
       term_enabled=$(jq -r ".appearance.wallpaperTheming.terminals.${term} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
     fi
-    [[ "$term_enabled" == "true" ]] && command -v "$term" &>/dev/null && enabled_terminals+=("$term")
+
+    # Special handling for Zed (check if config directory exists)
+    if [ "$term" == "zed" ]; then
+      [[ "$term_enabled" == "true" ]] && [[ -d "$HOME/.config/zed" ]] && enabled_terminals+=("$term")
+    else
+      [[ "$term_enabled" == "true" ]] && command -v "$term" &>/dev/null && enabled_terminals+=("$term")
+    fi
   done
 
   if [ ${#enabled_terminals[@]} -eq 0 ]; then

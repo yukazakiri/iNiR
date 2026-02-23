@@ -5,12 +5,13 @@ Supports: Kitty, Alacritty, Foot, WezTerm, Ghostty, Konsole
 Auto-integrates into existing terminal configs
 """
 
-import sys
+import argparse
+import json
 import os
 import re
-import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 
 def parse_scss_colors(scss_path):
@@ -145,7 +146,15 @@ color15 {colors.get("term15", "#EBDBB2")}
     if os.path.exists(socket_path):
         try:
             subprocess.run(
-                ["kitten", "@", "--to", f"unix:{socket_path}", "set-colors", "--all", output_path],
+                [
+                    "kitten",
+                    "@",
+                    "--to",
+                    f"unix:{socket_path}",
+                    "set-colors",
+                    "--all",
+                    output_path,
+                ],
                 capture_output=True,
                 timeout=2,
             )
@@ -178,7 +187,9 @@ def fix_alacritty_import_order(config_path):
 
     # Check if [general] with import is already at the top (correct state)
     lines = content.split("\n")
-    top_lines = [l.strip() for l in lines[:10] if l.strip() and not l.strip().startswith("#")]
+    top_lines = [
+        l.strip() for l in lines[:10] if l.strip() and not l.strip().startswith("#")
+    ]
 
     # Correct state: [general] is first real line, import is second, no hardcoded colors
     correct = (
@@ -241,8 +252,12 @@ def fix_alacritty_import_order(config_path):
                 in_colors_section = True
                 added_colors_comment = True
                 new_lines.append("")
-                new_lines.append("# Color definitions commented out by iNiR wallpaper theming")
-                new_lines.append("# Colors are managed via the import in [general] above")
+                new_lines.append(
+                    "# Color definitions commented out by iNiR wallpaper theming"
+                )
+                new_lines.append(
+                    "# Colors are managed via the import in [general] above"
+                )
                 new_lines.append("#")
             new_lines.append("# " + line)
             continue
@@ -390,7 +405,12 @@ urls={colors.get("term4", "#458588")[1:]}
     foot_path = Path(foot_conf)
     if foot_path.exists():
         old_content = foot_path.read_text()
-        new_content = re.sub(r"^include\s*=\s*~/.config/foot/colors\.ini\s*\n?", "", old_content, flags=re.MULTILINE)
+        new_content = re.sub(
+            r"^include\s*=\s*~/.config/foot/colors\.ini\s*\n?",
+            "",
+            old_content,
+            flags=re.MULTILINE,
+        )
         if new_content != old_content:
             foot_path.write_text(new_content)
 
@@ -403,17 +423,17 @@ def generate_wezterm_config(colors, output_path):
 return {{
   foreground = '{colors.get("term7", "#A89984")}',
   background = '{colors.get("term0", "#282828")}',
-  
+
   cursor_bg = '{colors.get("term7", "#A89984")}',
   cursor_fg = '{colors.get("term0", "#282828")}',
   cursor_border = '{colors.get("term7", "#A89984")}',
-  
+
   selection_fg = '{colors.get("term0", "#282828")}',
   selection_bg = '{colors.get("term7", "#A89984")}',
-  
+
   scrollbar_thumb = '{colors.get("term8", "#928374")}',
   split = '{colors.get("term8", "#928374")}',
-  
+
   ansi = {{
     '{colors.get("term0", "#282828")}',  -- black
     '{colors.get("term1", "#CC241D")}',  -- red
@@ -424,7 +444,7 @@ return {{
     '{colors.get("term6", "#689D6A")}',  -- cyan
     '{colors.get("term7", "#A89984")}',  -- white
   }},
-  
+
   brights = {{
     '{colors.get("term8", "#928374")}',  -- bright black
     '{colors.get("term9", "#FB4934")}',  -- bright red
@@ -435,7 +455,7 @@ return {{
     '{colors.get("term14", "#8EC07C")}', -- bright cyan
     '{colors.get("term15", "#EBDBB2")}', -- bright white
   }},
-  
+
   tab_bar = {{
     background = '{colors.get("term0", "#282828")}',
     active_tab = {{
@@ -663,46 +683,54 @@ bright_white = '{colors.get("term15", "#EBDBB2")}'
     # Auto-integrate into starship.toml
     home = os.path.expanduser("~")
     starship_conf = f"{home}/.config/starship.toml"
-    
+
     # Check if starship.toml exists
     if os.path.exists(starship_conf):
         content = Path(starship_conf).read_text()
-        
+
         # Check if palette_name is already set to ii
         if 'palette = "ii"' in content:
             print(f"✓ Generated Starship palette (already using ii palette)")
         else:
             # Add palette directive if not present
-            if 'palette =' not in content:
+            if "palette =" not in content:
                 # Add at top of file
                 new_content = 'palette = "ii"\n\n' + content
                 Path(starship_conf).write_text(new_content)
                 content = new_content
                 print(f"✓ Generated Starship palette and set as active")
             else:
-                print(f"✓ Generated Starship palette (using different palette, change to 'palette = \"ii\"' to use)")
-        
+                print(
+                    f"✓ Generated Starship palette (using different palette, change to 'palette = \"ii\"' to use)"
+                )
+
         # Update or append the [palettes.ii] section in starship.toml
         # Starship doesn't support source/include, so palette must be inline
-        if '[palettes.ii]' in content:
+        if "[palettes.ii]" in content:
             # Replace existing palette section with updated colors
             # Find start of [palettes.ii] and end (next section header or EOF)
-            pattern = r'\[palettes\.ii\].*?(?=\n\[|\Z)'
+            pattern = r"\[palettes\.ii\].*?(?=\n\[|\Z)"
             # Extract just the palette block from the generated config
-            palette_block = config.strip().split('\n')
+            palette_block = config.strip().split("\n")
             # Skip comment lines at the top, keep from [palettes.ii] onward
-            palette_start = next(i for i, line in enumerate(palette_block) if line.startswith('[palettes.ii]'))
-            palette_content = '\n'.join(palette_block[palette_start:])
+            palette_start = next(
+                i
+                for i, line in enumerate(palette_block)
+                if line.startswith("[palettes.ii]")
+            )
+            palette_content = "\n".join(palette_block[palette_start:])
             new_content = re.sub(pattern, palette_content, content, flags=re.DOTALL)
             if new_content != content:
                 Path(starship_conf).write_text(new_content)
                 print(f"  → Updated ii palette in starship.toml")
         else:
-            with open(starship_conf, 'a') as f:
-                f.write('\n' + config)
+            with open(starship_conf, "a") as f:
+                f.write("\n" + config)
             print(f"  → Appended ii palette to starship.toml")
     else:
-        print(f"✓ Generated Starship palette (starship.toml not found - create it and add 'palette = \"ii\"')")
+        print(
+            f"✓ Generated Starship palette (starship.toml not found - create it and add 'palette = \"ii\"')"
+        )
 
 
 def generate_btop_config(colors, output_path):
@@ -796,8 +824,10 @@ theme[process_end]="{primary}"
     if btop_path.exists():
         content = btop_path.read_text()
         new_line = 'color_theme = "ii-auto"'
-        if re.search(r'^color_theme\s*=', content, re.MULTILINE):
-            new_content = re.sub(r'^color_theme\s*=.*$', new_line, content, flags=re.MULTILINE)
+        if re.search(r"^color_theme\s*=", content, re.MULTILINE):
+            new_content = re.sub(
+                r"^color_theme\s*=.*$", new_line, content, flags=re.MULTILINE
+            )
             if new_content != content:
                 btop_path.write_text(new_content)
                 print(f"\u2713 Generated btop theme and updated btop.conf")
@@ -815,7 +845,7 @@ theme[process_end]="{primary}"
 
 def generate_lazygit_config(colors, output_path):
     """Generate lazygit theme config.
-    
+
     Writes a standalone theme YAML that can be merged into config.yml.
     If config.yml exists, merges the gui.theme section carefully.
     """
@@ -870,19 +900,21 @@ def generate_lazygit_config(colors, output_path):
     if config_file.exists():
         content = config_file.read_text()
         # Check if gui.theme section exists
-        if re.search(r'^\s*theme:', content, re.MULTILINE):
+        if re.search(r"^\s*theme:", content, re.MULTILINE):
             # Replace existing theme block
             # Find "    theme:" and everything indented under it until next key at same/less indent
-            pattern = r'(    theme:\n(?:      .*\n)*(?:        .*\n)*)'
+            pattern = r"(    theme:\n(?:      .*\n)*(?:        .*\n)*)"
             new_content = re.sub(pattern, theme_yaml + "\n", content, count=1)
             if new_content != content:
                 config_file.write_text(new_content)
                 print(f"\u2713 Generated lazygit theme and updated config.yml")
             else:
                 print(f"\u2713 Generated lazygit theme (config.yml unchanged)")
-        elif re.search(r'^gui:', content, re.MULTILINE):
+        elif re.search(r"^gui:", content, re.MULTILINE):
             # gui: exists but no theme: — insert theme after gui:
-            new_content = re.sub(r'^(gui:.*)', r'\1\n' + theme_yaml, content, count=1, flags=re.MULTILINE)
+            new_content = re.sub(
+                r"^(gui:.*)", r"\1\n" + theme_yaml, content, count=1, flags=re.MULTILINE
+            )
             config_file.write_text(new_content)
             print(f"\u2713 Generated lazygit theme and added to gui section")
         else:
@@ -898,7 +930,7 @@ def generate_lazygit_config(colors, output_path):
 
 def generate_yazi_config(colors, output_path):
     """Generate yazi flavor for ii theming.
-    
+
     Creates a flavor directory at ~/.config/yazi/flavors/ii-auto.yazi/
     with a flavor.toml that uses the material colors.
     """
@@ -1012,19 +1044,25 @@ rules = [
     home = os.path.expanduser("~")
     theme_toml = f"{home}/.config/yazi/theme.toml"
     theme_path = Path(theme_toml)
-    
+
     flavor_line = 'use = "ii-auto"'
     if theme_path.exists():
         content = theme_path.read_text()
-        if '[flavor]' in content:
+        if "[flavor]" in content:
             if re.search(r'^use\s*=\s*"ii-auto"', content, re.MULTILINE):
                 print(f"\u2713 Generated yazi flavor (already using ii-auto)")
-            elif re.search(r'^use\s*=', content, re.MULTILINE):
-                new_content = re.sub(r'^(use\s*=).*$', f'use = "ii-auto"', content, count=1, flags=re.MULTILINE)
+            elif re.search(r"^use\s*=", content, re.MULTILINE):
+                new_content = re.sub(
+                    r"^(use\s*=).*$",
+                    f'use = "ii-auto"',
+                    content,
+                    count=1,
+                    flags=re.MULTILINE,
+                )
                 theme_path.write_text(new_content)
                 print(f"\u2713 Generated yazi flavor and updated theme.toml")
             else:
-                new_content = content.replace('[flavor]', f'[flavor]\n{flavor_line}')
+                new_content = content.replace("[flavor]", f"[flavor]\n{flavor_line}")
                 theme_path.write_text(new_content)
                 print(f"\u2713 Generated yazi flavor and added use directive")
         else:
@@ -1046,8 +1084,11 @@ def generate_fuzzel_config(colors, output_path):
     primary = colors.get("primary", "#458588")
 
     # Strip '#' and add 'ff' alpha
-    def hex_alpha(c): return c[1:] + "ff" if c.startswith("#") else c + "ff"
-    def hex_alpha_dim(c): return c[1:] + "dd" if c.startswith("#") else c + "dd"
+    def hex_alpha(c):
+        return c[1:] + "ff" if c.startswith("#") else c + "ff"
+
+    def hex_alpha_dim(c):
+        return c[1:] + "dd" if c.startswith("#") else c + "dd"
 
     config = f"""[colors]
 background={hex_alpha(bg)}
@@ -1079,7 +1120,9 @@ def generate_pywalfox_config(colors, output_path):
 
     # Read wallpaper path if available
     wallpaper = ""
-    wp_path = os.path.expanduser("~/.local/state/quickshell/user/generated/wallpaper/path.txt")
+    wp_path = os.path.expanduser(
+        "~/.local/state/quickshell/user/generated/wallpaper/path.txt"
+    )
     if os.path.exists(wp_path):
         with open(wp_path) as f:
             wallpaper = f.read().strip()
@@ -1101,6 +1144,636 @@ def generate_pywalfox_config(colors, output_path):
     print(f"\u2713 Generated Pywalfox colors")
 
 
+def generate_zed_config(colors, scss_path, output_path):
+    """Generate Zed editor theme from Material You colors and SCSS terminal colors."""
+    # Load colors.json for Material You colors
+    colors_json_path = os.path.expanduser(
+        "~/.local/state/quickshell/user/generated/colors.json"
+    )
+
+    try:
+        with open(colors_json_path, "r") as f:
+            my_colors = json.load(f)
+    except FileNotFoundError:
+        print(
+            f"Warning: Could not find colors.json. Using defaults for Zed theme.",
+            file=sys.stderr,
+        )
+        my_colors = {
+            "primary": "#7aa2f7",
+            "secondary": "#bb9af7",
+            "tertiary": "#9ece6a",
+            "error": "#f7768e",
+            "surface": "#1a1b26",
+            "surface_container_low": "#24283b",
+            "surface_container": "#414868",
+            "surface_container_high": "#565f89",
+            "outline": "#565f89",
+            "on_surface": "#c0caf5",
+            "on_surface_variant": "#9aa5ce",
+            "on_primary": "#1a1b26",
+        }
+
+    my_colors = {k: v.lower() for k, v in my_colors.items()}
+
+    # Get terminal colors from SCSS
+    term_colors = parse_scss_colors(scss_path)
+
+    def hex_with_alpha(hex_color, alpha_hex):
+        """Add alpha hex value to color"""
+        hex_color = hex_color.lstrip("#")
+        return f"#{hex_color}{alpha_hex}"
+
+    def adjust_lightness(hex_color, factor):
+        """Adjust lightness of hex color (factor > 1 = lighter, factor < 1 = darker)"""
+        hex_color = hex_color.lstrip("#")
+        r = int(hex_color[0:2], 16) / 255.0
+        g = int(hex_color[2:4], 16) / 255.0
+        b = int(hex_color[4:6], 16) / 255.0
+
+        max_c = max(r, g, b)
+        min_c = min(r, g, b)
+        l = (max_c + min_c) / 2.0
+
+        if max_c == min_c:
+            h = s = 0
+        else:
+            d = max_c - min_c
+            s = d / (2.0 - max_c - min_c) if l > 0.5 else d / (max_c + min_c)
+            if max_c == r:
+                h = (g - b) / d + (6 if g < b else 0)
+            elif max_c == g:
+                h = (b - r) / d + 2
+            else:
+                h = (r - g) / d + 4
+            h /= 6.0
+
+        l = max(0.0, min(1.0, l * factor))
+
+        def hue_to_rgb(p, q, t):
+            if t < 0:
+                t += 1
+            if t > 1:
+                t -= 1
+            if t < 1 / 6:
+                return p + (q - p) * 6 * t
+            if t < 1 / 2:
+                return q
+            if t < 2 / 3:
+                return p + (q - p) * (2 / 3 - t) * 6
+            return p
+
+        if s == 0:
+            r = g = b = l
+        else:
+            q = l * (1 + s) if l < 0.5 else l + s - l * s
+            p = 2 * l - q
+            r = hue_to_rgb(p, q, h + 1 / 3)
+            g = hue_to_rgb(p, q, h)
+            b = hue_to_rgb(p, q, h - 1 / 3)
+
+        return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
+    def build_zed_dark_theme():
+        primary = my_colors.get("primary", "#7aa2f7")
+        secondary = my_colors.get("secondary", "#bb9af7")
+        tertiary = my_colors.get("tertiary", "#9ece6a")
+        error = my_colors.get("error", "#f7768e")
+        surface = my_colors.get("surface", "#1a1b26")
+        surface_low = my_colors.get("surface_container_low", "#24283b")
+        surface_std = my_colors.get("surface_container", "#414868")
+        surface_high = my_colors.get("surface_container_high", "#565f89")
+        outline = my_colors.get("outline", "#565f89")
+        on_surface = my_colors.get("on_surface", "#c0caf5")
+        on_surface_variant = my_colors.get("on_surface_variant", "#9aa5ce")
+
+        theme = {
+            "border": hex_with_alpha(outline, "ff"),
+            "border.variant": hex_with_alpha(adjust_lightness(surface_low, 0.8), "ff"),
+            "border.focused": hex_with_alpha(primary, "ff"),
+            "border.selected": hex_with_alpha(adjust_lightness(primary, 0.7), "ff"),
+            "border.transparent": "#00000000",
+            "border.disabled": hex_with_alpha(adjust_lightness(outline, 0.5), "ff"),
+            "elevated_surface.background": hex_with_alpha(surface_low, "ff"),
+            "surface.background": hex_with_alpha(surface_low, "ff"),
+            "background": hex_with_alpha(surface, "ff"),
+            "element.background": hex_with_alpha(surface_low, "ff"),
+            "element.hover": hex_with_alpha(surface_std, "ff"),
+            "element.active": hex_with_alpha(surface_high, "ff"),
+            "element.selected": hex_with_alpha(surface_high, "ff"),
+            "element.disabled": hex_with_alpha(surface_low, "ff"),
+            "drop_target.background": hex_with_alpha(primary, "80"),
+            "ghost_element.background": "#00000000",
+            "ghost_element.hover": hex_with_alpha(surface_std, "ff"),
+            "ghost_element.active": hex_with_alpha(surface_high, "ff"),
+            "ghost_element.selected": hex_with_alpha(surface_high, "ff"),
+            "ghost_element.disabled": hex_with_alpha(surface_low, "ff"),
+            "text": hex_with_alpha(on_surface, "ff"),
+            "text.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "text.placeholder": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.7), "ff"
+            ),
+            "text.disabled": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.6), "ff"
+            ),
+            "text.accent": hex_with_alpha(primary, "ff"),
+            "icon": hex_with_alpha(on_surface, "ff"),
+            "icon.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "icon.disabled": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.6), "ff"
+            ),
+            "icon.placeholder": hex_with_alpha(on_surface_variant, "ff"),
+            "icon.accent": hex_with_alpha(primary, "ff"),
+            "status_bar.background": hex_with_alpha(surface, "ff"),
+            "title_bar.background": hex_with_alpha(surface, "ff"),
+            "title_bar.inactive_background": hex_with_alpha(surface_low, "ff"),
+            "toolbar.background": hex_with_alpha(surface_low, "ff"),
+            "tab_bar.background": hex_with_alpha(surface_low, "ff"),
+            "tab.inactive_background": hex_with_alpha(surface_low, "ff"),
+            "tab.active_background": hex_with_alpha(
+                adjust_lightness(surface, 0.9), "ff"
+            ),
+            "search.match_background": hex_with_alpha(primary, "66"),
+            "search.active_match_background": hex_with_alpha(tertiary, "66"),
+            "panel.background": hex_with_alpha(surface_low, "ff"),
+            "panel.focused_border": None,
+            "pane.focused_border": None,
+            "scrollbar.thumb.background": hex_with_alpha(on_surface_variant, "4c"),
+            "scrollbar.thumb.hover_background": hex_with_alpha(surface_high, "ff"),
+            "scrollbar.thumb.border": hex_with_alpha(surface_std, "ff"),
+            "scrollbar.track.background": "#00000000",
+            "scrollbar.track.border": hex_with_alpha(surface_std, "ff"),
+            "editor.foreground": hex_with_alpha(on_surface, "ff"),
+            "editor.background": hex_with_alpha(surface, "ff"),
+            "editor.gutter.background": hex_with_alpha(surface, "ff"),
+            "editor.subheader.background": hex_with_alpha(surface_low, "ff"),
+            "editor.active_line.background": hex_with_alpha(surface_low, "bf"),
+            "editor.highlighted_line.background": hex_with_alpha(surface_std, "ff"),
+            "editor.line_number": hex_with_alpha(on_surface_variant, "ff"),
+            "editor.active_line_number": hex_with_alpha(on_surface, "ff"),
+            "editor.hover_line_number": hex_with_alpha(
+                adjust_lightness(on_surface, 1.1), "ff"
+            ),
+            "editor.invisible": hex_with_alpha(on_surface_variant, "ff"),
+            "editor.wrap_guide": hex_with_alpha(on_surface_variant, "0d"),
+            "editor.active_wrap_guide": hex_with_alpha(on_surface_variant, "1a"),
+            "editor.document_highlight.read_background": hex_with_alpha(primary, "1a"),
+            "editor.document_highlight.write_background": hex_with_alpha(
+                surface_std, "66"
+            ),
+            "terminal.background": hex_with_alpha(surface, "ff"),
+            "terminal.foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.bright_foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.dim_foreground": hex_with_alpha(
+                adjust_lightness(on_surface, 0.6), "ff"
+            ),
+            "link_text.hover": hex_with_alpha(primary, "ff"),
+            "version_control.added": hex_with_alpha(tertiary, "ff"),
+            "version_control.modified": hex_with_alpha(
+                adjust_lightness(primary, 0.8), "ff"
+            ),
+            "version_control.word_added": hex_with_alpha(tertiary, "59"),
+            "version_control.word_deleted": hex_with_alpha(error, "cc"),
+            "version_control.deleted": hex_with_alpha(error, "ff"),
+            "version_control.conflict_marker.ours": hex_with_alpha(tertiary, "1a"),
+            "version_control.conflict_marker.theirs": hex_with_alpha(primary, "1a"),
+            "conflict": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+            "conflict.background": hex_with_alpha(
+                adjust_lightness(tertiary, 0.8), "1a"
+            ),
+            "conflict.border": hex_with_alpha(adjust_lightness(tertiary, 0.6), "ff"),
+            "created": hex_with_alpha(tertiary, "ff"),
+            "created.background": hex_with_alpha(tertiary, "1a"),
+            "created.border": hex_with_alpha(adjust_lightness(tertiary, 0.6), "ff"),
+            "deleted": hex_with_alpha(error, "ff"),
+            "deleted.background": hex_with_alpha(error, "1a"),
+            "deleted.border": hex_with_alpha(adjust_lightness(error, 0.6), "ff"),
+            "error": hex_with_alpha(error, "ff"),
+            "error.background": hex_with_alpha(error, "1a"),
+            "error.border": hex_with_alpha(adjust_lightness(error, 0.6), "ff"),
+            "hidden": hex_with_alpha(on_surface_variant, "ff"),
+            "hidden.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.3), "1a"
+            ),
+            "hidden.border": hex_with_alpha(outline, "ff"),
+            "hint": hex_with_alpha(adjust_lightness(primary, 0.7), "ff"),
+            "hint.background": hex_with_alpha(adjust_lightness(primary, 0.7), "1a"),
+            "hint.border": hex_with_alpha(adjust_lightness(primary, 0.6), "ff"),
+            "ignored": hex_with_alpha(on_surface_variant, "ff"),
+            "ignored.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.3), "1a"
+            ),
+            "ignored.border": hex_with_alpha(outline, "ff"),
+            "info": hex_with_alpha(primary, "ff"),
+            "info.background": hex_with_alpha(primary, "1a"),
+            "info.border": hex_with_alpha(adjust_lightness(primary, 0.6), "ff"),
+            "modified": hex_with_alpha(adjust_lightness(primary, 0.8), "ff"),
+            "modified.background": hex_with_alpha(adjust_lightness(primary, 0.8), "1a"),
+            "modified.border": hex_with_alpha(
+                adjust_lightness(adjust_lightness(primary, 0.8), 0.6), "ff"
+            ),
+            "predictive": hex_with_alpha(adjust_lightness(secondary, 0.8), "ff"),
+            "predictive.background": hex_with_alpha(
+                adjust_lightness(secondary, 0.8), "1a"
+            ),
+            "predictive.border": hex_with_alpha(
+                adjust_lightness(adjust_lightness(secondary, 0.8), 0.6), "ff"
+            ),
+            "renamed": hex_with_alpha(primary, "ff"),
+            "renamed.background": hex_with_alpha(primary, "1a"),
+            "renamed.border": hex_with_alpha(adjust_lightness(primary, 0.6), "ff"),
+            "success": hex_with_alpha(tertiary, "ff"),
+            "success.background": hex_with_alpha(tertiary, "1a"),
+            "success.border": hex_with_alpha(adjust_lightness(tertiary, 0.6), "ff"),
+            "unreachable": hex_with_alpha(on_surface_variant, "ff"),
+            "unreachable.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.3), "1a"
+            ),
+            "unreachable.border": hex_with_alpha(outline, "ff"),
+            "warning": hex_with_alpha(adjust_lightness(tertiary, 0.9), "ff"),
+            "warning.background": hex_with_alpha(adjust_lightness(tertiary, 0.9), "1a"),
+            "warning.border": hex_with_alpha(
+                adjust_lightness(adjust_lightness(tertiary, 0.9), 0.6), "ff"
+            ),
+        }
+
+        # Terminal colors
+        for i in range(16):
+            term_color = term_colors.get(
+                f"term{i}", f"#{282828 if i == 0 else 'ffffff'}"
+            )
+            theme[f"terminal.ansi.black"] = (
+                hex_with_alpha(term_colors.get("term0", "#000000"), "ff")
+                if i == 0
+                else theme.get("terminal.ansi.black")
+            )
+            theme[f"terminal.ansi.bright_black"] = (
+                hex_with_alpha(term_colors.get("term8", "#555555"), "ff")
+                if i == 8
+                else theme.get("terminal.ansi.bright_black")
+            )
+            theme[f"terminal.ansi.dim_black"] = (
+                hex_with_alpha(
+                    adjust_lightness(term_colors.get("term0", "#000000"), 0.6), "ff"
+                )
+                if i == 0
+                else theme.get("terminal.ansi.dim_black")
+            )
+
+        color_map = {
+            "red": 1,
+            "bright_red": 9,
+            "dim_red": 1,
+            "green": 2,
+            "bright_green": 10,
+            "dim_green": 2,
+            "yellow": 3,
+            "bright_yellow": 11,
+            "dim_yellow": 3,
+            "blue": 4,
+            "bright_blue": 12,
+            "dim_blue": 4,
+            "magenta": 5,
+            "bright_magenta": 13,
+            "dim_magenta": 5,
+            "cyan": 6,
+            "bright_cyan": 14,
+            "dim_cyan": 6,
+            "white": 7,
+            "bright_white": 15,
+            "dim_white": 7,
+        }
+
+        for name, idx in color_map.items():
+            base_color = term_colors.get(f"term{idx}", "#ffffff")
+            if "bright" in name:
+                color = adjust_lightness(base_color, 1.2)
+            elif "dim" in name:
+                color = adjust_lightness(base_color, 0.7)
+            else:
+                color = base_color
+            theme[f"terminal.ansi.{name}"] = hex_with_alpha(color, "ff")
+
+        # Players
+        player_colors = [
+            primary,
+            error,
+            adjust_lightness(tertiary, 0.8),
+            secondary,
+            adjust_lightness(secondary, 1.2),
+            adjust_lightness(error, 0.8),
+            adjust_lightness(tertiary, 0.9),
+            adjust_lightness(primary, 0.8),
+        ]
+        theme["players"] = [
+            {
+                "cursor": hex_with_alpha(color, "ff"),
+                "background": hex_with_alpha(color, "ff"),
+                "selection": hex_with_alpha(color, "3d"),
+            }
+            for color in player_colors
+        ]
+
+        # Syntax highlighting
+        theme["syntax"] = {
+            "attribute": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "boolean": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "comment": {
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.7), "ff"
+                ),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "comment.doc": {
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.8), "ff"
+                ),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "constant": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.9), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "constructor": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "embedded": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "emphasis": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "emphasis.strong": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": 700,
+            },
+            "enum": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "function": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "hint": {
+                "color": hex_with_alpha(adjust_lightness(primary, 0.7), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "keyword": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "label": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "link_text": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": "normal",
+                "font_weight": None,
+            },
+            "link_uri": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "namespace": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "number": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "operator": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "predictive": {
+                "color": hex_with_alpha(adjust_lightness(secondary, 0.8), "ff"),
+                "font_style": "italic",
+                "font_weight": None,
+            },
+            "preproc": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "primary": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "property": {
+                "color": hex_with_alpha(adjust_lightness(primary, 0.85), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.bracket": {
+                "color": hex_with_alpha(adjust_lightness(on_surface, 0.9), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.delimiter": {
+                "color": hex_with_alpha(adjust_lightness(on_surface, 0.9), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.list_marker": {
+                "color": hex_with_alpha(adjust_lightness(primary, 0.85), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.markup": {
+                "color": hex_with_alpha(adjust_lightness(primary, 0.85), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.special": {
+                "color": hex_with_alpha(adjust_lightness(error, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "selector": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.9), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "selector.pseudo": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.escape": {
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.8), "ff"
+                ),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.regex": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.special": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.special.symbol": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "tag": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "text.literal": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "title": {
+                "color": hex_with_alpha(adjust_lightness(primary, 0.85), "ff"),
+                "font_style": None,
+                "font_weight": 400,
+            },
+            "type": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variable": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variable.special": {
+                "color": hex_with_alpha(adjust_lightness(tertiary, 0.8), "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variant": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+        }
+
+        return theme
+
+    def build_zed_light_theme():
+        dark_theme = build_zed_dark_theme()
+
+        light_theme = {}
+        for key, value in dark_theme.items():
+            if isinstance(value, dict):
+                light_theme[key] = value.copy()
+            elif value is None:
+                light_theme[key] = None
+            else:
+                if "background" in key.lower():
+                    light_theme[key] = adjust_lightness(value, 3.5)
+                elif "foreground" in key.lower() or key in [
+                    "text",
+                    "icon",
+                    "editor.foreground",
+                    "terminal.foreground",
+                ]:
+                    light_theme[key] = adjust_lightness(value, 0.3)
+                else:
+                    light_theme[key] = value
+
+        light_theme["background"] = adjust_lightness(
+            my_colors.get("surface", "#ffffff"), 2.5
+        )
+        light_theme["surface.background"] = adjust_lightness(
+            my_colors.get("surface", "#ffffff"), 2.3
+        )
+        light_theme["elevated_surface.background"] = adjust_lightness(
+            my_colors.get("surface_container_low", "#f0f0f0"), 2.0
+        )
+        light_theme["element.background"] = adjust_lightness(
+            my_colors.get("surface_container_low", "#f0f0f0"), 2.0
+        )
+        light_theme["editor.background"] = adjust_lightness(
+            my_colors.get("surface", "#ffffff"), 2.5
+        )
+        light_theme["editor.gutter.background"] = adjust_lightness(
+            my_colors.get("surface", "#ffffff"), 2.5
+        )
+        light_theme["terminal.background"] = adjust_lightness(
+            my_colors.get("surface", "#ffffff"), 2.5
+        )
+        light_theme["text"] = adjust_lightness(light_theme["text"], 0.3)
+        light_theme["editor.foreground"] = adjust_lightness(
+            light_theme["editor.foreground"], 0.3
+        )
+        light_theme["terminal.foreground"] = adjust_lightness(
+            light_theme["terminal.foreground"], 0.3
+        )
+
+        return light_theme
+
+    dark_style = build_zed_dark_theme()
+    light_style = build_zed_light_theme()
+
+    theme_data = {
+        "$schema": "https://zed.dev/schema/themes/v0.2.0.json",
+        "name": "iNiR Material",
+        "author": "iNiR Theme System",
+        "themes": [
+            {"name": "iNiR Dark", "appearance": "dark", "style": dark_style},
+            {"name": "iNiR Light", "appearance": "light", "style": light_style},
+        ],
+    }
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(theme_data, f, indent=2, ensure_ascii=False)
+
+    print(f"\u2713 Generated Zed theme")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate terminal color configs from material_colors.scss"
@@ -1117,7 +1790,20 @@ def main():
         "--terminals",
         type=str,
         nargs="+",
-        choices=["kitty", "alacritty", "foot", "wezterm", "ghostty", "konsole", "starship", "btop", "lazygit", "yazi", "all"],
+        choices=[
+            "kitty",
+            "alacritty",
+            "foot",
+            "wezterm",
+            "ghostty",
+            "konsole",
+            "starship",
+            "btop",
+            "lazygit",
+            "yazi",
+            "zed",
+            "all",
+        ],
         default=["all"],
         help="Which terminals/tools to generate configs for",
     )
@@ -1135,7 +1821,19 @@ def main():
     terminals = (
         args.terminals
         if "all" not in args.terminals
-        else ["kitty", "alacritty", "foot", "wezterm", "ghostty", "konsole", "starship", "btop", "lazygit", "yazi"]
+        else [
+            "kitty",
+            "alacritty",
+            "foot",
+            "wezterm",
+            "ghostty",
+            "konsole",
+            "starship",
+            "btop",
+            "lazygit",
+            "yazi",
+            "zed",
+        ]
     )
 
     # Generate configs for requested terminals
@@ -1169,8 +1867,14 @@ def main():
         generate_lazygit_config(colors, f"{home}/.config/lazygit/ii-theme.yml")
 
     if "yazi" in terminals:
-        generate_yazi_config(colors, f"{home}/.config/yazi/flavors/ii-auto.yazi/flavor.toml")
+        generate_yazi_config(
+            colors, f"{home}/.config/yazi/flavors/ii-auto.yazi/flavor.toml"
+        )
 
+    if "zed" in terminals:
+        generate_zed_config(
+            colors, args.scss, f"{home}/.config/zed/themes/ii-theme.json"
+        )
 
 
 if __name__ == "__main__":
