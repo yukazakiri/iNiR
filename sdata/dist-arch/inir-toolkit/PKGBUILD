@@ -10,6 +10,9 @@ depends=(
   ydotool
   python-evdev
   python-pillow
+  hyprpicker
+  translate-shell
+  fprintd
 
   # Backlight control
   brightnessctl
@@ -40,8 +43,4 @@ depends=(
   tesseract
   tesseract-data-eng
   tesseract-data-spa
-)
-optdepends=(
-  'hyprpicker: Color picker (Hyprland tool)'
-  'translate-shell: Translation widget'
 )

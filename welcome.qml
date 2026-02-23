@@ -62,7 +62,7 @@ Scope {
             source: Config.options?.background?.wallpaperPath ?? ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            layer.enabled: true
+            layer.enabled: Appearance.effectsEnabled
             layer.effect: FastBlur { radius: 64 }
             transform: Scale {
                 origin.x: bgWallpaper.width / 2
@@ -87,8 +87,8 @@ Scope {
         Item {
             id: wizardCard
             anchors.centerIn: parent
-            width: Math.min(920, parent.width - 80)
-            height: Math.min(720, parent.height - 80)
+            width: Math.min(960, parent.width * 0.75)
+            height: Math.min(parent.height * 0.85, parent.height - 60)
             focus: true
 
             // Entrance animation - using project animation system
@@ -119,7 +119,7 @@ Scope {
             // Shadow (hide in aurora)
             StyledRectangularShadow {
                 target: cardBg
-                visible: !Appearance.auroraEverywhere
+                visible: Appearance.angelEverywhere || !Appearance.auroraEverywhere
             }
 
             // Card background - style-aware
@@ -174,7 +174,7 @@ Scope {
                 }
 
                 // Clip content to rounded corners
-                layer.enabled: true
+                layer.enabled: Appearance.effectsEnabled
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
                         width: cardBg.width
@@ -586,6 +586,7 @@ Scope {
                             return style === "material" ? "Clean & Solid"
                                  : style === "cards" ? "Rounded Cards"
                                  : style === "aurora" ? "Glass & Blur"
+                                 : style === "angel" ? "Neo-Brutalism Glass"
                                  : "Terminal Style"
                         }
                         color: Appearance.colors.colSubtext
@@ -598,12 +599,13 @@ Scope {
                     currentValue: Config.options?.appearance?.globalStyle ?? "material"
                     onSelected: newValue => {
                         Config.setNestedValue("appearance.globalStyle", newValue)
-                        Config.setNestedValue("appearance.transparency.enable", newValue === "aurora")
+                        Config.setNestedValue("appearance.transparency.enable", newValue === "aurora" || newValue === "angel")
                     }
                     options: [
                         { displayName: "Material", icon: "dashboard", value: "material" },
                         { displayName: "Cards", icon: "crop_square", value: "cards" },
                         { displayName: "Aurora", icon: "blur_on", value: "aurora" },
+                        { displayName: "Angel", icon: "auto_awesome", value: "angel" },
                         { displayName: "Inir", icon: "terminal", value: "inir" }
                     ]
                 }
@@ -722,7 +724,7 @@ Scope {
                                     sourceSize.width: wallpaperGroup.itemWidth * 2
                                     sourceSize.height: wallpaperGroup.itemHeight * 2
 
-                                    layer.enabled: true
+                                    layer.enabled: Appearance.effectsEnabled
                                     layer.effect: OpacityMask {
                                         maskSource: Rectangle {
                                             width: wpThumb.width
@@ -974,7 +976,7 @@ Scope {
                 ConfigSwitch {
                     buttonIcon: "notifications_active"
                     text: Translation.tr("Sound effects")
-                    checked: Config.options?.sounds?.notifications ?? false
+                    checked: Config.options?.sounds?.notifications ?? true
                     onCheckedChanged: Config.setNestedValue("sounds.notifications", checked)
                 }
                 ConfigSwitch {

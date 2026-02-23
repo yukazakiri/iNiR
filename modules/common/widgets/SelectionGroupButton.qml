@@ -17,9 +17,12 @@ GroupButton {
     property bool rightmost: false
     leftRadius: (toggled || leftmost) ? (height / 2) : Appearance.rounding.unsharpenmore
     rightRadius: (toggled || rightmost) ? (height / 2) : Appearance.rounding.unsharpenmore
-    colBackground: Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colSecondaryContainer
-    colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colSecondaryContainerHover
-    colBackgroundActive: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colSecondaryContainerActive
+    colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+        : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colSecondaryContainer
+    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colSecondaryContainerHover
+    colBackgroundActive: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colSecondaryContainerActive
 
     contentItem: RowLayout {
         spacing: 4 * (root.buttonText?.length > 0)

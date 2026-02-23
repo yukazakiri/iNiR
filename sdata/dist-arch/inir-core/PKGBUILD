@@ -25,22 +25,22 @@ depends=(
   libnotify
   pacman-contrib  # checkupdates for update notifications
   wlsunset
-  dunst
   
   # XDG Portals for Niri
   xdg-desktop-portal
   xdg-desktop-portal-gtk
   xdg-desktop-portal-gnome
   
-  # Polkit - any agent works (mate-polkit, gnome-polkit, lxpolkit, etc)
+  # Polkit agent (needed for auth dialogs — gnome agent works universally)
   polkit
+  polkit-gnome
   
   # Network
   networkmanager
   gnome-keyring
   
   # File manager
-  dolphin
+  nautilus
   
   # Terminal - kitty is default, configurable in Settings
   kitty
@@ -54,6 +54,5 @@ depends=(
   # X11 compatibility
   xwayland-satellite
   
-  # System monitor
-  mission-center
 )
+

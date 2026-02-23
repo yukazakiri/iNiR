@@ -7,9 +7,7 @@ function try { "$@" || sleep 0; }
 
 function v(){
   if ! ${quiet:-false}; then
-    echo -e "####################################################"
-    echo -e "${STY_BLUE}[$0]: Next command:${STY_RST}"
-    echo -e "${STY_GREEN}$*${STY_RST}"
+    echo -e "  ${STY_FAINT}▶${STY_RST} ${STY_GREEN}$*${STY_RST}"
   fi
   local execute=true
   if $ask;then
@@ -31,10 +29,10 @@ function v(){
       fi
       
       case $p in
-        [yY] | "") echo -e "${STY_BLUE}OK, executing...${STY_RST}" ;break ;;
+        [yY] | "") break ;;
         [eE]) echo -e "${STY_BLUE}Exiting...${STY_RST}" ;exit ;break ;;
         [sS]) echo -e "${STY_BLUE}Alright, skipping...${STY_RST}" ;execute=false ;break ;;
-        "yesforall") echo -e "${STY_BLUE}Alright, won't ask again.${STY_RST}"; ask=false ;break ;;
+        "yesforall") ask=false ;break ;;
         *) echo -e "${STY_RED}Please enter [y/e/s/yesforall].${STY_RST}";;
       esac
     done
@@ -83,17 +81,16 @@ function x(){
     esac
   done
   case $cmdstatus in
-    0) if ! ${quiet:-false}; then echo -e "${STY_BLUE}[$0]: Command \"${STY_GREEN}$*${STY_BLUE}\" finished.${STY_RST}"; fi;;
+    0) ;;
     1) echo -e "${STY_RED}[$0]: Command \"${STY_GREEN}$*${STY_RED}\" failed. Exiting...${STY_RST}";exit 1;;
     2) echo -e "${STY_RED}[$0]: Command \"${STY_GREEN}$*${STY_RED}\" failed but ignored.${STY_RST}";;
   esac
 }
 
 function showfun(){
-  echo -e "${STY_BLUE}[$0]: Function \"$1\":${STY_RST}"
-  printf "${STY_GREEN}"
-  type -a "$1" 2>/dev/null || return 1
-  printf "${STY_RST}"
+  if ! ${quiet:-false}; then
+    echo -e "\n  ${STY_PURPLE}${STY_BOLD}❯${STY_RST} ${STY_BOLD}$1${STY_RST}"
+  fi
 }
 
 function pause(){
@@ -116,29 +113,27 @@ function command_exists() {
 
 function log_info() {
   if ! ${quiet:-false}; then
-    echo -e "${STY_BLUE}[INFO]${STY_RST} $1"
+    echo -e "  ${STY_BLUE}→${STY_RST} $1"
   fi
 }
 
 function log_success() {
   if ! ${quiet:-false}; then
-    echo -e "${STY_GREEN}[OK]${STY_RST} $1"
+    echo -e "  ${STY_GREEN}✓${STY_RST} $1"
   fi
 }
 
 function log_warning() {
-  # Warnings always shown
-  echo -e "${STY_YELLOW}[WARN]${STY_RST} $1"
+  echo -e "  ${STY_YELLOW}⚠${STY_RST} $1"
 }
 
 function log_error() {
-  # Errors always shown
-  echo -e "${STY_RED}[ERROR]${STY_RST} $1" >&2
+  echo -e "  ${STY_RED}✗${STY_RST} $1" >&2
 }
 
 function log_header() {
   if ! ${quiet:-false}; then
-    echo -e "\n${STY_PURPLE}=== $1 ===${STY_RST}"
+    echo -e "\n  ${STY_PURPLE}${STY_BOLD}$1${STY_RST}"
   fi
 }
 

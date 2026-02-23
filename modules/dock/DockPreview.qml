@@ -51,6 +51,24 @@ PopupWindow {
     implicitWidth: contentItem.implicitWidth + ambientShadowWidth + (visualMargin * 2)
     implicitHeight: contentItem.implicitHeight + ambientShadowWidth + (visualMargin * 2)
 
+    // Reactively update preview when toplevels change (e.g. window closed)
+    Connections {
+        target: ToplevelManager.toplevels
+        function onValuesChanged() {
+            if (!root.visible || !root.appEntry) return
+            const appId = root.appEntry.appId
+            if (!appId) return
+            const current = ToplevelManager.toplevels.values.filter(
+                t => t.appId && t.appId.toLowerCase() === appId
+            )
+            if (current.length === 0) {
+                root.close()
+            } else {
+                root.appEntry = Object.assign({}, root.appEntry, { toplevels: current })
+            }
+        }
+    }
+
     anchor {
         adjustment: PopupAdjustment.Slide
         item: root.anchorItem
@@ -100,9 +118,11 @@ PopupWindow {
             fallbackColor: Appearance.colors.colSurfaceContainer
             inirColor: Appearance.inir?.colLayer2 ?? Appearance.colors.colSurfaceContainer
             auroraTransparency: Appearance.aurora?.popupTransparentize ?? 0.1
-            radius: Appearance.inirEverywhere ? (Appearance.inir?.roundingNormal ?? 12) : Appearance.rounding.normal
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+                : Appearance.inirEverywhere ? (Appearance.inir?.roundingNormal ?? 12) : Appearance.rounding.normal
             border.width: 1
-            border.color: Appearance.inirEverywhere 
+            border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
+                : Appearance.inirEverywhere 
                 ? (Appearance.inir?.colBorder ?? "transparent")
                 : Appearance.auroraEverywhere 
                     ? (Appearance.aurora?.colTooltipBorder ?? "transparent")

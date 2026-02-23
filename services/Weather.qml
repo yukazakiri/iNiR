@@ -80,8 +80,75 @@ Singleton {
         console.info("[Weather] Updated:", result.temp, result.city);
     }
 
+    function _degToCompass(deg): string {
+        if (deg === undefined || deg === null || isNaN(deg)) return "N"
+        const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        const idx = Math.round(((deg % 360) / 22.5)) % 16
+        return dirs[idx]
+    }
+
+    function refineOpenMeteoData(apiData): void {
+        const current = apiData?.current
+        if (!current) return
+
+        const units = apiData?.current_units ?? {}
+        const daily = apiData?.daily ?? {}
+        const sunrise = daily?.sunrise?.[0] ?? ""
+        const sunset = daily?.sunset?.[0] ?? ""
+
+        let result = {}
+        result.uv = "0"
+        result.humidity = (current.relative_humidity_2m ?? 0) + "%"
+        result.sunrise = sunrise ? sunrise.split("T")[1] ?? sunrise : "--:--"
+        result.sunset = sunset ? sunset.split("T")[1] ?? sunset : "--:--"
+        result.windDir = root._degToCompass(current.wind_direction_10m)
+        result.wCode = String(current.weather_code ?? 113)
+        result.city = root.location.name || "Unknown"
+
+        result.temp = (current.temperature_2m ?? 0) + (units.temperature_2m ?? (root.useUSCS ? "°F" : "°C"))
+        result.tempFeelsLike = (current.apparent_temperature ?? 0) + (units.apparent_temperature ?? (root.useUSCS ? "°F" : "°C"))
+        result.wind = (current.wind_speed_10m ?? 0) + " " + (units.wind_speed_10m ?? (root.useUSCS ? "mph" : "km/h"))
+        result.precip = (current.precipitation ?? 0) + " " + (units.precipitation ?? (root.useUSCS ? "in" : "mm"))
+        result.visib = (current.visibility ?? 0) + " " + (units.visibility ?? (root.useUSCS ? "mi" : "km"))
+        result.press = (current.pressure_msl ?? 0) + " " + (units.pressure_msl ?? (root.useUSCS ? "inHg" : "hPa"))
+
+        root.data = result
+        console.info("[Weather] Updated via Open-Meteo:", result.temp, result.city)
+    }
+
+    function fetchWeatherFallback(): void {
+        const lat = root.location.lat
+        const lon = root.location.lon
+        if ((lat === 0 && lon === 0) || openMeteoFetcher.running) {
+            retryTimer.start()
+            return
+        }
+
+        const tempUnit = root.useUSCS ? "fahrenheit" : "celsius"
+        const windUnit = root.useUSCS ? "mph" : "kmh"
+        const precipUnit = root.useUSCS ? "inch" : "mm"
+        const visUnit = root.useUSCS ? "mile" : "km"
+        const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat
+            + "&longitude=" + lon
+            + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,pressure_msl,wind_speed_10m,wind_direction_10m,weather_code,visibility"
+            + "&daily=sunrise,sunset"
+            + "&timezone=auto"
+            + "&temperature_unit=" + tempUnit
+            + "&wind_speed_unit=" + windUnit
+            + "&precipitation_unit=" + precipUnit
+            + "&visibility_unit=" + visUnit
+
+        openMeteoFetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url]
+        openMeteoFetcher.running = true
+    }
+
     // Resolve location: manual coords > manual city > GPS > IP auto-detect
     function resolveLocation(): void {
+        if (gpsLocator.running || ipLocator.running || fallbackLocator.running
+                || forwardGeocoder.running || reverseGeocoder.running || fetcher.running) {
+            return;
+        }
+
         if (root.hasManualCoords) {
             // User provided exact coordinates — reverse geocode for display name
             console.info("[Weather] Using manual coordinates:", root.configLat, root.configLon);
@@ -107,7 +174,7 @@ Singleton {
             console.info("[Weather] Using manual city:", root.configCity);
             const q = encodeURIComponent(root.configCity);
             forwardGeocoder.command = ["/usr/bin/curl", "-s", "--max-time", "10",
-                "https://nominatim.openstreetmap.org/search?format=json&q=" + q + "&limit=1&accept-language=en"];
+                "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" + q + "&limit=5&addressdetails=1&accept-language=es,en"];
             forwardGeocoder.running = true;
             return;
         }
@@ -139,7 +206,7 @@ Singleton {
         } else {
             query = encodeURIComponent(root.location.name.split(',')[0].trim());
         }
-        const cmd = `curl -s --max-time 15 'wttr.in/${query}?format=j1' | jq '{current: .current_condition[0], astronomy: .weather[0].astronomy[0]}'`;
+        const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`;
         fetcher.command = ["/usr/bin/bash", "-c", cmd];
         fetcher.running = true;
     }
@@ -162,6 +229,7 @@ Singleton {
 
     // Retry timer for when network isn't ready at startup
     property int _retryCount: 0
+    property int _emptyResponseCount: 0
     Timer {
         id: retryTimer
         interval: 5000  // 5 seconds between retries
@@ -250,15 +318,44 @@ Singleton {
                 try {
                     const results = JSON.parse(text);
                     if (Array.isArray(results) && results.length > 0) {
-                        const r = results[0];
-                          const lat = parseFloat(r.lat);
-                          const lon = parseFloat(r.lon);
-                          // Build a nice display name: use name + last segment (country)
-                          let displayName = root.configCity;
-                          if (r.display_name) {
-                              const parts = r.display_name.split(",").map(s => s.trim());
-                              displayName = parts.length > 2 ? parts[0] + ", " + parts[parts.length - 1] : parts.join(", ");
-                          }
+                        const queryLower = root.configCity.toLowerCase().trim();
+                        let best = results[0];
+                        let bestScore = -1;
+
+                        for (let i = 0; i < results.length; i++) {
+                            const r = results[i];
+                            const type = String(r?.type ?? "").toLowerCase();
+                            const cls = String(r?.class ?? "").toLowerCase();
+                            const name = String(r?.name ?? r?.display_name ?? "").toLowerCase();
+                            const cityLike = ["city", "town", "village", "municipality", "hamlet", "suburb", "county", "administrative"];
+
+                            let score = 0;
+                            if (name === queryLower) score += 5;
+                            else if (name.startsWith(queryLower)) score += 4;
+                            else if (name.includes(queryLower)) score += 3;
+                            if (cityLike.includes(type)) score += 2;
+                            if (cls === "boundary" || cls === "place") score += 1;
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                best = r;
+                            }
+                        }
+
+                        const lat = parseFloat(best.lat);
+                        const lon = parseFloat(best.lon);
+                        let displayName = root.configCity;
+                        const addr = best.address ?? {};
+                        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
+                        const state = addr.state || addr.region || "";
+                        const country = addr.country || "";
+                        if (city && state) displayName = city + ", " + state;
+                        else if (city && country) displayName = city + ", " + country;
+                        else if (best.display_name) {
+                            const parts = best.display_name.split(",").map(s => s.trim());
+                            displayName = parts.length > 2 ? parts[0] + ", " + parts[parts.length - 1] : parts.join(", ");
+                        }
+
                         root.location = { valid: true, lat: lat, lon: lon, name: displayName };
                         console.info("[Weather] Geocoded:", root.configCity, "→", displayName, "(", lat, ",", lon, ")");
                         root.fetchWeather();
@@ -315,11 +412,14 @@ Singleton {
     // GPS via geoclue (where-am-i command)
     Process {
         id: gpsLocator
+        property bool _handledFallback: false
         command: ["/usr/bin/bash", "-c", "where-am-i -t 10 2>/dev/null | grep -oP '(Latitude|Longitude):\\s*\\K[\\d.-]+' | head -2 | paste -sd' '"]
+        onRunningChanged: if (running) _handledFallback = false
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.trim().length === 0) {
                     console.warn("[Weather] GPS failed, falling back to IP");
+                    gpsLocator._handledFallback = true;
                     root.getLocation();
                     return;
                 }
@@ -338,12 +438,14 @@ Singleton {
                     }
                 }
                 console.warn("[Weather] GPS parse failed, falling back to IP");
+                gpsLocator._handledFallback = true;
                 root.getLocation();
             }
         }
         onExited: (code) => {
-            if (code !== 0 && !root.location.valid) {
+            if (code !== 0 && !root.location.valid && !gpsLocator._handledFallback) {
                 console.warn("[Weather] GPS process failed (code " + code + "), falling back to IP");
+                gpsLocator._handledFallback = true;
                 root.getLocation();
             }
         }
@@ -430,23 +532,79 @@ Singleton {
         command: ["/usr/bin/bash", "-c", ""]
         stdout: StdioCollector {
             onStreamFinished: {
-                if (text.length === 0) {
-                    console.warn("[Weather] Empty response");
-                    retryTimer.start();
+                const payload = text.trim();
+                if (payload.length === 0) {
+                    root._emptyResponseCount++;
+                    if (root._emptyResponseCount >= 3) {
+                        console.warn("[Weather] Empty response (x" + root._emptyResponseCount + "), retrying");
+                    } else {
+                        console.info("[Weather] Empty response, retrying");
+                    }
+                    root.fetchWeatherFallback();
                     return;
                 }
+
+                if (!(payload.startsWith("{") || payload.startsWith("["))) {
+                    root._emptyResponseCount++;
+                    if (root._emptyResponseCount >= 3) {
+                        console.warn("[Weather] Non-JSON weather response, retrying");
+                    } else {
+                        console.info("[Weather] Transient weather response, retrying");
+                    }
+                    root.fetchWeatherFallback();
+                    return;
+                }
+
                 try {
-                    root.refineData(JSON.parse(text));
+                    const parsed = JSON.parse(payload);
+                    const normalized = {
+                        current: parsed?.current ?? parsed?.current_condition?.[0],
+                        astronomy: parsed?.astronomy ?? parsed?.weather?.[0]?.astronomy?.[0]
+                    }
+                    root.refineData(normalized);
+                    root._emptyResponseCount = 0;
                 } catch (e) {
-                    console.error("[Weather] Parse error:", e.message);
-                    retryTimer.start();
+                    root._emptyResponseCount++;
+                    if (root._emptyResponseCount >= 3) {
+                        console.warn("[Weather] Parse error:", e.message);
+                    } else {
+                        console.info("[Weather] Parse error, retrying");
+                    }
+                    root.fetchWeatherFallback();
                 }
             }
         }
         onExited: (code) => {
             if (code !== 0) {
-                console.error("[Weather] Fetch failed, code:", code);
-                retryTimer.start();
+                console.warn("[Weather] Primary provider failed, switching fallback. code:", code);
+                root.fetchWeatherFallback();
+            }
+        }
+    }
+
+    Process {
+        id: openMeteoFetcher
+        command: ["/usr/bin/curl", "-s", "--max-time", "15", ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const payload = text.trim()
+                if (payload.length === 0) {
+                    retryTimer.start()
+                    return
+                }
+                try {
+                    root.refineOpenMeteoData(JSON.parse(payload))
+                    root._emptyResponseCount = 0
+                } catch (e) {
+                    console.warn("[Weather] Open-Meteo parse error:", e.message)
+                    retryTimer.start()
+                }
+            }
+        }
+        onExited: (code) => {
+            if (code !== 0) {
+                console.warn("[Weather] Open-Meteo fetch failed, code:", code)
+                retryTimer.start()
             }
         }
     }

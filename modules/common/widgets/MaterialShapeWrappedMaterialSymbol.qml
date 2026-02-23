@@ -10,10 +10,12 @@ MaterialShape {
     property alias colSymbol: symbol.color
     property real padding: 6
 
-    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
+    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer2
         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
         : Appearance.colors.colSecondaryContainer
-    colSymbol: Appearance.inirEverywhere ? Appearance.inir.colText
+    colSymbol: Appearance.angelEverywhere ? Appearance.angel.colText
+        : Appearance.inirEverywhere ? Appearance.inir.colText
         : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer1
         : Appearance.colors.colOnSecondaryContainer
     shape: MaterialShape.Shape.Clover4Leaf

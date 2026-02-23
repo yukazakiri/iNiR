@@ -214,7 +214,7 @@ These may be used by other applications. The script asks before removing:
 | `~/.config/fuzzel/` | Optional | Ask (remove if fuzzel not installed) |
 | `~/.config/Kvantum/` | Optional | Ask (remove if Kvantum not installed) |
 | `~/.config/kdeglobals` | Optional | Ask |
-| `~/.config/dolphinrc` | Optional | Ask (remove if Dolphin not installed) |
+| `~/.config/dolphinrc` | Optional | Ask (remove if not using Dolphin) |
 | `~/.config/gtk-3.0/gtk.css` | Optional | Ask |
 | `~/.config/gtk-4.0/gtk.css` | Optional | Ask |
 | `~/.config/fontconfig/` | Essential | Keep |

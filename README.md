@@ -9,12 +9,12 @@
 <h1 align="center">iNiR</h1>
 
 <p align="center">
-  <b>A feature-rich Quickshell configuration for the Niri compositor</b><br>
-  <sub>Fork of end-4's illogical-impulse, reimagined for Niri</sub>
+  <b>A complete desktop shell built on Quickshell for the Niri compositor</b><br>
+  <sub>Originally forked from end-4's illogical-impulse — evolved into its own thing</sub>
 </p>
 
 <p align="center">
-  <a href="docs/INSTALL.md">Installation</a> •
+  <a href="docs/INSTALL.md">Install</a> •
   <a href="docs/KEYBINDS.md">Keybinds</a> •
   <a href="docs/IPC.md">IPC Reference</a> •
   <a href="https://discord.gg/pAPTfAhZUJ">Discord</a>
@@ -22,25 +22,10 @@
 
 ---
 
-## Features
-
-- **Two panel families** — Material Design or Windows 11 style, switchable on the fly
-- **Three visual styles** — Material (solid), Aurora (glass blur), Inir (TUI-inspired)
-- **Workspace overview** — Adapted for Niri's scrolling workspace model
-- **Window switcher** — Alt+Tab that works across all workspaces
-- **Region tools** — Screenshots, screen recording, OCR, reverse image search
-- **Clipboard manager** — Searchable history with image preview
-- **Dynamic theming** — Matugen extracts colors from your wallpaper
-- **Theme presets** — Gruvbox, Catppuccin, and more, or build your own
-- **GameMode** — Auto-disables effects when fullscreen apps are detected
-- **GUI Settings** — Configure everything without touching JSON
-
----
-
 ## Screenshots
 
 <details open>
-<summary><b>Material ii</b> — Floating bar, sidebars, Material Design aesthetic</summary>
+<summary><b>Material ii</b> — floating bar, sidebars, Material Design aesthetic</summary>
 
 | | |
 |:---:|:---:|
@@ -51,13 +36,84 @@
 </details>
 
 <details>
-<summary><b>Waffle</b> — Bottom taskbar, action center, Windows 11 vibes</summary>
+<summary><b>Waffle</b> — bottom taskbar, action center, Windows 11 vibes</summary>
 
 | | |
 |:---:|:---:|
 | ![](https://github.com/user-attachments/assets/5c5996e7-90eb-4789-9921-0d5fe5283fa3) | ![](https://github.com/user-attachments/assets/fadf9562-751e-4138-a3a1-b87b31114d44) |
 
 </details>
+
+---
+
+## Features
+
+### Theming & Appearance
+
+Pick a wallpaper and everything adapts — the shell, GTK/Qt apps, terminals, Firefox, Discord, even the SDDM login screen. All automatic.
+
+- **5 visual styles** — Material (solid), Cards, Aurora (glass blur), iNiR (TUI-inspired), Angel (neo-brutalism)
+- **Dynamic wallpaper colors** via matugen — propagate to the entire system
+- **10 terminal tools auto-themed** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
+- **App theming** — GTK3/4, Qt (via plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)
+- **Theme presets** — Gruvbox, Catppuccin, Rosé Pine, and more — or make your own
+- **Video wallpapers** — mp4/webm/gif with optional blur, or frozen first-frame for performance
+- **SDDM login theme** — Material You colors synced with your wallpaper
+- **Desktop widgets** — clock (multiple styles), weather, media controls on the wallpaper layer
+
+### Two Panel Families
+
+Switch between them on the fly with `Super+Shift+W`:
+
+- **Material ii** — floating bar (top/bottom, 4 corner styles), sidebars, dock (all 4 positions), control panel, vertical bar variant
+- **Waffle** — Windows 11-inspired bottom taskbar, start menu, action center, notification center, widget panel, task view
+
+### Sidebars & Widgets (Material ii)
+
+The left sidebar doubles as an app drawer:
+
+- **AI Chat** — Gemini, Mistral, OpenRouter, or local models via Ollama
+- **YT Music** — full player with search, queue, and playback controls
+- **Wallhaven browser** — search and apply wallpapers directly
+- **Anime tracker** — AniList integration with schedule view
+- **Reddit feed** — browse subreddits inline
+- **Translator** — powered by Gemini or translate-shell
+- **Draggable widgets** — crypto prices, media player, quick notes, status rings, week calendar
+
+The right sidebar covers everyday essentials:
+
+- **Calendar** with event integration
+- **Notifications** center
+- **Quick toggles** — WiFi, Bluetooth, night light, DND, power profiles, WARP VPN, EasyEffects (Android or classic layout)
+- **Volume mixer** — per-app volume control
+- **Bluetooth & WiFi** device managers
+- **Pomodoro timer**, **todo list**, **calculator**, **notepad**
+- **System monitor** — CPU, RAM, temp
+
+### Tools
+
+- **Workspace overview** — adapted for Niri's scrolling model, with app search and calculator
+- **Window switcher** — Alt+Tab across all workspaces
+- **Clipboard manager** — searchable history with image preview
+- **Region tools** — screenshots, screen recording, OCR text extraction, reverse image search
+- **Cheatsheet** — keybind viewer pulled from your Niri config
+- **Media controls** — full MPRIS player with multiple layout presets
+- **On-screen display** — volume, brightness, and media OSD
+- **Song recognition** — Shazam-like identification via SongRec
+- **Voice search** — record and search via Gemini
+
+### System
+
+- **GUI settings** — configure everything without touching config files
+- **GameMode** — auto-disables effects when fullscreen apps are detected
+- **Auto-updates** — `./setup update` with rollback, migrations, and user-change preservation
+- **Lock screen** and **session screen** (logout/reboot/shutdown/suspend)
+- **Polkit agent**, **on-screen keyboard**, **autostart manager**
+- **15+ languages** — auto-detected, with AI-assisted translation generation
+- **Night light** — scheduled or manual blue light filter
+- **Weather** — Open-Meteo, supports GPS, manual coords, or city name
+- **Battery management** — configurable thresholds, auto-suspend at critical
+- **Shell update checker** — notifies when new versions are available
 
 ---
 
@@ -68,66 +124,71 @@
 ```bash
 git clone https://github.com/snowarch/inir.git
 cd inir
-./setup install
+./setup
 ```
 
-**Other distros:** See [docs/INSTALL.md](docs/INSTALL.md) for manual installation.
+The installer handles dependencies, configs, theming — everything. Just follow the prompts.
+
+**Other distros:** The installer fully supports Arch only. Manual installation guide in [docs/INSTALL.md](docs/INSTALL.md).
 
 **Updating:**
 
 ```bash
-./setup update
+./setup
 ```
 
-Your configs stay untouched. New features are offered as optional migrations.
+Your configs stay untouched. New features come as optional migrations. Rollback included if something breaks.
 
 ---
 
-## Default Keybinds
+## Keybinds
 
 | Key | Action |
 |-----|--------|
-| `Super+Space` | Overview (search + workspace navigation) |
+| `Super+Space` | Overview — search apps, navigate workspaces |
 | `Alt+Tab` | Window switcher |
 | `Super+V` | Clipboard history |
-| `Super+Shift+S` | Region screenshot |
-| `Super+Shift+X` | Region OCR |
+| `Super+Shift+S` | Screenshot region |
+| `Super+Shift+X` | OCR region |
 | `Super+,` | Settings |
-| `Super+Shift+W` | Cycle panel families |
+| `Super+Shift+W` | Switch panel family |
 
-Full list: [docs/KEYBINDS.md](docs/KEYBINDS.md)
+Full list and customization guide: [docs/KEYBINDS.md](docs/KEYBINDS.md)
 
 ---
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
+| | |
+|---|---|
 | [INSTALL.md](docs/INSTALL.md) | Installation guide |
-| [SETUP.md](docs/SETUP.md) | Setup commands, updates, migrations, uninstall |
-| [KEYBINDS.md](docs/KEYBINDS.md) | Keyboard shortcuts |
-| [IPC.md](docs/IPC.md) | IPC targets for custom bindings |
-| [PACKAGES.md](docs/PACKAGES.md) | Required packages |
-| [LIMITATIONS.md](docs/LIMITATIONS.md) | Known limitations |
+| [SETUP.md](docs/SETUP.md) | Setup commands — updates, migrations, rollback, uninstall |
+| [KEYBINDS.md](docs/KEYBINDS.md) | All keyboard shortcuts |
+| [IPC.md](docs/IPC.md) | IPC targets for scripting and custom keybinds |
+| [PACKAGES.md](docs/PACKAGES.md) | Every package and why it's there |
+| [LIMITATIONS.md](docs/LIMITATIONS.md) | Known limitations and workarounds |
+| [OPTIMIZATION.md](docs/OPTIMIZATION.md) | QML performance guide for contributors |
 
 ---
 
 ## Troubleshooting
 
 ```bash
-qs log -c ii                    # Check logs
-qs kill -c ii && qs -c ii       # Restart shell
-./setup doctor                  # Auto-fix common issues
-./setup rollback                # Undo last update
+qs log -c ii                    # Check logs — the answer is usually here
+qs kill -c ii && qs -c ii       # Restart the shell
+./setup doctor                  # Auto-diagnose and fix common problems
+./setup rollback                # Undo the last update
 ```
+
+Check [LIMITATIONS.md](docs/LIMITATIONS.md) before opening an issue — it might already be documented.
 
 ---
 
 ## Credits
 
-- [**end-4**](https://github.com/end-4/dots-hyprland) — Original illogical-impulse for Hyprland
-- [**Quickshell**](https://quickshell.outfoxxed.me/) — The framework powering this shell
-- [**Niri**](https://github.com/YaLTeR/niri) — The scrolling tiling Wayland compositor
+- [**end-4**](https://github.com/end-4/dots-hyprland) — original illogical-impulse for Hyprland, where this all started
+- [**Quickshell**](https://quickshell.outfoxxed.me/) — the framework powering this shell
+- [**Niri**](https://github.com/YaLTeR/niri) — the scrolling tiling Wayland compositor
 
 ---
 

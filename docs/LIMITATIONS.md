@@ -55,7 +55,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 ### GPS/Weather
 
 - **GPS requires geoclue**: If `geoclue` isn't running or configured, GPS-based weather location silently falls back to IP geolocation.
-- **Weather API**: Uses wttr.in which has rate limits. Don't spam refresh.
+- **Weather API**: Uses Open-Meteo (free, no key required). Fetch interval is configurable (default 10 min).
 
 ---
 
@@ -117,7 +117,8 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Terminal Theming
 
-- **foot only**: Automatic terminal theming generates foot-compatible escape sequences. Other terminals need manual configuration.
+- **Supported tools**: Auto-theming covers foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, and yazi. Each can be toggled individually in Settings → Terminal Colors.
+- **Other terminals**: Not supported. You'll need to manually set colors or use pywal/similar.
 
 ---
 
@@ -171,7 +172,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Memory Usage
 
-- ii loads modules lazily, but a fully-loaded shell with all features enabled uses ~200-400MB RAM. Disable modules you don't use in `shell.qml`.
+- ii loads modules lazily, but a fully-loaded shell with all features enabled uses ~200-400MB RAM. Disable panels you don't use in Settings → General → Enabled Panels.
 
 ### Startup Time
 
@@ -205,7 +206,7 @@ Before opening an issue and making me read your bug report:
 
 1. Check `qs log -c ii` for errors - the answer is usually right there
 2. Verify the feature isn't listed as a known limitation above - yes, you have to actually read this page
-3. Test with a fresh config (`mv ~/.config/illogical-impulse/config.json ~/.config/illogical-impulse/config.json.bak`)
+3. Test with a fresh config: `mv ~/.config/illogical-impulse/config.json ~/.config/illogical-impulse/config.json.bak`
 4. Include your Niri version (`niri --version`) and Quickshell version (`qs --version`)
 
 If it's still broken after all that, congratulations - you found a real bug. Gold star for you.

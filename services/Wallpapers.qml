@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.functions
+import qs.services
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
@@ -14,56 +15,178 @@ import "root:modules/common/functions/md5.js" as MD5
 Singleton {
     id: root
 
+    readonly property bool _debugWallpaperUrls: (Quickshell.env("INIR_DEBUG_WALLPAPER_URLS") ?? "") === "1"
+
     // Wallpaper path resolution for aurora/backdrop
     readonly property bool isWaffleFamily: (Config.options?.panelFamily ?? "ii") === "waffle"
     readonly property bool useBackdropWallpaper: isWaffleFamily
         ? (Config.options?.waffles?.background?.backdrop?.hideWallpaper ?? false)
         : (Config.options?.background?.backdrop?.hideWallpaper ?? false)
 
+    // Resolve the "main" wallpaper path — multi-monitor aware
+    // When multi-monitor is enabled, uses the focused monitor's wallpaper
+    // so Aurora blur/glass on all panels matches what's actually on screen.
+    readonly property string _resolvedMainWallpaperPath: {
+        if (WallpaperListener.multiMonitorEnabled) {
+            const focused = WallpaperListener.getFocusedMonitor()
+            if (focused) {
+                const data = WallpaperListener.effectivePerMonitor[focused]
+                if (data && data.path) return data.path
+            }
+        }
+        return Config.options?.background?.wallpaperPath ?? ""
+    }
+
+    readonly property bool useBackdropForColors: Config.options?.appearance?.wallpaperTheming?.useBackdropForColors ?? false
+
     readonly property string effectiveWallpaperPath: {
-        function isVideoFile(path: string): bool {
-            if (!path) return false
-            const lowerPath = path.toLowerCase()
-            return lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm") || lowerPath.endsWith(".mkv") || lowerPath.endsWith(".avi") || lowerPath.endsWith(".mov")
-        }
-        function getSafeWallpaperPath(path: string): string {
-            if (!path) return ""
-            return isVideoFile(path) ? (Config.options?.background?.thumbnailPath ?? path) : path
-        }
-        if (useBackdropWallpaper) {
+        if (useBackdropWallpaper || useBackdropForColors) {
             if (isWaffleFamily) {
                 const wBackdrop = Config.options?.waffles?.background?.backdrop ?? {}
                 const useBackdropOwn = !(wBackdrop.useMainWallpaper ?? true)
-                if (useBackdropOwn && wBackdrop.wallpaperPath) return getSafeWallpaperPath(wBackdrop.wallpaperPath)
+                if (useBackdropOwn && wBackdrop.wallpaperPath) return wBackdrop.wallpaperPath
                 const wBg = Config.options?.waffles?.background ?? {}
                 const useMainForWaffle = wBg.useMainWallpaper ?? true
-                const selectedPath = useMainForWaffle ? (Config.options?.background?.wallpaperPath ?? "") : (wBg.wallpaperPath || (Config.options?.background?.wallpaperPath ?? ""))
-                return getSafeWallpaperPath(selectedPath)
+                return useMainForWaffle ? _resolvedMainWallpaperPath : (wBg.wallpaperPath || _resolvedMainWallpaperPath)
             }
             const iiBackdrop = Config.options?.background?.backdrop ?? {}
             const useMain = iiBackdrop.useMainWallpaper ?? true
-            const mainPath = Config.options?.background?.wallpaperPath ?? ""
-            const selectedPath = useMain ? mainPath : (iiBackdrop.wallpaperPath || mainPath)
-            return getSafeWallpaperPath(selectedPath)
+            const mainPath = _resolvedMainWallpaperPath
+            return useMain ? mainPath : (iiBackdrop.wallpaperPath || mainPath)
         }
         if (isWaffleFamily) {
             const wBg = Config.options?.waffles?.background ?? {}
             const useMain = wBg.useMainWallpaper ?? true
-            if (useMain) {
-                const mainWp = Config.options?.background?.wallpaperPath ?? ""
-                return getSafeWallpaperPath(mainWp)
-            }
-            return getSafeWallpaperPath(wBg.wallpaperPath || (Config.options?.background?.wallpaperPath ?? ""))
+            if (useMain) return _resolvedMainWallpaperPath
+            return wBg.wallpaperPath || _resolvedMainWallpaperPath
         }
-        const mainWp = Config.options?.background?.wallpaperPath ?? ""
-        return getSafeWallpaperPath(mainWp)
+        return _resolvedMainWallpaperPath
     }
 
     readonly property string effectiveWallpaperUrl: {
         const path = root.effectiveWallpaperPath
         if (!path || path.length === 0) return ""
+        // For videos, return image-safe URL (all consumers are Image/ColorQuantizer)
+        if (root.isVideoFile(path)) {
+            const _dep = root.videoFirstFrames // reactive binding
+            const ff = root.videoFirstFrames[path]
+            // Cache-bust so Image(cache:true) surfaces reload when the first frame appears.
+            if (ff) return (ff.startsWith("file://") ? ff : "file://" + ff) + "?ff=1"
+            const expected = root._videoThumbDir + "/" + MD5.hash(path) + ".jpg"
+            root.ensureVideoFirstFrame(path)
+            return "file://" + expected + "?ff=0"
+        }
         return path.startsWith("file://") ? path : ("file://" + path)
     }
+
+    onEffectiveWallpaperUrlChanged: {
+        if (root._debugWallpaperUrls) {
+            console.log("[Wallpapers] effectiveWallpaperPath=", root.effectiveWallpaperPath)
+            console.log("[Wallpapers] effectiveWallpaperUrl=", root.effectiveWallpaperUrl)
+        }
+    }
+
+    // ── Video first-frame system ──────────────────────────────────────────
+    // Generates and caches first-frame JPGs for video wallpapers (same dir as switchwall.sh)
+    readonly property string _videoThumbDir: {
+        const xdg = Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
+        return xdg + "/hypr/custom/scripts/mpvpaper_thumbnails"
+    }
+
+    property var videoFirstFrames: ({})
+
+    function isVideoFile(path: string): bool {
+        if (!path) return false
+        const lp = path.toLowerCase()
+        return lp.endsWith(".mp4") || lp.endsWith(".webm") || lp.endsWith(".mkv") || lp.endsWith(".avi") || lp.endsWith(".mov")
+    }
+
+    function getVideoFirstFramePath(videoPath: string): string {
+        if (!videoPath) return ""
+        return root.videoFirstFrames[videoPath] ?? ""
+    }
+
+    property var _ffPending: ({})
+
+    function ensureVideoFirstFrame(videoPath: string) {
+        if (!videoPath || !isVideoFile(videoPath)) return
+        if (root.videoFirstFrames[videoPath]) return
+        if (root._ffPending[videoPath]) return
+
+        // Check config thumbnailPath (global wallpaper match)
+        const configWp = Config.options?.background?.wallpaperPath ?? ""
+        const configThumb = Config.options?.background?.thumbnailPath ?? ""
+        if (configWp === videoPath && configThumb) {
+            const expected = root._videoThumbDir + "/" + MD5.hash(videoPath) + ".jpg"
+            const thumbPath = FileUtils.trimFileProtocol(configThumb)
+            if (thumbPath === expected) {
+                _cacheFirstFrame(videoPath, expected)
+                return
+            }
+        }
+
+        // Queue async check → generate (with dedup)
+        root._ffPending[videoPath] = true
+        // Use md5 hash of full path to match switchwall.sh and avoid basename collisions
+        const hash = MD5.hash(videoPath)
+        const expectedPath = root._videoThumbDir + "/" + hash + ".jpg"
+        root._ffQueue.push({ videoPath: videoPath, outputPath: expectedPath })
+        if (!_ffCheckProc.running && !_ffGenProc.running) _processNextFF()
+    }
+
+    function _cacheFirstFrame(videoPath: string, imagePath: string) {
+        const copy = Object.assign({}, root.videoFirstFrames)
+        copy[videoPath] = imagePath
+        root.videoFirstFrames = copy
+
+        if (root._debugWallpaperUrls) {
+            console.log("[Wallpapers] Cached first-frame:", videoPath, "->", imagePath)
+        }
+    }
+
+    property var _ffQueue: []
+
+    function _processNextFF() {
+        if (root._ffQueue.length === 0) return
+        const item = root._ffQueue.shift()
+        _ffCheckProc._videoPath = item.videoPath
+        _ffCheckProc._outputPath = item.outputPath
+        _ffCheckProc.command = ["test", "-f", item.outputPath]
+        _ffCheckProc.running = true
+    }
+
+    Process {
+        id: _ffCheckProc
+        property string _videoPath
+        property string _outputPath
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                root._cacheFirstFrame(_ffCheckProc._videoPath, _ffCheckProc._outputPath)
+                root._processNextFF()
+            } else {
+                _ffGenProc._videoPath = _ffCheckProc._videoPath
+                _ffGenProc._outputPath = _ffCheckProc._outputPath
+                _ffGenProc.command = ["bash", "-c",
+                    "mkdir -p " + JSON.stringify(root._videoThumbDir) +
+                    " && ffmpeg -y -i " + JSON.stringify(_ffCheckProc._videoPath) +
+                    " -vframes 1 -q:v 2 " + JSON.stringify(_ffCheckProc._outputPath)]
+                _ffGenProc.running = true
+            }
+        }
+    }
+
+    Process {
+        id: _ffGenProc
+        property string _videoPath
+        property string _outputPath
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                root._cacheFirstFrame(_ffGenProc._videoPath, _ffGenProc._outputPath)
+            }
+            root._processNextFF()
+        }
+    }
+    // ── End video first-frame system ──────────────────────────────────────
 
     property string thumbgenScriptPath: `${FileUtils.trimFileProtocol(Directories.scriptPath)}/thumbnails/thumbgen-venv.sh`
     property string generateThumbnailsMagickScriptPath: `${FileUtils.trimFileProtocol(Directories.scriptPath)}/thumbnails/generate-thumbnails-magick.sh`
@@ -118,19 +241,94 @@ Singleton {
         applyProc.exec([Directories.wallpaperSwitchScriptPath, "--mode", (darkMode ? "dark" : "light")])
     }
 
-    function apply(path, darkMode = Appearance.m3colors.darkmode) {
+    function apply(path, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
         if (!path || path.length === 0) return
-        applyProc.exec([Directories.wallpaperSwitchScriptPath, "--image", path, "--mode", (darkMode ? "dark" : "light")])
+
+        if (monitorName !== "") {
+            // Per-monitor: update config directly in QML to avoid race condition
+            // (switchwall.sh and QML both write config.json — the 50ms write timer causes data loss)
+            updatePerMonitorConfig(path, monitorName)
+            root.changed()
+            return
+        }
+
+        // Global wallpaper: use switchwall.sh for color generation + system theming
+        // Kill any previous switchwall process to prevent race conditions
+        // (old process finishing after new one would overwrite colors)
+        if (applyProc.running) applyProc.kill()
+        applyProc.exec([
+            Directories.wallpaperSwitchScriptPath,
+            "--image", path,
+            "--mode", (darkMode ? "dark" : "light")
+        ])
         root.changed()
+    }
+
+    function updatePerMonitorConfig(path: string, monitorName: string) {
+        const currentArray = Config.options?.background?.wallpapersByMonitor ?? []
+        const newArray = []
+        for (const entry of currentArray) {
+            if (entry && entry.monitor !== monitorName) {
+                newArray.push(entry)
+            }
+        }
+
+        let wsFirst = 1, wsLast = 10
+        if (CompositorService.isNiri) {
+            const range = detectNiriWorkspaceRange(monitorName)
+            if (range) { wsFirst = range.first; wsLast = range.last }
+        }
+
+        newArray.push({
+            monitor: monitorName,
+            path: path,
+            workspaceFirst: wsFirst,
+            workspaceLast: wsLast
+        })
+
+        Config.setNestedValue("background.wallpapersByMonitor", newArray)
+    }
+
+    function updatePerMonitorBackdropConfig(backdropPath: string, monitorName: string) {
+        const currentArray = Config.options?.background?.wallpapersByMonitor ?? []
+        const newArray = []
+        let found = false
+        for (const entry of currentArray) {
+            if (!entry) continue
+            if (entry.monitor === monitorName) {
+                found = true
+                newArray.push(Object.assign({}, entry, { backdropPath: backdropPath }))
+            } else {
+                newArray.push(entry)
+            }
+        }
+        if (!found) {
+            // Monitor not in array yet — create entry with global wallpaper as main path
+            let wsFirst = 1, wsLast = 10
+            if (CompositorService.isNiri) {
+                const range = detectNiriWorkspaceRange(monitorName)
+                if (range) { wsFirst = range.first; wsLast = range.last }
+            }
+            newArray.push({
+                monitor: monitorName,
+                path: Config.options?.background?.wallpaperPath ?? "",
+                workspaceFirst: wsFirst,
+                workspaceLast: wsLast,
+                backdropPath: backdropPath
+            })
+        }
+        Config.setNestedValue("background.wallpapersByMonitor", newArray)
     }
 
     Process {
         id: selectProc
         property string filePath: ""
         property bool darkMode: Appearance.m3colors.darkmode
-        function select(filePath, darkMode = Appearance.m3colors.darkmode) {
+        property string monitorName: ""
+        function select(filePath, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
             selectProc.filePath = filePath
             selectProc.darkMode = darkMode
+            selectProc.monitorName = monitorName
             selectProc.exec(["test", "-d", FileUtils.trimFileProtocol(filePath)])
         }
         onExited: (exitCode, exitStatus) => {
@@ -138,19 +336,42 @@ Singleton {
                 setDirectory(selectProc.filePath)
                 return
             }
-            root.apply(selectProc.filePath, selectProc.darkMode)
+            root.apply(selectProc.filePath, selectProc.darkMode, selectProc.monitorName)
         }
     }
 
-    function select(filePath, darkMode = Appearance.m3colors.darkmode) {
-        selectProc.select(filePath, darkMode)
+    function select(filePath, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
+        selectProc.select(filePath, darkMode, monitorName)
     }
 
-    function randomFromCurrentFolder(darkMode = Appearance.m3colors.darkmode) {
+    function randomFromCurrentFolder(darkMode = Appearance.m3colors.darkmode, monitorName = "") {
         if (folderModel.count === 0) return
         const randomIndex = Math.floor(Math.random() * folderModel.count)
         const filePath = folderModel.get(randomIndex, "filePath")
-        root.select(filePath, darkMode)
+        root.select(filePath, darkMode, monitorName)
+    }
+
+    // Detect workspace range for a monitor (Niri-specific)
+    function detectNiriWorkspaceRange(monitorName: string): var {
+        if (!CompositorService.isNiri) return null
+
+        const workspaces = NiriService.workspaces ?? {}
+        const outputWorkspaces = []
+
+        for (const wsId in workspaces) {
+            const ws = workspaces[wsId]
+            if (ws && ws.output === monitorName) {
+                outputWorkspaces.push(ws.idx)
+            }
+        }
+
+        if (outputWorkspaces.length === 0) return null
+
+        outputWorkspaces.sort((a, b) => a - b)
+        return {
+            first: outputWorkspaces[0],
+            last: outputWorkspaces[outputWorkspaces.length - 1]
+        }
     }
 
     Process {
@@ -274,4 +495,78 @@ Singleton {
         id: thumbgenFallbackProc
         onExited: root.thumbnailGenerated(thumbgenProc.directory)
     }
+
+    // ── Auto wallpaper cycling ──────────────────────────────────────────
+    readonly property bool autoWallpaperEnabled: Config.options?.background?.autoWallpaper?.enable ?? false
+    readonly property int autoWallpaperInterval: Config.options?.background?.autoWallpaper?.intervalMinutes ?? 30
+    readonly property bool autoWallpaperGenerateColors: Config.options?.background?.autoWallpaper?.generateColors ?? true
+    readonly property string autoWallpaperFolder: Config.options?.background?.autoWallpaper?.folder ?? ""
+
+    Timer {
+        id: autoWallpaperTimer
+        interval: root.autoWallpaperInterval * 60 * 1000
+        running: root.autoWallpaperEnabled && !GlobalStates.screenLocked
+        repeat: true
+        onTriggered: root._cycleAutoWallpaper()
+    }
+
+    function _cycleAutoWallpaper() {
+        // Use custom folder or current folder
+        const customFolder = root.autoWallpaperFolder
+        if (customFolder && customFolder.length > 0) {
+            // Switch to custom folder temporarily, pick random, then switch back
+            const previousFolder = root.effectiveDirectory
+            _autoPickProc._previousFolder = previousFolder
+            _autoPickProc._targetFolder = customFolder
+            _autoPickProc.command = ["test", "-d", customFolder]
+            _autoPickProc.running = true
+            return
+        }
+        // Use current folder
+        if (folderModel.count === 0) return
+        _pickRandomAndApply()
+    }
+
+    function _pickRandomAndApply() {
+        if (folderModel.count === 0) return
+        const currentPath = Config.options?.background?.wallpaperPath ?? ""
+        let attempts = 0
+        let randomIndex, filePath
+        // Try to pick a different wallpaper than the current one
+        do {
+            randomIndex = Math.floor(Math.random() * folderModel.count)
+            filePath = folderModel.get(randomIndex, "filePath")
+            attempts++
+        } while (filePath === currentPath && attempts < 5 && folderModel.count > 1)
+
+        if (!filePath) return
+
+        if (root.autoWallpaperGenerateColors) {
+            root.apply(filePath, Appearance.m3colors.darkmode)
+        } else {
+            // Just change wallpaper path without running color generation
+            Config.setNestedValue("background.wallpaperPath", filePath)
+        }
+    }
+
+    Process {
+        id: _autoPickProc
+        property string _previousFolder: ""
+        property string _targetFolder: ""
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                // Folder exists, temporarily set it and pick random
+                root.directory = Qt.resolvedUrl(_autoPickProc._targetFolder)
+                // Wait for folder model to update before picking
+                _autoPickFolderDelay.restart()
+            }
+        }
+    }
+
+    Timer {
+        id: _autoPickFolderDelay
+        interval: 500
+        onTriggered: root._pickRandomAndApply()
+    }
+    // ── End auto wallpaper cycling ──────────────────────────────────────
 }

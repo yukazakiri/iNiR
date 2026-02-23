@@ -30,8 +30,14 @@ Item {
     
     Rectangle {
         anchors.fill: rowContent
-        color: hovered ? (Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover : Appearance.colors.colLayer2Hover) : "transparent"
-        radius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
+        color: hovered
+            ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+             : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
+             : Appearance.colors.colLayer2Hover)
+            : "transparent"
+        radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+              : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
+              : Appearance.rounding.verysmall
         Behavior on color {
             enabled: Appearance.animationsEnabled
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -58,7 +64,8 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             text: root.category
             font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
+            color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
+                 : Appearance.colors.colSubtext
             elide: Text.ElideRight
             leftPadding: 16
         }
@@ -81,7 +88,8 @@ Item {
             StyledText {
                 visible: root.showMainKey && root.hasModifiers
                 text: "+"
-                color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
+                color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
+                     : Appearance.colors.colSubtext
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: Appearance.font.pixelSize.small
             }
@@ -97,7 +105,8 @@ Item {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             font.pixelSize: Appearance.font.pixelSize.normal
-            color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+            color: Appearance.inirEverywhere ? Appearance.inir.colText
+                 : Appearance.colors.colOnLayer1
             text: root.description
             elide: Text.ElideRight
             rightPadding: 16
@@ -114,7 +123,9 @@ Item {
             rightMargin: 12
         }
         height: 1
-        color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.colors.colOutlineVariant
+        color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+             : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
+             : Appearance.colors.colOutlineVariant
         opacity: 0.3
         visible: root.showDivider
     }

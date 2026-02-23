@@ -902,6 +902,44 @@ ContentPage {
                 }
             }
 
+            ConfigRow {
+                uniform: true
+                visible: Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
+
+                ConfigSwitch {
+                    buttonIcon: "monitoring"
+                    text: "btop" + (terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["btop"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.terminals?.btop ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.terminals.btop", checked)
+                    opacity: terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["btop"] ?? false) ? 0.5 : 1
+                    StyledToolTip {
+                        text: Translation.tr("btop++ system monitor theme")
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "account_tree"
+                    text: "lazygit" + (terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["lazygit"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.terminals?.lazygit ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.terminals.lazygit", checked)
+                    opacity: terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["lazygit"] ?? false) ? 0.5 : 1
+                    StyledToolTip {
+                        text: Translation.tr("lazygit terminal git UI theme")
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "folder_open"
+                    text: "yazi" + (terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["yazi"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.terminals?.yazi ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.terminals.yazi", checked)
+                    opacity: terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["yazi"] ?? false) ? 0.5 : 1
+                    StyledToolTip {
+                        text: Translation.tr("yazi file manager flavor")
+                    }
+                }
+            }
+
             // Auto-detect button
             RippleButton {
                 Layout.alignment: Qt.AlignRight
@@ -939,7 +977,7 @@ ContentPage {
                     command: [
                         "/usr/bin/bash",
                         "-c",
-                        "for term in kitty alacritty foot wezterm ghostty konsole starship; do " +
+                        "for term in kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi; do " +
                         "if command -v $term &>/dev/null; then echo \"$term:true\"; " +
                         "else echo \"$term:false\"; fi; done"
                     ]
@@ -1068,9 +1106,9 @@ ContentPage {
                 id: harmonySpinBox
                 icon: "tune"
                 text: Translation.tr("Theme Harmony") + " (%)"
-                value: Math.round((Config.options?.appearance?.wallpaperTheming?.terminalColorAdjustments?.harmony ?? 0.15) * 100)
+                value: Math.round((Config.options?.appearance?.wallpaperTheming?.terminalColorAdjustments?.harmony ?? 0.40) * 100)
                 from: 0
-                to: 50
+                to: 100
                 stepSize: 5
                 property bool _ready: false
                 Component.onCompleted: _ready = true
@@ -1078,6 +1116,32 @@ ContentPage {
                     if (!_ready) return;
                     Config.setNestedValue("appearance.wallpaperTheming.terminalColorAdjustments.harmony", value / 100);
                     terminalColorDebounce.restart();
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Shifts terminal color hues towards the theme's primary color. 0% = original colors, 100% = fully harmonized.")
+                }
+            }
+
+            // Background brightness slider
+            ConfigSpinBox {
+                id: bgBrightnessSpinBox
+                icon: "contrast"
+                text: Translation.tr("Background Brightness") + " (%)"
+                value: Math.round((Config.options?.appearance?.wallpaperTheming?.terminalColorAdjustments?.backgroundBrightness ?? 0.50) * 100)
+                from: 10
+                to: 90
+                stepSize: 5
+                property bool _ready: false
+                Component.onCompleted: _ready = true
+                onValueChanged: {
+                    if (!_ready) return;
+                    Config.setNestedValue("appearance.wallpaperTheming.terminalColorAdjustments.backgroundBrightness", value / 100);
+                    terminalColorDebounce.restart();
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Controls terminal background darkness. Lower = darker, higher = lighter. Matches shell surfaces at 50%.")
                 }
             }
 
@@ -1110,9 +1174,10 @@ ContentPage {
 
                 onClicked: {
                     // Update spinbox values directly (this triggers onValueChanged which saves to config)
-                    saturationSpinBox.value = 40;  // 0.40 * 100
-                    brightnessSpinBox.value = 55;  // 0.55 * 100
-                    harmonySpinBox.value = 15;     // 0.15 * 100
+                    saturationSpinBox.value = 65;  // 0.65 * 100
+                    brightnessSpinBox.value = 60;  // 0.60 * 100
+                    harmonySpinBox.value = 40;     // 0.40 * 100
+                    bgBrightnessSpinBox.value = 50; // 0.50 * 100
                     // Note: ThemeService.regenerateAutoTheme() is called by onValueChanged
                 }
             }
@@ -1168,11 +1233,11 @@ ContentPage {
 
         SettingsGroup {
             id: globalStyleGroup
-            readonly property bool cardsEverywhere: Config.options.dock.cardStyle && Config.options.sidebar.cardStyle && (Config.options.bar.cornerStyle === 3)
+            readonly property bool cardsEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && ((Config.options?.bar?.cornerStyle ?? 0) === 3)
 
             readonly property string derivedStyle: cardsEverywhere ? "cards" : "material"
-            readonly property string currentStyle: (Config.options.appearance.globalStyle && Config.options.appearance.globalStyle.length > 0)
-                ? Config.options.appearance.globalStyle
+            readonly property string currentStyle: (Config.options?.appearance?.globalStyle ?? "").length > 0
+                ? Config.options?.appearance?.globalStyle ?? "material"
                 : derivedStyle
 
             // Get corner style for current global style
@@ -1184,6 +1249,7 @@ ContentPage {
                     case "cards": return styles.cards ?? 3
                     case "aurora": return styles.aurora ?? 1
                     case "inir": return styles.inir ?? 1
+                    case "angel": return styles.angel ?? 1
                     default: return 1
                 }
             }
@@ -1198,33 +1264,42 @@ ContentPage {
                 const cornerStyle = getCornerStyleForGlobalStyle(styleId)
 
                 if (styleId === "cards") {
-                    Config.options.dock.cardStyle = true;
-                    Config.options.sidebar.cardStyle = true;
-                    Config.options.bar.cornerStyle = cornerStyle;
+                    Config.setNestedValue("dock.cardStyle", true)
+                    Config.setNestedValue("sidebar.cardStyle", true)
+                    Config.setNestedValue("bar.cornerStyle", cornerStyle)
                     Config.setNestedValue("appearance.transparency.enable", false)
                     return;
                 }
 
                 if (styleId === "aurora") {
-                    Config.options.dock.cardStyle = false;
-                    Config.options.sidebar.cardStyle = false;
-                    Config.options.bar.cornerStyle = cornerStyle;
+                    Config.setNestedValue("dock.cardStyle", false)
+                    Config.setNestedValue("sidebar.cardStyle", false)
+                    Config.setNestedValue("bar.cornerStyle", cornerStyle)
                     Config.setNestedValue("appearance.transparency.enable", true)
                     return;
                 }
 
                 if (styleId === "inir") {
-                    Config.options.dock.cardStyle = false;
-                    Config.options.sidebar.cardStyle = false;
-                    Config.options.bar.cornerStyle = cornerStyle;
+                    Config.setNestedValue("dock.cardStyle", false)
+                    Config.setNestedValue("sidebar.cardStyle", false)
+                    Config.setNestedValue("bar.cornerStyle", cornerStyle)
                     Config.setNestedValue("appearance.transparency.enable", false)
                     return;
                 }
 
+                if (styleId === "angel") {
+                    Config.setNestedValue("dock.cardStyle", false)
+                    Config.setNestedValue("sidebar.cardStyle", false)
+                    // HUG mode (0) is incompatible with angel — force Float (1) if saved as Hug
+                    Config.setNestedValue("bar.cornerStyle", cornerStyle === 0 ? 1 : cornerStyle)
+                    Config.setNestedValue("appearance.transparency.enable", true)
+                    return;
+                }
+
                 // material
-                Config.options.dock.cardStyle = false;
-                Config.options.sidebar.cardStyle = false;
-                Config.options.bar.cornerStyle = cornerStyle;
+                Config.setNestedValue("dock.cardStyle", false)
+                Config.setNestedValue("sidebar.cardStyle", false)
+                Config.setNestedValue("bar.cornerStyle", cornerStyle)
                 Config.setNestedValue("appearance.transparency.enable", false)
             }
 
@@ -1242,17 +1317,34 @@ ContentPage {
                         { displayName: Translation.tr("Material"), icon: "tune", value: "material" },
                         { displayName: Translation.tr("Cards"), icon: "branding_watermark", value: "cards" },
                         { displayName: Translation.tr("Aurora"), icon: "blur_on", value: "aurora" },
-                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" }
+                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" },
+                        { displayName: Translation.tr("Angel"), icon: "raven", value: "angel" }
                     ]
                 }
             }
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Material keeps the original surfaces. Cards enables rounded card containers everywhere. Aurora enables a wallpaper-tinted glass surface style across panels. Inir uses a TUI-inspired dark theme with accent-colored borders.")
+                text: Translation.tr("Material keeps the original surfaces. Cards enables rounded card containers everywhere. Aurora enables a wallpaper-tinted glass surface style across panels. Inir uses a TUI-inspired dark theme with accent-colored borders. Angel is the flagship glass style with refined blur, escalonado shadows, and partial accent borders.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 wrapMode: Text.WordWrap
+            }
+
+        }
+    }
+
+    SettingsCardSection {
+        visible: Appearance.angelEverywhere
+        expanded: false
+        icon: "raven"
+        title: Translation.tr("Angel Style Editor")
+
+        SettingsGroup {
+            Loader {
+                Layout.fillWidth: true
+                active: Appearance.angelEverywhere
+                source: "AngelStyleEditor.qml"
             }
         }
     }

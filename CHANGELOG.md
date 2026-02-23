@@ -5,6 +5,96 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-02-22
+
+### Changed
+- **Cheatsheet keybinds grouped by category**: Keybinds now display in separate cards per category (System, ii Shell, Window Management, etc.) with icon headers and count badges. Search still shows flat filtered results.
+- **Periodic table responsive sizing**: Element tiles dynamically scale to fit the cheatsheet panel width (36–70px) instead of hardcoded 70px. No more horizontal scrolling required.
+- **Quick Launch editor redesign**: Replaced bulky outlined text fields with compact pill-shaped inline fields. Single-row layout per shortcut with icon preview, hover effects, and animated delete button.
+- **Displays settings moved to General**: Per-monitor bar/dock visibility controls moved from Interface to General settings page, always visible regardless of monitor count. Shows monitor name and resolution.
+
+### Fixed
+- **SDDM password characters blinking**: Password shape indicators no longer re-animate when typing new characters. Replaced integer Repeater model (which recreates all delegates) with ListModel (preserves existing delegates). Matches lockscreen behavior.
+- **Cheatsheet style consistency**: Added angel and aurora style branches to keybind rows and periodic table cards for proper 5-style support.
+- **SongRec music recognition**: Updated command from deprecated `audio-file-to-recognized-song` to `recognize -j` for compatibility with newer songrec versions.
+
+## [2.11.0] - 2026-02-21
+
+### Added
+- **SDDM Pixel theme**: Material You login screen — session selector, cycling fail messages, wallpaper-synced colors. Auto-applied on fresh install.
+- **Angel global style**: Fifth visual style (neo-brutalism glass) across all shell surfaces
+- **Firefox MaterialFox theming**: Auto-generated Material You colors for Firefox via matugen template
+- **Terminal theming: btop, lazygit, yazi**: 10 TUI tools now auto-theme with wallpaper colors (foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi). Individual toggles in Settings.
+- **Terminal color controls**: Saturation and brightness sliders for fine-tuning generated terminal colors
+- **Overlay theming options**: Scrim dim, background opacity, and blur toggle in Settings
+- **Waffle per-monitor wallpaper**: Full UI with monitor frame preview + thumbnail grid in Waffle settings
+
+### Changed
+- **Color pipeline centralized**: Matugen generates `colors.json` only; Python handles all app configs (GTK, KDE, terminals, Vesktop, Fuzzel) — consistent primary color across everything
+- **Qt theming via plasma-integration**: Required dependency for Material You in Qt apps. Migration 011 auto-patches existing installs. New doctor check verifies it's working.
+- **darkly → darkly-bin**: Pre-built binary on Arch saves ~5 min on fresh install
+- **Setup TUI overhaul**: Consistent `log_*/tui_*` branding across Arch, Debian, and Fedora installers
+- **GTK4 dark mode**: Template applies dark mode unconditionally
+- **Dolphin integration**: SingleClick mode + "Open terminal here" context menu via kservicemenurc
+- **quickshell-git conflict**: Installer handles existing `-git` package, prefers official repos; adds ffmpeg as dependency
+
+### Fixed
+- **Terminal colors not updating**: Root cause — venv activation failed in QML `execDetached` context when `ILLOGICAL_IMPULSE_VIRTUAL_ENV` was unset
+- **SDDM Qt5 compatibility**: Full rewrite for SDDM's Qt5 runtime (model roles, easing curves, font loading)
+- **Wallpaper theming**: Stop guessing thumbnails by basename, clear stale paths on video→image switch, kill previous switchwall before starting new
+- **Video first-frame**: `seek(0)` after pause ensures frame display
+- **Qt apps white on dark**: Fixed GTK4 CSS and terminal venv resolution for Nautilus and KDE apps
+- **Waffle notifications**: Expand direction, calendar lag, animation cleanup
+- **Pomodoro timer**: Timer editing no longer requires double-tap
+- **Settings search**: Improved result relevance — dynamic registry results scored higher, section delimiter parsing unified
+- **Capture windows**: No longer trashes clipboard during screenshot
+- **Foot colors**: Switched to `inir-colors.ini`, removed stale `colors.ini` include
+- **Matugen config**: Use user config at `~/.config/matugen/`, not non-existent defaults path
+- **Config safety audit**: 34 fixes — unsafe writes→`setNestedValue()`, unsafe reads→safe defaults
+- **Waffle video backdrop**: Show frozen first frame when animated wallpapers disabled (was showing nothing)
+- **Fresh install**: 0-byte wallpaper recovery, version.json tracking, polkit auto-detection, env vars in all shells, conflict auto-disable, dynamic wallpaper selection
+
+## [2.10.1] - 2026-02-13
+
+### Added
+- **Desktop right-click context menu**: Right-click on the desktop background opens a context menu with Mission Center, Overview/Task View, Settings, Wallpaper Selector, Terminal, Media Controls, Lock Screen, and Power Menu
+- **Bar right-click context menu (ii family)**: Right-click on the horizontal or vertical bar opens a context menu with Mission Center and Settings
+- **DesktopShellContextMenu component**: Reusable context menu widget for desktop backgrounds, respects all three global styles (Material, Aurora, iNiR)
+
+### Changed
+- **Bar context menu positioning**: Vertical bar popup opens toward screen center (right when bar is left, left when bar is right) following the dock pattern; horizontal bar popup opens above when bar is at bottom, below when at top
+- **Desktop context menu close behavior**: Left-click on desktop closes the menu; right-click repositions it — avoids layer-shell backdrop conflict on Niri
+
+## [2.10.0] - 2026-02-13
+
+### Added
+- **Multi-monitor wallpaper support**: Per-monitor wallpaper and backdrop paths via WallpaperListener service
+- **Video first-frame system**: Automatic ffmpeg extraction and caching of first-frame JPGs for video wallpapers
+- **Per-monitor aurora/glass**: Bar, dock, and sidebars use per-screen wallpaper for blur and color quantization
+- **Wallpaper selector multi-monitor targeting**: Auto-detects focused monitor, opens on target screen, per-monitor selection
+- **Per-monitor backdrop paths**: Each monitor can have its own backdrop wallpaper independent of global setting
+- **Derive theme colors from backdrop**: New toggle in settings — all color generation sources (matugen, ColorQuantizer, aurora) switch to backdrop wallpaper when enabled
+- **Card right-click swap**: Right-click on the front card toggles between main wallpaper and backdrop views
+- **Backdrop card focus borders**: Selection border overlay when backdrop card is in front and selected
+- **DockPreview toplevel reactivity**: Auto-close preview when app exits, update on toplevel changes
+- **Per-monitor random wallpapers**: Random wallpaper scripts (konachan, osu) support focused monitor targeting
+
+### Changed
+- **Card clipping**: Parent-level `layer.enabled + OpacityMask` replaces per-image masking — all children (gradients, labels, badges) now properly clip to rounded corners
+- **Card scaling quality**: `layer.smooth` on scaled cards for sharper text and badges when zoomed out
+- **Video/GIF display**: Always load AnimatedImage for GIFs (frozen when animation disabled); replaced QtMultimedia Video with first-frame Image in previews
+- **Color pipeline**: ColorQuantizer and effectiveWallpaperUrl return image-safe sources for videos (first-frame cache → config thumbnail → trigger generation)
+- **switchwall.sh**: Per-monitor wallpaper changes skip global color regeneration; `--noswitch` reads current wallpaper from config
+- **CryptoWidget**: Cache staleness check — only refresh if older than refreshInterval (default 300s)
+- **WaffleConfig**: Use `Config.setNestedValue()` instead of direct property mutation
+
+### Fixed
+- **Black peaks on cards**: Gradient and label overlays no longer escape rounded corners (`clip:true` only clips rectangular)
+- **Aurora colors for video wallpapers**: ColorQuantizer receives first-frame images instead of undecoded video URLs
+- **Backdrop changes all monitors**: Per-monitor backdrop selection now only affects the selected monitor
+- **White line above wallpaper path**: Removed hardcoded separator — `Layout.topMargin` provides sufficient spacing
+- **Derive theme colors noop**: Toggle now wires through to Appearance.qml ColorQuantizer, Wallpapers.effectiveWallpaperPath, and switchwall.sh matugen source
+
 ## [2.9.1] - 2026-02-11
 
 ### Added

@@ -133,6 +133,7 @@ Singleton {
         console.log("[WindowPreviewService] Capturing", idsToCapture.length, "windows")
         capturing = true
         initialCapturesDone = true
+        Cliphist.suppressRefresh = true
         
         // Build command with IDs
         const cmd = ShellExec.supportsFish()
@@ -158,6 +159,7 @@ Singleton {
         
         console.log("[WindowPreviewService] Force capturing all", windows.length, "windows")
         capturing = true
+        Cliphist.suppressRefresh = true
         
         const ids = windows.map(w => w.id)
         captureProcess.idsToCapture = ids
@@ -197,6 +199,8 @@ Singleton {
             }
             
             idsToCapture = []
+            // Restore clipboard refresh after script cleanup has finished
+            cliphistRestoreTimer.restart()
             root.captureComplete()
         }
     }
@@ -211,6 +215,15 @@ Singleton {
         }
     }
     
+    Timer {
+        id: cliphistRestoreTimer
+        interval: 1500
+        onTriggered: {
+            Cliphist.suppressRefresh = false
+            Cliphist.refresh()
+        }
+    }
+
     Timer {
         id: cleanupTimer
         interval: 1000

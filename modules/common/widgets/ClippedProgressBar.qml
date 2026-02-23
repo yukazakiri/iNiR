@@ -41,7 +41,7 @@ ProgressBar {
     contentItem: Rectangle {
         id: contentItem
         anchors.fill: parent
-        radius: Appearance.rounding.full
+        radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.full
         color: root.trackColor
         visible: false
 
@@ -75,7 +75,7 @@ ProgressBar {
                 }
             }
 
-            radius: Appearance.rounding.unsharpen
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.unsharpen
             color: root.highlightColor
         }
     }

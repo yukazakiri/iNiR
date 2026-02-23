@@ -19,6 +19,7 @@ Loader {
     property bool noSmoothClosing: false
     property bool closeOnFocusLost: true
     property bool closeOnHoverLost: true
+    property int closeOnHoverLostDelay: 500  // ms before closing when hover lost (waffle uses 500)
     property bool anchorHovered: false
     signal focusCleared()
 
@@ -98,7 +99,7 @@ Loader {
 
         Timer {
             id: closeTimer
-            interval: 300
+            interval: root.closeOnHoverLostDelay
             running: root.closeOnHoverLost && popupWindow.visible && !popupWindow.popupContainsMouse && !root.anchorHovered
             onTriggered: root.close()
         }
@@ -167,9 +168,12 @@ Loader {
             fallbackColor: Appearance.colors.colSurfaceContainer
             inirColor: Appearance.inir.colLayer2
             auroraTransparency: Appearance.aurora.popupTransparentize
-            radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+                : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+                : Appearance.rounding.normal
             border.width: 1
-            border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
+            border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
+                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
                         : Appearance.auroraEverywhere 
                             ? Appearance.aurora.colTooltipBorder
                             : Appearance.colors.colSurfaceContainerHighest
@@ -193,7 +197,9 @@ Loader {
                                 Layout.bottomMargin: 2
                                 Layout.fillWidth: true
                                 implicitHeight: 1
-                                color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.colors.colOutlineVariant
+                                color: Appearance.angelEverywhere ? Appearance.angel.colBorderSubtle
+                                    : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
+                                    : Appearance.colors.colOutlineVariant
                             }
                         }
                         DelegateChoice {
@@ -206,14 +212,20 @@ Loader {
 
                                 implicitWidth: Math.max(140, menuRow.implicitWidth + 20)
                                 implicitHeight: 32
-                                buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+                                    : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
+                                    : Appearance.rounding.small
                                 colBackground: "transparent"
-                                colBackgroundHover: Appearance.inirEverywhere 
-                                    ? Appearance.inir.colLayer2Hover
-                                    : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
-                                colRipple: Appearance.inirEverywhere
-                                    ? Appearance.inir.colLayer2Active
-                                    : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)
+                                colBackgroundHover: Appearance.angelEverywhere
+                                    ? Appearance.angel.colGlassPopupHover
+                                    : Appearance.inirEverywhere 
+                                        ? Appearance.inir.colLayer2Hover
+                                        : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
+                                colRipple: Appearance.angelEverywhere
+                                    ? Appearance.angel.colGlassPopupActive
+                                    : Appearance.inirEverywhere
+                                        ? Appearance.inir.colLayer2Active
+                                        : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)
 
                                 onClicked: {
                                     if (modelData.action) modelData.action();
@@ -239,7 +251,8 @@ Loader {
                                             MaterialSymbol {
                                                 text: menuBtn.modelData.iconName ?? ""
                                                 iconSize: Appearance.font.pixelSize.normal
-                                                color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSurface
+                                                color: Appearance.angelEverywhere ? Appearance.angel.colText
+                                                    : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSurface
                                             }
                                         }
 
@@ -254,7 +267,8 @@ Loader {
 
                                     StyledText {
                                         text: menuBtn.modelData.text ?? ""
-                                        color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSurface
+                                        color: Appearance.angelEverywhere ? Appearance.angel.colText
+                                            : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSurface
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter
@@ -278,7 +292,7 @@ Loader {
             color: "transparent"
             exclusiveZone: 0
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "quickshell:contextMenu"
+            WlrLayershell.namespace: "quickshell:contextMenuBackdrop"
 
             anchors {
                 top: true
@@ -289,11 +303,8 @@ Loader {
 
             MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.AllButtons
-                propagateComposedEvents: false
-                onPressed: event => {
-                    root.close()
-                    event.accepted = true
+                onClicked: {
+                    root.close();
                 }
             }
         }

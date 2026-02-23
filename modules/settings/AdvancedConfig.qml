@@ -1,11 +1,19 @@
 import QtQuick
+import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 
 ContentPage {
     settingsPageIndex: 7
     settingsPageName: Translation.tr("Advanced")
+
+    Timer {
+        id: colorRegenTimer
+        interval: 500  // Reduced for faster terminal color previews
+        onTriggered: Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch"])
+    }
 
     SettingsCardSection {
         expanded: true
@@ -114,6 +122,7 @@ ContentPage {
                     text: Translation.tr("Increase contrast of terminal foreground colors")
                 }
             }
+
         }
     }
 

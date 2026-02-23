@@ -13,16 +13,19 @@ RippleButton {
     property bool showLabel: true
     horizontalPadding: 10
 
-    implicitHeight: Appearance.inirEverywhere ? 32 : 40
+    implicitHeight: (Appearance.inirEverywhere || Appearance.angelEverywhere) ? 32 : 40
     readonly property real _iconOnlyImplicitWidth: icon.implicitWidth + horizontalPadding * 2
     implicitWidth: root.showLabel ? (implicitContentWidth + horizontalPadding * 2) : root._iconOnlyImplicitWidth
-    buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall : height / 2
+    buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : height / 2
 
     colBackground: "transparent"
     colBackgroundHover: current ? "transparent" 
+        : Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
         : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colText, 0.92)
         : ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.95)
     colRipple: current ? "transparent" 
+        : Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
         : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colText, 0.85)
         : ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.95)
 
@@ -36,6 +39,11 @@ RippleButton {
             anchors.verticalCenter: parent.verticalCenter
             iconSize: 22
             text: root.materialSymbol
+            color: Appearance.angelEverywhere
+                ? (root.current ? Appearance.angel.colOnPrimary : Appearance.angel.colText)
+                : Appearance.inirEverywhere
+                ? (root.current ? Appearance.inir.colOnPrimary : Appearance.inir.colText)
+                : Appearance.m3colors.m3onSurface
         }
         Loader {
             id: labelLoader
@@ -44,6 +52,11 @@ RippleButton {
             anchors.verticalCenter: parent.verticalCenter
             sourceComponent: StyledText {
                 text: root.text
+                color: Appearance.angelEverywhere
+                    ? (root.current ? Appearance.angel.colOnPrimary : Appearance.angel.colText)
+                    : Appearance.inirEverywhere
+                    ? (root.current ? Appearance.inir.colOnPrimary : Appearance.inir.colText)
+                    : Appearance.m3colors.m3onSurface
             }
         }
     }

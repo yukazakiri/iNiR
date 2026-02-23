@@ -28,7 +28,7 @@ ContentPage {
                 text: Translation.tr("Earbang protection")
                 checked: Config.options?.audio?.protection?.enable ?? false
                 onCheckedChanged: {
-                    Config.options.audio.protection.enable = checked;
+                    Config.setNestedValue("audio.protection.enable", checked);
                 }
                 StyledToolTip {
                     text: Translation.tr("Prevents abrupt increments and restricts volume limit")
@@ -47,7 +47,7 @@ ContentPage {
                     to: 100
                     stepSize: 2
                     onValueChanged: {
-                        Config.options.audio.protection.maxAllowedIncrease = value;
+                        Config.setNestedValue("audio.protection.maxAllowedIncrease", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Maximum volume increase per key press")
@@ -61,10 +61,155 @@ ContentPage {
                     to: 154 // pavucontrol allows up to 153%
                     stepSize: 2
                     onValueChanged: {
-                        Config.options.audio.protection.maxAllowed = value;
+                        Config.setNestedValue("audio.protection.maxAllowed", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Maximum volume percentage (pavucontrol allows up to 153%)")
+                    }
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        expanded: false
+        icon: "devices"
+        title: Translation.tr("Displays")
+
+        SettingsGroup {
+            // Connected monitors info
+            Repeater {
+                model: Quickshell.screens
+
+                delegate: Item {
+                    required property var modelData
+                    required property int index
+                    readonly property string screenName: modelData.name ?? ""
+                    readonly property int screenW: modelData.width ?? 0
+                    readonly property int screenH: modelData.height ?? 0
+                    Layout.fillWidth: true
+                    implicitHeight: monitorRow.implicitHeight + 4
+
+                    RowLayout {
+                        id: monitorRow
+                        anchors {
+                            left: parent.left; right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            leftMargin: 8; rightMargin: 8
+                        }
+                        spacing: 10
+
+                        MaterialSymbol {
+                            text: "monitor"
+                            iconSize: Appearance.font.pixelSize.larger
+                            color: Appearance.colors.colPrimary
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            StyledText {
+                                text: screenName || ("Monitor " + (index + 1))
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                font.weight: Font.Medium
+                                color: Appearance.colors.colOnLayer1
+                            }
+                            StyledText {
+                                text: screenW + "×" + screenH
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                            }
+                        }
+                    }
+                }
+            }
+
+            SettingsDivider {}
+
+            ContentSubsection {
+                title: Translation.tr("Bar visibility")
+                tooltip: Translation.tr("Choose which monitors show the bar. All enabled = shown everywhere.")
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Repeater {
+                        model: Quickshell.screens
+
+                        SettingsSwitch {
+                            required property var modelData
+                            required property int index
+                            readonly property string screenName: modelData.name ?? ""
+                            Layout.fillWidth: true
+                            buttonIcon: "web_asset"
+                            text: screenName || ("Monitor " + (index + 1))
+                            checked: {
+                                const list = Config.options?.bar?.screenList ?? []
+                                return list.length === 0 || list.includes(screenName)
+                            }
+                            onCheckedChanged: {
+                                const screens = Quickshell.screens
+                                let current = [...(Config.options?.bar?.screenList ?? [])]
+                                if (current.length === 0 && !checked) {
+                                    current = screens.map(s => s.name).filter(Boolean)
+                                }
+                                if (checked && !current.includes(screenName)) {
+                                    current.push(screenName)
+                                } else if (!checked) {
+                                    current = current.filter(n => n !== screenName)
+                                }
+                                const allNames = screens.map(s => s.name).filter(Boolean)
+                                if (allNames.length > 0 && allNames.every(n => current.includes(n))) {
+                                    current = []
+                                }
+                                Config.setNestedValue("bar.screenList", current)
+                            }
+                        }
+                    }
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Dock visibility")
+                tooltip: Translation.tr("Choose which monitors show the dock. All enabled = shown everywhere.")
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Repeater {
+                        model: Quickshell.screens
+
+                        SettingsSwitch {
+                            required property var modelData
+                            required property int index
+                            readonly property string screenName: modelData.name ?? ""
+                            Layout.fillWidth: true
+                            buttonIcon: "call_to_action"
+                            text: screenName || ("Monitor " + (index + 1))
+                            checked: {
+                                const list = Config.options?.dock?.screenList ?? []
+                                return list.length === 0 || list.includes(screenName)
+                            }
+                            onCheckedChanged: {
+                                const screens = Quickshell.screens
+                                let current = [...(Config.options?.dock?.screenList ?? [])]
+                                if (current.length === 0 && !checked) {
+                                    current = screens.map(s => s.name).filter(Boolean)
+                                }
+                                if (checked && !current.includes(screenName)) {
+                                    current.push(screenName)
+                                } else if (!checked) {
+                                    current = current.filter(n => n !== screenName)
+                                }
+                                const allNames = screens.map(s => s.name).filter(Boolean)
+                                if (allNames.length > 0 && allNames.every(n => current.includes(n))) {
+                                    current = []
+                                }
+                                Config.setNestedValue("dock.screenList", current)
+                            }
+                        }
                     }
                 }
             }
@@ -87,7 +232,7 @@ ContentPage {
                     to: 100
                     stepSize: 5
                     onValueChanged: {
-                        Config.options.battery.low = value;
+                        Config.setNestedValue("battery.low", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Show warning notification when battery drops below this level")
@@ -101,7 +246,7 @@ ContentPage {
                     to: 100
                     stepSize: 5
                     onValueChanged: {
-                        Config.options.battery.critical = value;
+                        Config.setNestedValue("battery.critical", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Show critical warning when battery drops below this level")
@@ -119,7 +264,7 @@ ContentPage {
                     text: Translation.tr("Automatic suspend")
                     checked: Config.options?.battery?.automaticSuspend ?? false
                     onCheckedChanged: {
-                        Config.options.battery.automaticSuspend = checked;
+                        Config.setNestedValue("battery.automaticSuspend", checked);
                     }
                     StyledToolTip {
                         text: Translation.tr("Automatically suspends the system when battery is low")
@@ -133,7 +278,7 @@ ContentPage {
                     to: 100
                     stepSize: 5
                     onValueChanged: {
-                        Config.options.battery.suspend = value;
+                        Config.setNestedValue("battery.suspend", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Percentage of battery to trigger suspend")
@@ -153,7 +298,7 @@ ContentPage {
                     to: 101
                     stepSize: 5
                     onValueChanged: {
-                        Config.options.battery.full = value;
+                        Config.setNestedValue("battery.full", value);
                     }
                     StyledToolTip {
                         text: Translation.tr("Notify when battery reaches this level while charging (101 = disabled)")
@@ -177,7 +322,7 @@ ContentPage {
                     id: languageSelector
                     currentValue: Config.options?.language?.ui ?? "auto"
                     onSelected: newValue => {
-                        Config.options.language.ui = newValue;
+                        Config.setNestedValue("language.ui", newValue);
                     }
                     options: [
                         {
@@ -239,7 +384,7 @@ ContentPage {
                     ConfigSelectionArray {
                         currentValue: Config.options?.policies?.ai ?? 0
                         onSelected: newValue => {
-                            Config.options.policies.ai = newValue;
+                            Config.setNestedValue("policies.ai", newValue);
                         }
                         options: [
                             { displayName: Translation.tr("No"), icon: "close", value: 0 },
@@ -255,7 +400,7 @@ ContentPage {
                     ConfigSelectionArray {
                         currentValue: Config.options?.policies?.weeb ?? 0
                         onSelected: newValue => {
-                            Config.options.policies.weeb = newValue;
+                            Config.setNestedValue("policies.weeb", newValue);
                         }
                         options: [
                             { displayName: Translation.tr("No"), icon: "close", value: 0 },
@@ -280,7 +425,7 @@ ContentPage {
                     text: Translation.tr("Battery")
                     checked: Config.options?.sounds?.battery ?? false
                     onCheckedChanged: {
-                        Config.options.sounds.battery = checked;
+                        Config.setNestedValue("sounds.battery", checked);
                     }
                     StyledToolTip {
                         text: Translation.tr("Play sound for battery warnings")
@@ -291,7 +436,7 @@ ContentPage {
                     text: Translation.tr("Timer")
                     checked: Config.options?.sounds?.timer ?? false
                     onCheckedChanged: {
-                        Config.options.sounds.timer = checked;
+                        Config.setNestedValue("sounds.timer", checked);
                     }
                     StyledToolTip {
                         text: Translation.tr("Play sound when countdown timer ends")
@@ -302,7 +447,7 @@ ContentPage {
                     text: Translation.tr("Pomodoro")
                     checked: Config.options?.sounds?.pomodoro ?? false
                     onCheckedChanged: {
-                        Config.options.sounds.pomodoro = checked;
+                        Config.setNestedValue("sounds.pomodoro", checked);
                     }
                     StyledToolTip {
                         text: Translation.tr("Play sound when pomodoro timer ends")
@@ -311,9 +456,9 @@ ContentPage {
                 SettingsSwitch {
                     buttonIcon: "notifications"
                     text: Translation.tr("Notifications")
-                    checked: Config.options?.sounds?.notifications ?? false
+                    checked: Config.options?.sounds?.notifications ?? true
                     onCheckedChanged: {
-                        Config.options.sounds.notifications = checked;
+                        Config.setNestedValue("sounds.notifications", checked);
                     }
                     StyledToolTip {
                         text: Translation.tr("Play sound for incoming notifications")
@@ -334,7 +479,7 @@ ContentPage {
                 text: Translation.tr("Second precision")
                 checked: Config.options?.time?.secondPrecision ?? false
                 onCheckedChanged: {
-                    Config.options.time.secondPrecision = checked;
+                    Config.setNestedValue("time.secondPrecision", checked);
                 }
                 StyledToolTip {
                     text: Translation.tr("Enable if you want clocks to show seconds accurately")
@@ -356,7 +501,7 @@ ContentPage {
                             Quickshell.execDetached(["/usr/bin/bash", "-c", `sed -i 's/\\TIME\\b/TIME12/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
                         }
 
-                        Config.options.time.format = newValue;
+                        Config.setNestedValue("time.format", newValue);
                         
                     }
                     options: [
@@ -409,7 +554,7 @@ ContentPage {
                 text: Translation.tr("Hide clipboard images copied from sussy sources")
                 checked: Config.options?.workSafety?.enable?.clipboard ?? false
                 onCheckedChanged: {
-                    Config.options.workSafety.enable.clipboard = checked;
+                    Config.setNestedValue("workSafety.enable.clipboard", checked);
                 }
                 StyledToolTip {
                     text: Translation.tr("Blur clipboard preview for images from anime/NSFW sites")
@@ -423,7 +568,7 @@ ContentPage {
                 text: Translation.tr("Hide sussy/anime wallpapers")
                 checked: Config.options?.workSafety?.enable?.wallpaper ?? false
                 onCheckedChanged: {
-                    Config.options.workSafety.enable.wallpaper = checked;
+                    Config.setNestedValue("workSafety.enable.wallpaper", checked);
                 }
                 StyledToolTip {
                     text: Translation.tr("Replace anime wallpapers with a solid color when enabled")

@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 
 ContentPage {
     id: root
@@ -93,6 +95,827 @@ ContentPage {
     SettingsCardSection {
         visible: root.isIiActive
         expanded: false
+        icon: "devices"
+        title: Translation.tr("Multi-monitor")
+
+        SettingsGroup {
+            SettingsSwitch {
+                buttonIcon: "monitor"
+                text: Translation.tr("Per-monitor wallpapers")
+                checked: Config.options?.background?.multiMonitor?.enable ?? false
+                onCheckedChanged: {
+                    Config.setNestedValue("background.multiMonitor.enable", checked)
+                    if (!checked) {
+                        const globalPath = Config.options?.background?.wallpaperPath ?? ""
+                        if (globalPath) {
+                            Wallpapers.apply(globalPath, Appearance.m3colors.darkmode)
+                        }
+                    }
+                }
+                StyledToolTip {
+                    text: Translation.tr("Set a different wallpaper for each connected monitor")
+                }
+            }
+
+            // Full multi-monitor management panel
+            ColumnLayout {
+                id: bgMultiMonPanel
+                visible: Config.options?.background?.multiMonitor?.enable ?? false
+                Layout.fillWidth: true
+                spacing: Appearance.sizes.spacingSmall
+
+                property string selectedMonitor: {
+                    const screens = Quickshell.screens
+                    if (!screens || screens.length === 0) return ""
+                    return WallpaperListener.getMonitorName(screens[0]) ?? ""
+                }
+
+                readonly property var selMonData: WallpaperListener.effectivePerMonitor[selectedMonitor] ?? { path: "", isVideo: false, isGif: false, isAnimated: false, hasCustomWallpaper: false }
+                readonly property string selMonPath: selMonData.path || (Config.options?.background?.wallpaperPath ?? "")
+                property bool showBackdropView: false
+
+                readonly property string backdropPath: {
+                    const bd = Config.options?.background?.backdrop ?? {}
+                    if (!(bd.useMainWallpaper ?? true) && bd.wallpaperPath) return bd.wallpaperPath
+                    return selMonPath
+                }
+
+                // Visual monitor layout
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 180
+                    radius: Appearance.rounding.normal
+                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                         : Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                         : Appearance.colors.colLayer0
+                    border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+                        : Appearance.inirEverywhere ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
+                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+                               : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                               : Appearance.colors.colLayer0Border
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        anchors.margins: Appearance.sizes.spacingSmall
+                        spacing: Appearance.sizes.spacingSmall
+                        height: parent.height - 28
+
+                        Repeater {
+                            model: Quickshell.screens
+
+                            Item {
+                                id: bgMonDelegate
+                                required property var modelData
+                                required property int index
+
+                                readonly property string monName: WallpaperListener.getMonitorName(modelData) ?? ""
+                                readonly property var wpData: WallpaperListener.effectivePerMonitor[monName] ?? { path: "" }
+                                readonly property string wpPath: wpData.path || (Config.options?.background?.wallpaperPath ?? "")
+                                readonly property bool isSelected: monName === bgMultiMonPanel.selectedMonitor
+                                readonly property real aspectRatio: modelData.width / Math.max(1, modelData.height)
+                                readonly property real cardHeight: parent.height - 16
+                                readonly property real cardWidth: cardHeight * aspectRatio
+                                readonly property real backdropOffset: 14
+
+                                readonly property string backdropWpPath: {
+                                    const bd = Config.options?.background?.backdrop ?? {}
+                                    if (!(bd.useMainWallpaper ?? true) && bd.wallpaperPath) return bd.wallpaperPath
+                                    return wpPath
+                                }
+
+                                onWpPathChanged: if (WallpaperListener.isVideoPath(wpPath)) Wallpapers.ensureVideoFirstFrame(wpPath)
+                                onBackdropWpPathChanged: if (WallpaperListener.isVideoPath(backdropWpPath)) Wallpapers.ensureVideoFirstFrame(backdropWpPath)
+
+                                Layout.preferredWidth: cardWidth + backdropOffset + 4
+                                Layout.preferredHeight: parent.height - 8
+                                Layout.alignment: Qt.AlignVCenter
+
+                                // --- Backdrop card (behind, offset to side) ---
+                                Rectangle {
+                                    id: bgBackdropCard
+                                    x: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? 0 : bgMonDelegate.backdropOffset
+                                    y: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? 0 : 4
+                                    z: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected ? 2 : 0
+                                    width: bgMonDelegate.cardWidth
+                                    height: bgMonDelegate.cardHeight
+                                    radius: Appearance.rounding.small
+                                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                         : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                                         : Appearance.colors.colLayer1
+                                    border.width: bgMonDelegate.isSelected && bgMultiMonPanel.showBackdropView
+                                        ? (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : Appearance.inirEverywhere ? 1 : 2) : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : Appearance.inirEverywhere ? 1 : 0)
+                                    border.color: bgMonDelegate.isSelected && bgMultiMonPanel.showBackdropView
+                                        ? (Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.inirEverywhere ? Appearance.inir.colAccent : Appearance.colors.colPrimary)
+                                        : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent")
+                                    clip: true
+
+                                    layer.enabled: true
+                                    layer.smooth: true
+                                    layer.effect: OpacityMask {
+                                        maskSource: Rectangle {
+                                            width: bgBackdropCard.width
+                                            height: bgBackdropCard.height
+                                            radius: bgBackdropCard.radius
+                                        }
+                                    }
+
+                                    opacity: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? 1.0
+                                        : (bgBackdropMa.containsMouse ? 0.7 : 0.5)
+
+                                    Behavior on x { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgBackdropCard) }
+                                    Behavior on y { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgBackdropCard) }
+                                    Behavior on opacity { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgBackdropCard) }
+
+                                    StyledImage {
+                                        visible: !WallpaperListener.isVideoPath(bgMonDelegate.backdropWpPath) && !WallpaperListener.isGifPath(bgMonDelegate.backdropWpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: parent.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: (!WallpaperListener.isVideoPath(bgMonDelegate.backdropWpPath) && !WallpaperListener.isGifPath(bgMonDelegate.backdropWpPath)) ? (bgMonDelegate.backdropWpPath || "") : ""
+                                        sourceSize.width: 200
+                                        sourceSize.height: 200
+                                        cache: true
+                                    }
+                                    AnimatedImage {
+                                        visible: WallpaperListener.isGifPath(bgMonDelegate.backdropWpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: parent.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: {
+                                            if (!WallpaperListener.isGifPath(bgMonDelegate.backdropWpPath)) return ""
+                                            const p = bgMonDelegate.backdropWpPath
+                                            return p.startsWith("file://") ? p : "file://" + p
+                                        }
+                                        asynchronous: true
+                                        cache: true
+                                        playing: false
+                                    }
+                                    StyledImage {
+                                        visible: WallpaperListener.isVideoPath(bgMonDelegate.backdropWpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: parent.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: {
+                                            const ff = Wallpapers.videoFirstFrames[bgMonDelegate.backdropWpPath]
+                                            return ff ? (ff.startsWith("file://") ? ff : "file://" + ff) : ""
+                                        }
+                                        cache: true
+                                        Component.onCompleted: Wallpapers.ensureVideoFirstFrame(bgMonDelegate.backdropWpPath)
+                                    }
+
+                                    // Dim overlay for back position
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        color: Qt.rgba(0, 0, 0, bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected ? 0 : 0.45)
+                                        Behavior on color { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this) }
+                                    }
+
+                                    // "Backdrop" label
+                                    Rectangle {
+                                        visible: !(bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected)
+                                        anchors.bottom: parent.bottom
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottomMargin: 3
+                                        width: bgBackdropLabel.implicitWidth + 8
+                                        height: 16
+                                        radius: 8
+                                        color: Qt.rgba(0, 0, 0, 0.7)
+                                        StyledText {
+                                            id: bgBackdropLabel
+                                            anchors.centerIn: parent
+                                            text: Translation.tr("Backdrop")
+                                            font.pixelSize: Appearance.font.pixelSize.smaller
+                                            color: "white"
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: bgBackdropMa
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: {
+                                            bgMultiMonPanel.selectedMonitor = bgMonDelegate.monName
+                                            bgMultiMonPanel.showBackdropView = !bgMultiMonPanel.showBackdropView
+                                        }
+                                    }
+
+                                    // Selection border overlay
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        color: "transparent"
+                                        visible: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        border.width: 2
+                                        border.color: Appearance.inirEverywhere ? Appearance.inir.colAccent : Appearance.colors.colPrimary
+                                    }
+                                }
+
+                                // --- Main wallpaper card (front) ---
+                                Rectangle {
+                                    id: bgMonCard
+                                    x: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? bgMonDelegate.backdropOffset : 0
+                                    y: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? 4 : 0
+                                    z: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected ? 0 : 2
+                                    width: bgMonDelegate.cardWidth
+                                    height: bgMonDelegate.cardHeight
+                                    radius: Appearance.rounding.small
+                                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                         : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                                         : Appearance.colors.colLayer1
+                                    border.width: bgMonDelegate.isSelected && !bgMultiMonPanel.showBackdropView
+                                        ? (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : Appearance.inirEverywhere ? 1 : 2) : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : Appearance.inirEverywhere ? 1 : 0)
+                                    border.color: bgMonDelegate.isSelected && !bgMultiMonPanel.showBackdropView
+                                        ? (Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.inirEverywhere ? Appearance.inir.colAccent : Appearance.colors.colPrimary)
+                                        : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent")
+                                    clip: true
+
+                                    layer.enabled: true
+                                    layer.smooth: true
+                                    layer.effect: OpacityMask {
+                                        maskSource: Rectangle {
+                                            width: bgMonCard.width
+                                            height: bgMonCard.height
+                                            radius: bgMonCard.radius
+                                        }
+                                    }
+
+                                    opacity: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        ? (bgMonCardMa.containsMouse ? 0.7 : 0.5)
+                                        : (bgMonDelegate.isSelected ? 1.0 : (bgMonCardMa.containsMouse ? 0.95 : 0.8))
+                                    scale: bgMonDelegate.isSelected && !bgMultiMonPanel.showBackdropView
+                                        ? 1.0 : (bgMonCardMa.containsMouse ? 0.97 : 0.93)
+
+                                    Behavior on x { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgMonCard) }
+                                    Behavior on y { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgMonCard) }
+                                    Behavior on scale { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgMonCard) }
+                                    Behavior on opacity { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgMonCard) }
+                                    Behavior on border.width { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(bgMonCard) }
+
+                                    MouseArea {
+                                        id: bgMonCardMa
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: (mouse) => {
+                                            bgMultiMonPanel.selectedMonitor = bgMonDelegate.monName
+                                            if (mouse.button === Qt.RightButton) {
+                                                bgMultiMonPanel.showBackdropView = !bgMultiMonPanel.showBackdropView
+                                            } else {
+                                                bgMultiMonPanel.showBackdropView = false
+                                            }
+                                        }
+                                    }
+
+                                    StyledImage {
+                                        visible: !WallpaperListener.isVideoPath(bgMonDelegate.wpPath) && !WallpaperListener.isGifPath(bgMonDelegate.wpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: bgMonCard.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: (!WallpaperListener.isVideoPath(bgMonDelegate.wpPath) && !WallpaperListener.isGifPath(bgMonDelegate.wpPath)) ? (bgMonDelegate.wpPath || "") : ""
+                                        sourceSize.width: 240
+                                        sourceSize.height: 240
+                                        cache: true
+                                    }
+                                    AnimatedImage {
+                                        visible: WallpaperListener.isGifPath(bgMonDelegate.wpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: bgMonCard.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: {
+                                            if (!WallpaperListener.isGifPath(bgMonDelegate.wpPath)) return ""
+                                            const p = bgMonDelegate.wpPath
+                                            return p.startsWith("file://") ? p : "file://" + p
+                                        }
+                                        asynchronous: true
+                                        cache: true
+                                        playing: false
+                                    }
+                                    StyledImage {
+                                        visible: WallpaperListener.isVideoPath(bgMonDelegate.wpPath)
+                                        anchors.fill: parent
+                                        anchors.margins: bgMonCard.border.width
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: {
+                                            const ff = Wallpapers.videoFirstFrames[bgMonDelegate.wpPath]
+                                            return ff ? (ff.startsWith("file://") ? ff : "file://" + ff) : ""
+                                        }
+                                        cache: true
+                                        Component.onCompleted: Wallpapers.ensureVideoFirstFrame(bgMonDelegate.wpPath)
+                                    }
+
+                                    // Dim overlay when in back position
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        visible: bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected
+                                        color: Qt.rgba(0, 0, 0, 0.45)
+                                    }
+
+                                    // Label gradient overlay
+                                    Rectangle {
+                                        visible: !(bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected)
+                                        anchors.bottom: parent.bottom
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        height: Math.max(bgMonLabelCol.implicitHeight + 14, parent.height * 0.45)
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "transparent" }
+                                            GradientStop { position: 0.55; color: Qt.rgba(0, 0, 0, 0.35) }
+                                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.8) }
+                                        }
+
+                                        ColumnLayout {
+                                            id: bgMonLabelCol
+                                            anchors.bottom: parent.bottom
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            anchors.bottomMargin: 5
+                                            spacing: 1
+
+                                            StyledText {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                text: bgMonDelegate.monName || ("Monitor " + (bgMonDelegate.index + 1))
+                                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                                font.weight: Font.Medium
+                                                color: "#ffffff"
+                                            }
+                                            StyledText {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                text: bgMonDelegate.modelData.width + "×" + bgMonDelegate.modelData.height
+                                                font.pixelSize: Appearance.font.pixelSize.smaller - 2
+                                                color: Qt.rgba(1, 1, 1, 0.7)
+                                            }
+                                        }
+                                    }
+
+                                    // Media type badge
+                                    Rectangle {
+                                        visible: WallpaperListener.isAnimatedPath(bgMonDelegate.wpPath)
+                                            && !(bgMultiMonPanel.showBackdropView && bgMonDelegate.isSelected)
+                                        anchors.top: parent.top
+                                        anchors.left: parent.left
+                                        anchors.margins: 4
+                                        width: bgMediaBadge.implicitWidth + 8
+                                        height: 18
+                                        radius: 9
+                                        color: Qt.rgba(0, 0, 0, 0.75)
+                                        Row {
+                                            id: bgMediaBadge
+                                            anchors.centerIn: parent
+                                            spacing: 2
+                                            MaterialSymbol {
+                                                text: WallpaperListener.isVideoPath(bgMonDelegate.wpPath) ? "movie" : "gif"
+                                                font.pixelSize: 11
+                                                color: "#ffffff"
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            StyledText {
+                                                text: WallpaperListener.mediaTypeLabel(bgMonDelegate.wpPath)
+                                                font.pixelSize: Appearance.font.pixelSize.smaller - 2
+                                                color: "#ffffff"
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                    }
+
+                                    // Selected badge
+                                    Rectangle {
+                                        visible: bgMonDelegate.isSelected && !bgMultiMonPanel.showBackdropView
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 5
+                                        width: 20; height: 20
+                                        radius: 10
+                                        color: Appearance.colors.colPrimary
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "check"
+                                            font.pixelSize: 13
+                                            color: Appearance.colors.colOnPrimary
+                                        }
+                                    }
+
+                                    // Custom wallpaper indicator dot
+                                    Rectangle {
+                                        visible: (bgMonDelegate.wpData.hasCustomWallpaper ?? false)
+                                            && !bgMonDelegate.isSelected
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 7
+                                        width: 8; height: 8
+                                        radius: 4
+                                        color: Appearance.colors.colTertiary
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Unified preview + controls card
+                Rectangle {
+                    id: bgMonPreviewCard
+                    Layout.fillWidth: true
+                    implicitHeight: bgMonPreviewCol.implicitHeight
+                    radius: Appearance.rounding.small
+                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                         : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                         : Appearance.colors.colLayer1
+                    border.width: Appearance.angelEverywhere ? (Appearance.angel?.cardBorderWidth ?? 1) : 1
+                    border.color: Appearance.angelEverywhere ? (Appearance.angel?.colCardBorder ?? Appearance.colors.colLayer1Border)
+                               : Appearance.inirEverywhere ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer1Border)
+                               : Appearance.colors.colLayer1Border
+                    clip: true
+
+                    readonly property string _activePath: bgMultiMonPanel.showBackdropView
+                        ? bgMultiMonPanel.backdropPath : bgMultiMonPanel.selMonPath
+                    readonly property string wpUrl: {
+                        const path = _activePath
+                        if (!path) return ""
+                        return path.startsWith("file://") ? path : "file://" + path
+                    }
+                    readonly property bool isVideo: WallpaperListener.isVideoPath(_activePath)
+                    readonly property bool isGif: WallpaperListener.isGifPath(_activePath)
+
+                    on_ActivePathChanged: if (isVideo) Wallpapers.ensureVideoFirstFrame(_activePath)
+
+                    ColumnLayout {
+                        id: bgMonPreviewCol
+                        anchors { left: parent.left; right: parent.right }
+                        spacing: 0
+
+                        // Hero preview area — frozen first frame for videos/GIFs to save resources
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 160
+                            clip: true
+
+                            StyledImage {
+                                id: bgMonPreviewImage
+                                visible: !bgMonPreviewCard.isGif && !bgMonPreviewCard.isVideo
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectCrop
+                                source: visible ? bgMonPreviewCard.wpUrl : ""
+                                sourceSize.width: 600
+                                sourceSize.height: 340
+                                cache: false
+                            }
+
+                            AnimatedImage {
+                                id: bgMonPreviewGif
+                                visible: bgMonPreviewCard.isGif
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectCrop
+                                source: visible ? bgMonPreviewCard.wpUrl : ""
+                                asynchronous: true
+                                cache: false
+                                playing: false
+                            }
+
+                            StyledImage {
+                                id: bgMonPreviewVideo
+                                visible: bgMonPreviewCard.isVideo
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectCrop
+                                source: {
+                                    const ff = Wallpapers.videoFirstFrames[bgMonPreviewCard._activePath]
+                                    return ff ? (ff.startsWith("file://") ? ff : "file://" + ff) : ""
+                                }
+                                cache: false
+                                Component.onCompleted: Wallpapers.ensureVideoFirstFrame(bgMonPreviewCard._activePath)
+                            }
+
+                            // Bottom gradient overlay with monitor info
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: parent.height * 0.55
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: "transparent" }
+                                    GradientStop { position: 0.5; color: Qt.rgba(0, 0, 0, 0.4) }
+                                    GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.8) }
+                                }
+
+                                RowLayout {
+                                    anchors {
+                                        bottom: parent.bottom; left: parent.left; right: parent.right
+                                        margins: 12; bottomMargin: 10
+                                    }
+                                    spacing: Appearance.sizes.spacingSmall
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+                                        StyledText {
+                                            text: bgMultiMonPanel.selectedMonitor || Translation.tr("No monitor selected")
+                                            font.pixelSize: Appearance.font.pixelSize.large
+                                            font.weight: Font.Medium
+                                            color: "#ffffff"
+                                        }
+                                        StyledText {
+                                            text: {
+                                                if (bgMultiMonPanel.showBackdropView) return Translation.tr("Backdrop wallpaper")
+                                                const custom = bgMultiMonPanel.selMonData.hasCustomWallpaper ?? false
+                                                const animated = bgMultiMonPanel.selMonData.isAnimated ?? false
+                                                let label = custom ? Translation.tr("Custom wallpaper") : Translation.tr("Global wallpaper")
+                                                if (animated) label += " · " + WallpaperListener.mediaTypeLabel(bgMultiMonPanel.selMonPath)
+                                                return label
+                                            }
+                                            font.pixelSize: Appearance.font.pixelSize.smaller - 1
+                                            color: Qt.rgba(1, 1, 1, 0.7)
+                                        }
+                                    }
+
+                                    // View mode pill
+                                    Rectangle {
+                                        visible: bgMultiMonPanel.showBackdropView
+                                        width: bgViewModePill.implicitWidth + 10
+                                        height: 20
+                                        radius: 10
+                                        color: Appearance.colors.colSecondaryContainer
+                                        Row {
+                                            id: bgViewModePill
+                                            anchors.centerIn: parent
+                                            spacing: 3
+                                            MaterialSymbol {
+                                                text: "blur_on"
+                                                font.pixelSize: 12
+                                                color: Appearance.colors.colOnSecondaryContainer
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            StyledText {
+                                                text: "Backdrop"
+                                                font.pixelSize: Appearance.font.pixelSize.smaller - 1
+                                                color: Appearance.colors.colOnSecondaryContainer
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: bgMultiMonPanel.showBackdropView = false
+                                        }
+                                    }
+
+                                    // Media type badge
+                                    Rectangle {
+                                        visible: !bgMultiMonPanel.showBackdropView && (bgMonPreviewCard.isVideo || bgMonPreviewCard.isGif)
+                                        width: bgPreviewBadgeRow.implicitWidth + 10
+                                        height: 20
+                                        radius: 10
+                                        color: Qt.rgba(1, 1, 1, 0.15)
+                                        Row {
+                                            id: bgPreviewBadgeRow
+                                            anchors.centerIn: parent
+                                            spacing: 3
+                                            MaterialSymbol {
+                                                text: WallpaperListener.mediaTypeIcon(bgMonPreviewCard._activePath)
+                                                font.pixelSize: 12
+                                                color: "#ffffff"
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            StyledText {
+                                                text: WallpaperListener.mediaTypeLabel(bgMonPreviewCard._activePath)
+                                                font.pixelSize: Appearance.font.pixelSize.smaller - 1
+                                                color: "#ffffff"
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Separator
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 1
+                            color: Appearance.inirEverywhere
+                                ? (Appearance.inir?.colBorder
+                                    ?? Appearance.colors?.colLayer1Border
+                                    ?? Appearance.colors?.colLayer0Border
+                                    ?? Appearance.m3colors.m3outlineVariant)
+                                : (Appearance.colors?.colLayer1Border
+                                    ?? Appearance.colors?.colLayer0Border
+                                    ?? Appearance.m3colors.m3outlineVariant)
+                            opacity: 0.5
+                        }
+
+                        // Controls section
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.margins: 12
+                            Layout.topMargin: 10
+                            Layout.bottomMargin: 12
+                            spacing: Appearance.sizes.spacingSmall
+
+                            // Wallpaper path
+                            StyledText {
+                                Layout.fillWidth: true
+                                elide: Text.ElideMiddle
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                opacity: 0.7
+                                text: {
+                                    const p = bgMultiMonPanel.showBackdropView
+                                        ? bgMultiMonPanel.backdropPath : bgMultiMonPanel.selMonPath
+                                    return p ? FileUtils.trimFileProtocol(p) : Translation.tr("No wallpaper set")
+                                }
+                            }
+
+                            // Primary actions: Change + Random (wallpaper mode)
+                            RowLayout {
+                                visible: !bgMultiMonPanel.showBackdropView
+                                Layout.fillWidth: true
+                                spacing: Appearance.sizes.spacingSmall
+
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "wallpaper"
+                                    mainText: Translation.tr("Change wallpaper")
+                                    colBackground: Appearance.colors.colPrimaryContainer
+                                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                                    colRipple: Appearance.colors.colPrimaryContainerActive
+                                    mainContentComponent: Component {
+                                        StyledText {
+                                            text: Translation.tr("Change wallpaper")
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colOnPrimaryContainer
+                                        }
+                                    }
+                                    onClicked: {
+                                        const mon = bgMultiMonPanel.selectedMonitor
+                                        if (mon) {
+                                            Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
+                                            Config.setNestedValue("wallpaperSelector.targetMonitor", mon)
+                                            Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"])
+                                        }
+                                    }
+                                }
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "shuffle"
+                                    mainText: Translation.tr("Random")
+                                    onClicked: {
+                                        const mon = bgMultiMonPanel.selectedMonitor
+                                        if (mon) {
+                                            Wallpapers.randomFromCurrentFolder(Appearance.m3colors.darkmode, mon)
+                                        }
+                                    }
+                                    StyledToolTip {
+                                        text: Translation.tr("Set a random wallpaper from the current folder for this monitor")
+                                    }
+                                }
+                            }
+
+                            // Primary actions: Change backdrop (backdrop mode)
+                            RowLayout {
+                                visible: bgMultiMonPanel.showBackdropView
+                                Layout.fillWidth: true
+                                spacing: Appearance.sizes.spacingSmall
+
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "blur_on"
+                                    mainText: Translation.tr("Change backdrop")
+                                    colBackground: Appearance.colors.colSecondaryContainer
+                                    colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 0.15)
+                                    colRipple: ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 0.3)
+                                    mainContentComponent: Component {
+                                        StyledText {
+                                            text: Translation.tr("Change backdrop")
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colOnSecondaryContainer
+                                        }
+                                    }
+                                    onClicked: {
+                                        Config.setNestedValue("wallpaperSelector.selectionTarget", "backdrop")
+                                        Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"])
+                                    }
+                                }
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "arrow_back"
+                                    mainText: Translation.tr("Back to wallpaper")
+                                    onClicked: bgMultiMonPanel.showBackdropView = false
+                                }
+                            }
+
+                            // Secondary actions: Reset + Apply all (wallpaper mode only)
+                            RowLayout {
+                                visible: !bgMultiMonPanel.showBackdropView
+                                Layout.fillWidth: true
+                                spacing: Appearance.sizes.spacingSmall
+
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "restart_alt"
+                                    mainText: Translation.tr("Reset to global")
+                                    onClicked: {
+                                        const mon = bgMultiMonPanel.selectedMonitor
+                                        if (!mon) return
+                                        const globalPath = Config.options?.background?.wallpaperPath ?? ""
+                                        if (globalPath) {
+                                            Wallpapers.select(globalPath, Appearance.m3colors.darkmode, mon)
+                                        }
+                                    }
+                                    StyledToolTip {
+                                        text: Translation.tr("Reset this monitor to use the global wallpaper")
+                                    }
+                                }
+                                RippleButtonWithIcon {
+                                    Layout.fillWidth: true
+                                    buttonRadius: Appearance.rounding.small
+                                    materialIcon: "select_all"
+                                    mainText: Translation.tr("Apply to all")
+                                    onClicked: {
+                                        const globalPath = Config.options?.background?.wallpaperPath ?? ""
+                                        if (globalPath) {
+                                            Wallpapers.apply(globalPath, Appearance.m3colors.darkmode)
+                                        }
+                                    }
+                                    StyledToolTip {
+                                        text: Translation.tr("Apply the global wallpaper to all monitors")
+                                    }
+                                }
+                            }
+
+                            // Backdrop shortcut (wallpaper mode only)
+                            RippleButtonWithIcon {
+                                Layout.fillWidth: true
+                                buttonRadius: Appearance.rounding.small
+                                materialIcon: "blur_on"
+                                mainText: Translation.tr("View backdrop")
+                                visible: !bgMultiMonPanel.showBackdropView && (Config.options?.background?.backdrop?.enable ?? true)
+                                onClicked: bgMultiMonPanel.showBackdropView = true
+                                StyledToolTip {
+                                    text: Translation.tr("Change the backdrop wallpaper (used for overview/blur)")
+                                }
+                            }
+
+                            // Derive theme colors from backdrop
+                            ConfigSwitch {
+                                visible: Config.options?.background?.backdrop?.enable ?? true
+                                buttonIcon: "palette"
+                                text: Translation.tr("Derive theme colors from backdrop")
+                                checked: Config.options?.appearance?.wallpaperTheming?.useBackdropForColors ?? false
+                                onCheckedChanged: {
+                                    Config.setNestedValue("appearance.wallpaperTheming.useBackdropForColors", checked)
+                                    // Regenerate on both ON and OFF when backdrop has a custom wallpaper
+                                    if (!(Config.options?.background?.backdrop?.useMainWallpaper ?? true)) {
+                                        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch"])
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Info bar
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    spacing: 4
+                    MaterialSymbol {
+                        text: "info"
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                        opacity: 0.6
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        font.pixelSize: Appearance.font.pixelSize.smaller - 1
+                        color: Appearance.colors.colSubtext
+                        opacity: 0.6
+                        text: Translation.tr("%1 monitors detected").arg(WallpaperListener.screenCount) + "  ·  " + Translation.tr("Ctrl+Alt+T targets focused output")
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
         icon: "aspect_ratio"
         title: Translation.tr("Wallpaper scaling")
 
@@ -121,7 +944,20 @@ ContentPage {
                     Config.setNestedValue("background.enableAnimation", checked);
                 }
                 StyledToolTip {
-                    text: Translation.tr("Play videos and GIFs as wallpaper. When disabled, shows thumbnail instead (better performance)")
+                    text: Translation.tr("Play videos and GIFs as wallpaper. When disabled, shows a frozen frame (better performance)")
+                }
+            }
+
+            SettingsSwitch {
+                visible: Config.options?.background?.enableAnimation ?? true
+                buttonIcon: "blur_on"
+                text: Translation.tr("Blur animated wallpapers (videos/GIFs)")
+                checked: Config.options?.background?.effects?.enableAnimatedBlur ?? false
+                onCheckedChanged: {
+                    Config.setNestedValue("background.effects.enableAnimatedBlur", checked);
+                }
+                StyledToolTip {
+                    text: Translation.tr("Apply blur effect to video/GIF wallpapers. Has performance impact - disable if you experience lag")
                 }
             }
         }
@@ -190,7 +1026,7 @@ ContentPage {
                     Config.options.background.effects.thumbnailBlurStrength = value;
                 }
                 StyledToolTip {
-                    text: Translation.tr("Blur strength applied to video/GIF thumbnails when animation is disabled (does not affect videos in playback)")
+                    text: Translation.tr("Blur strength for video wallpapers (percentage of full blur radius)")
                 }
             }
 
@@ -246,6 +1082,23 @@ ContentPage {
 
                 SettingsSwitch {
                     visible: Config.options.background.backdrop.enable
+                    buttonIcon: "palette"
+                    text: Translation.tr("Derive theme colors from backdrop")
+                    checked: Config.options?.appearance?.wallpaperTheming?.useBackdropForColors ?? false
+                    onCheckedChanged: {
+                        Config.setNestedValue("appearance.wallpaperTheming.useBackdropForColors", checked)
+                        // Regenerate on both ON and OFF when backdrop has a custom wallpaper
+                        if (!(Config.options?.background?.backdrop?.useMainWallpaper ?? true)) {
+                            Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch"])
+                        }
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Generate theme colors from the backdrop wallpaper instead of the main wallpaper.\nRequires a custom backdrop wallpaper (not 'Use main wallpaper').")
+                    }
+                }
+
+                SettingsSwitch {
+                    visible: Config.options.background.backdrop.enable
                     buttonIcon: "play_circle"
                     text: Translation.tr("Enable animated wallpapers (videos/GIFs)")
                     checked: Config.options.background.backdrop.enableAnimation
@@ -266,7 +1119,7 @@ ContentPage {
                         Config.setNestedValue("background.backdrop.enableAnimatedBlur", checked);
                     }
                     StyledToolTip {
-                        text: Translation.tr("Apply blur effect to animated wallpapers in backdrop. Uses thumbnail blur strength setting. May significantly impact performance.")
+                        text: Translation.tr("Apply blur effect to animated wallpapers in backdrop. May significantly impact performance.")
                     }
                 }
 
@@ -346,7 +1199,7 @@ ContentPage {
                     materialIcon: "wallpaper"
                     mainText: Translation.tr("Pick backdrop wallpaper")
                     onClicked: {
-                        Config.options.wallpaperSelector.selectionTarget = "backdrop";
+                        Config.setNestedValue("wallpaperSelector.selectionTarget", "backdrop")
                         Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
                     }
                 }

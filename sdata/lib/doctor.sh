@@ -45,18 +45,16 @@ check_dependencies() {
         "git:git"
         "python3:python3"
         "matugen:matugen"
-        "wlsunset:wlsunset"
-        "dunstify:dunst"
         "fish:fish"
         "magick:ImageMagick"
-        "swaylock:swaylock"
-        "swayidle:swayidle"
         "grim:grim"
-        "mpv:mpv"
         "cliphist:cliphist"
         "wl-copy:wl-clipboard"
         "wl-paste:wl-clipboard"
         "fuzzel:fuzzel"
+        "hyprpicker:hyprpicker"
+        "songrec:SongRec"
+        "trans:translate-shell"
     )
     
     # Optional but recommended
@@ -75,8 +73,12 @@ check_dependencies() {
         "kwriteconfig6:KConfig"
         "checkupdates:pacman-contrib"
         "ddcutil:ddcutil"
-        "trans:translate-shell"
         "xdg-settings:xdg-utils"
+        "mpv:mpv"
+        "swaylock:swaylock"
+        "swayidle:swayidle"
+        "wlsunset:wlsunset"
+        "dunstify:dunst"
     )
     
     # Check required commands
@@ -105,7 +107,9 @@ check_dependencies() {
             doctor_pass "All required commands available"
         fi
     else
-        doctor_missing_deps=("${missing[@]}")
+        # Keep command identifiers here (qs, niri, wl-copy, etc.) because
+        # setup/update installers map these keys to distro package names.
+        doctor_missing_deps=("${missing_cmds[@]}")
         doctor_fail "Missing: ${missing[*]}"
         
         # Provide distro-specific install hints
@@ -317,24 +321,221 @@ check_quickshell_loads() {
 }
 
 check_matugen_colors() {
-    local colors_file="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/material_colors.scss"
+    local colors_json="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/colors.json"
+    local colors_scss="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/material_colors.scss"
     local darkly_file="${HOME}/.local/share/color-schemes/Darkly.colors"
     
-    if [[ ! -f "$colors_file" ]]; then
-        doctor_fail "Material colors not generated"
-        echo -e "    ${STY_FAINT}Run: matugen image /path/to/wallpaper.png${STY_RST}"
-        echo -e "    ${STY_FAINT}Or: Set wallpaper via ii settings${STY_RST}"
-        return 1
+    # Check if colors exist (colors.json is primary, scss is legacy)
+    if [[ ! -f "$colors_json" && ! -f "$colors_scss" ]]; then
+        # Try to auto-generate from current wallpaper
+        local wallpaper=""
+        local config="${XDG_CONFIG_HOME}/illogical-impulse/config.json"
+        if [[ -f "$config" ]] && command -v jq &>/dev/null; then
+            wallpaper=$(jq -r '.background.wallpaperPath // empty' "$config" 2>/dev/null)
+        fi
+        
+        if [[ -n "$wallpaper" && -f "$wallpaper" && -s "$wallpaper" ]] && command -v matugen &>/dev/null; then
+            local matugen_cfg="${XDG_CONFIG_HOME}/matugen/config.toml"
+            if [[ -f "$matugen_cfg" ]]; then
+                matugen -c "$matugen_cfg" image "$wallpaper" 2>/dev/null
+                doctor_fix "Regenerated theme colors from wallpaper"
+            else
+                matugen image "$wallpaper" 2>/dev/null
+                doctor_fix "Regenerated theme colors (no matugen config)"
+            fi
+        else
+            doctor_fail "Theme colors not generated (no valid wallpaper set)"
+            echo -e "    ${STY_FAINT}Set a wallpaper via ii settings or run: matugen image /path/to/wallpaper.png${STY_RST}"
+            return 1
+        fi
+    else
+        doctor_pass "Theme colors generated"
     fi
     
     if [[ ! -f "$darkly_file" ]]; then
-        doctor_fail "Darkly Qt colors not generated"
-        echo -e "    ${STY_FAINT}Run: bash ~/.config/quickshell/ii/scripts/colors/apply-gtk-theme.sh${STY_RST}"
-        return 1
+        # Try to regenerate Darkly colors
+        local darkly_script="${XDG_CONFIG_HOME}/quickshell/ii/scripts/colors/apply-gtk-theme.sh"
+        if [[ -f "$darkly_script" ]]; then
+            bash "$darkly_script" 2>/dev/null
+            [[ -f "$darkly_file" ]] && doctor_fix "Regenerated Darkly Qt colors" || doctor_fail "Darkly Qt colors generation failed"
+        else
+            doctor_fail "Darkly Qt colors missing"
+        fi
+    else
+        doctor_pass "Darkly Qt colors OK"
+    fi
+    return 0
+}
+
+check_conflicting_services() {
+    local conflicts=("dunst" "mako" "swaync")
+    local running=()
+    
+    for svc in "${conflicts[@]}"; do
+        if pgrep -x "$svc" &>/dev/null; then
+            running+=("$svc")
+        fi
+    done
+    
+    if [[ ${#running[@]} -gt 0 ]]; then
+        # Auto-kill conflicting notification daemons
+        for proc in "${running[@]}"; do
+            pkill -x "$proc" 2>/dev/null
+            systemctl --user disable --now "${proc}.service" 2>/dev/null || true
+        done
+        doctor_fix "Killed conflicting: ${running[*]} (Quickshell has built-in notifications)"
+    else
+        doctor_pass "No conflicting notification daemons"
+    fi
+}
+
+check_wallpaper_health() {
+    local wallpaper_dir
+    wallpaper_dir="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Wallpapers"
+    local assets_dir="${XDG_CONFIG_HOME}/quickshell/ii/assets/wallpapers"
+    
+    [[ ! -d "$wallpaper_dir" ]] && { doctor_pass "Wallpapers (dir not created yet)"; return 0; }
+    
+    local zero_byte=0
+    local fixed=0
+    local _wp_files=()
+    while IFS= read -r -d '' f; do
+        _wp_files+=("$f")
+    done < <(find "$wallpaper_dir" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) -print0 2>/dev/null)
+    for f in "${_wp_files[@]}"; do
+        if [[ ! -s "$f" ]]; then
+            ((zero_byte++)) || true
+            # Try to restore from assets
+            local basename=$(basename "$f")
+            if [[ -f "$assets_dir/$basename" && -s "$assets_dir/$basename" ]]; then
+                cp -f "$assets_dir/$basename" "$f"
+                ((fixed++)) || true
+            else
+                rm -f "$f"  # Remove corrupt 0-byte file
+                ((fixed++)) || true
+            fi
+        fi
+    done
+    
+    if [[ $zero_byte -gt 0 ]]; then
+        doctor_fix "Repaired $fixed/$zero_byte corrupt wallpaper(s)"
+    else
+        doctor_pass "Wallpapers healthy"
+    fi
+}
+
+check_environment_vars() {
+    local venv_path="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/.venv"
+    local fixed=0
+    
+    # Check bash
+    if [[ -f "$HOME/.bashrc" ]] && ! grep -q "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "$HOME/.bashrc" 2>/dev/null; then
+        cat >> "$HOME/.bashrc" << BEOF
+
+# iNiR environment
+export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${venv_path}"
+# end iNiR
+BEOF
+        ((fixed++)) || true
     fi
     
-    doctor_pass "Theme colors generated"
-    return 0
+    # Check fish
+    local fish_conf="${XDG_CONFIG_HOME}/fish/conf.d/inir-env.fish"
+    if command -v fish &>/dev/null && [[ ! -f "$fish_conf" ]]; then
+        mkdir -p "$(dirname "$fish_conf")"
+        cat > "$fish_conf" << FEOF
+# iNiR environment — auto-generated by doctor
+set -gx ILLOGICAL_IMPULSE_VIRTUAL_ENV "${venv_path}"
+FEOF
+        ((fixed++)) || true
+    fi
+    
+    # Check zsh
+    if [[ -f "$HOME/.zshrc" ]] && ! grep -q "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "$HOME/.zshrc" 2>/dev/null; then
+        cat >> "$HOME/.zshrc" << ZEOF
+
+# iNiR environment
+export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${venv_path}"
+# end iNiR
+ZEOF
+        ((fixed++)) || true
+    fi
+    
+    if [[ $fixed -gt 0 ]]; then
+        doctor_fix "Added environment variables to $fixed shell profile(s)"
+    else
+        doctor_pass "Shell environment variables OK"
+    fi
+}
+
+check_qt_theming() {
+    # Check that plasma-integration is installed (required for kde platform theme)
+    # Without it, Darkly style can't read kdeglobals colors → black text on dark bg
+    local plugin_found=false
+    for plugindir in /usr/lib/qt6/plugins/platformthemes /usr/lib64/qt6/plugins/platformthemes \
+                     /usr/lib/x86_64-linux-gnu/qt6/plugins/platformthemes; do
+        if [[ -f "${plugindir}/KDEPlasmaPlatformTheme6.so" ]]; then
+            plugin_found=true
+            break
+        fi
+    done
+
+    if ! $plugin_found; then
+        doctor_fail "plasma-integration not installed (Qt apps will have broken colors)"
+        case "${OS_GROUP_ID:-unknown}" in
+            arch) echo -e "    ${STY_FAINT}Run: sudo pacman -S plasma-integration${STY_RST}" ;;
+            fedora) echo -e "    ${STY_FAINT}Run: sudo dnf install plasma-integration${STY_RST}" ;;
+            debian|ubuntu) echo -e "    ${STY_FAINT}Run: sudo apt install plasma-integration${STY_RST}" ;;
+            *) echo -e "    ${STY_FAINT}Install plasma-integration using your package manager${STY_RST}" ;;
+        esac
+    else
+        # Also check niri config isn't stuck on qt6ct when kde plugin is available
+        local niri_cfg="${XDG_CONFIG_HOME}/niri/config.kdl"
+        if [[ -f "$niri_cfg" ]] && grep -q 'QT_QPA_PLATFORMTHEME "qt6ct"' "$niri_cfg"; then
+            sed -i 's/QT_QPA_PLATFORMTHEME "qt6ct"/QT_QPA_PLATFORMTHEME "kde"/' "$niri_cfg"
+            doctor_fix "Switched QT_QPA_PLATFORMTHEME from qt6ct to kde"
+        else
+            doctor_pass "Qt theming OK (plasma-integration + kde platform)"
+        fi
+    fi
+
+    # Check Darkly style is installed
+    local darkly_found=false
+    for styledir in /usr/lib/qt6/plugins/styles /usr/lib64/qt6/plugins/styles \
+                    /usr/lib/x86_64-linux-gnu/qt6/plugins/styles; do
+        if [[ -f "${styledir}/darkly6.so" ]]; then
+            darkly_found=true
+            break
+        fi
+    done
+
+    if ! $darkly_found; then
+        doctor_fail "Darkly Qt style not installed (Qt apps won't have Material You style)"
+        case "${OS_GROUP_ID:-unknown}" in
+            arch) echo -e "    ${STY_FAINT}Run: yay -S darkly-bin${STY_RST}" ;;
+            *) echo -e "    ${STY_FAINT}Install darkly from: https://github.com/AlessioC31/darkly${STY_RST}" ;;
+        esac
+    else
+        doctor_pass "Darkly Qt style OK"
+    fi
+}
+
+check_niri_config() {
+    local niri_cfg="${XDG_CONFIG_HOME}/niri/config.kdl"
+    [[ ! -f "$niri_cfg" ]] && { doctor_pass "Niri config (not installed)"; return 0; }
+    
+    if command -v niri &>/dev/null; then
+        local output
+        output=$(niri validate 2>&1)
+        if echo "$output" | grep -qi "valid"; then
+            doctor_pass "Niri config valid"
+        else
+            doctor_fail "Niri config has errors"
+            echo -e "    ${STY_FAINT}$(echo "$output" | grep -i error | head -2)${STY_RST}"
+        fi
+    else
+        doctor_pass "Niri config (niri not installed, skipping validation)"
+    fi
 }
 
 ###############################################################################
@@ -342,11 +543,12 @@ check_matugen_colors() {
 ###############################################################################
 
 run_doctor_with_fixes() {
+    local total_steps=16
     doctor_passed=0
     doctor_failed=0
     doctor_fixed=0
     
-    tui_step 1 11 "Checking dependencies"
+    tui_step 1 $total_steps "Checking dependencies"
     check_dependencies
 
     if [[ ${#doctor_missing_deps[@]} -gt 0 ]]; then
@@ -367,35 +569,50 @@ run_doctor_with_fixes() {
         esac
     fi
     
-    tui_step 2 11 "Checking critical files"
+    tui_step 2 $total_steps "Checking critical files"
     check_critical_files
     
-    tui_step 3 11 "Checking script permissions"
+    tui_step 3 $total_steps "Checking script permissions"
     check_script_permissions
     
-    tui_step 4 11 "Checking user config"
+    tui_step 4 $total_steps "Checking user config"
     check_user_config
     
-    tui_step 5 11 "Checking state directories"
+    tui_step 5 $total_steps "Checking state directories"
     check_state_directories
     
-    tui_step 6 11 "Checking version tracking"
+    tui_step 6 $total_steps "Checking version tracking"
     check_version_tracking
     
-    tui_step 7 11 "Checking file manifest"
+    tui_step 7 $total_steps "Checking file manifest"
     check_manifest
     
-    tui_step 8 11 "Checking Niri compositor"
+    tui_step 8 $total_steps "Checking Niri compositor"
     check_niri_running
     
-    tui_step 9 11 "Checking Python packages"
+    tui_step 9 $total_steps "Checking Python packages"
     check_python_packages
     
-    tui_step 10 11 "Checking Quickshell"
+    tui_step 10 $total_steps "Checking Quickshell"
     check_quickshell_loads
     
-    tui_step 11 11 "Checking theme colors"
+    tui_step 11 $total_steps "Checking theme colors"
     check_matugen_colors
+    
+    tui_step 12 $total_steps "Checking Qt theming"
+    check_qt_theming
+    
+    tui_step 13 $total_steps "Checking conflicting services"
+    check_conflicting_services
+    
+    tui_step 14 $total_steps "Checking wallpaper health"
+    check_wallpaper_health
+    
+    tui_step 15 $total_steps "Checking environment variables"
+    check_environment_vars
+    
+    tui_step 16 $total_steps "Checking Niri config"
+    check_niri_config
     
     echo ""
     tui_divider

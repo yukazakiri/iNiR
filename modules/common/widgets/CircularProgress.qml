@@ -11,8 +11,10 @@ Item {
     property int implicitSize: 30
     property int lineWidth: 2
     property real value: 0
-    property color colPrimary: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSecondaryContainer
-    property color colSecondary: Appearance.inirEverywhere ? Appearance.inir.colLayer2 
+    property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.m3colors.m3onSecondaryContainer
+    property color colSecondary: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer2 
         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface 
         : Appearance.colors.colSecondaryContainer
     property real gapAngle: 360 / 18

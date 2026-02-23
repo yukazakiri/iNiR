@@ -42,7 +42,7 @@ generate_manifest() {
         done
 
         # Directories that get synced
-        for dir in modules services scripts assets translations; do
+        for dir in modules services scripts assets translations defaults; do
             if [[ -d "$repo_root/$dir" ]]; then
                 find "$repo_root/$dir" -type f 2>/dev/null | while read -r file; do
                     local rel_path="${file#$repo_root/}"
@@ -92,7 +92,7 @@ get_orphan_files() {
         find "$target_dir" -maxdepth 1 -name "*.qml" -type f -printf "%f\n" 2>/dev/null
 
         # Tracked directories
-        for dir in modules services scripts assets translations; do
+        for dir in modules services scripts assets translations defaults; do
             if [[ -d "$target_dir/$dir" ]]; then
                 find "$target_dir/$dir" -type f -printf "$dir/%P\n" 2>/dev/null
             fi

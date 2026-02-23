@@ -11,20 +11,26 @@ StyledFlickable {
     id: root
     readonly property var elements: PTable.elements
     readonly property var series: PTable.series
-    property real tileSpacing: Appearance.sizes.spacingSmall
+
+    // Dynamic tile sizing: fit 18 columns into available width
+    readonly property real tableMargin: 12
+    readonly property real cardPadding: 10
+    readonly property real tileSpacing: 2
+    readonly property real availableForTiles: width - tableMargin * 2 - cardPadding * 2
+    readonly property real tileSize: Math.max(36, Math.min(70, (availableForTiles - 17 * tileSpacing) / 18))
 
     clip: true
-    contentHeight: contentColumn.implicitHeight + 40
+    contentHeight: contentColumn.implicitHeight + 24
 
     ColumnLayout {
         id: contentColumn
+        width: root.width - root.tableMargin * 2
         anchors {
             top: parent.top
             left: parent.left
-            right: parent.right
-            margins: 16
+            margins: root.tableMargin
         }
-        spacing: 12
+        spacing: 8
 
         // Header
         RowLayout {
@@ -49,10 +55,16 @@ StyledFlickable {
         // Table container
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: tableColumn.implicitHeight + 32
-            radius: Appearance.rounding.normal
-            color: Appearance.inirEverywhere ? Appearance.inir.colLayer1
+            Layout.preferredHeight: tableColumn.implicitHeight + root.cardPadding * 2
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+                  : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                : Appearance.inirEverywhere ? Appearance.inir.colLayer1
                 : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1
+            border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+                        : Appearance.inirEverywhere ? 1 : 0
+            border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+                        : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
 
             Column {
                 id: tableColumn
@@ -60,7 +72,7 @@ StyledFlickable {
                     top: parent.top
                     left: parent.left
                     right: parent.right
-                    margins: 16
+                    margins: root.cardPadding
                 }
                 spacing: root.tileSpacing
 
@@ -79,6 +91,7 @@ StyledFlickable {
                             delegate: ElementTile {
                                 required property var modelData
                                 element: modelData
+                                tileSize: root.tileSize
                             }
                         }
                     }
@@ -87,7 +100,7 @@ StyledFlickable {
                 // Gap between main table and series
                 Item {
                     width: 1
-                    height: Appearance.sizes.spacingLarge
+                    height: root.tileSpacing * 2
                 }
 
                 // Lanthanides and Actinides series
@@ -105,6 +118,7 @@ StyledFlickable {
                             delegate: ElementTile {
                                 required property var modelData
                                 element: modelData
+                                tileSize: root.tileSize
                             }
                         }
                     }
@@ -113,7 +127,7 @@ StyledFlickable {
                 // Gap before legend
                 Item {
                     width: 1
-                    height: Appearance.sizes.spacingMedium
+                    height: root.tileSpacing
                 }
 
                 // Legend showing element categories with colors

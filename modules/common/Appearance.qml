@@ -4,7 +4,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.modules.common.functions
+import qs.modules.common.models
 import qs.services
+import "root:modules/common/functions/md5.js" as MD5
 
 Singleton {
     id: root
@@ -13,6 +15,7 @@ Singleton {
     property QtObject animationCurves
     property QtObject aurora
     property QtObject inir
+    property QtObject angel
     property QtObject colors
     property QtObject rounding
     property QtObject font
@@ -22,11 +25,29 @@ Singleton {
     // Transparency. The quadratic functions were derived from analysis of hand-picked transparency values.
     ColorQuantizer {
         id: wallColorQuant
-        property string wallpaperPath: Config.options?.background?.wallpaperPath ?? ""
+        property string wallpaperPath: Wallpapers.effectiveWallpaperPath
         property bool wallpaperIsVideo: wallpaperPath.endsWith(".mp4") || wallpaperPath.endsWith(".webm") || wallpaperPath.endsWith(".mkv") || wallpaperPath.endsWith(".avi") || wallpaperPath.endsWith(".mov")
-        source: Qt.resolvedUrl(wallpaperIsVideo ? (Config.options?.background?.thumbnailPath ?? "") : (Config.options?.background?.wallpaperPath ?? ""))
+        property string _videoImageSource: {
+            if (!wallpaperIsVideo) return ""
+            const _dep = Wallpapers.videoFirstFrames // reactive binding
+            const ff = Wallpapers.getVideoFirstFramePath(wallpaperPath)
+            // When first-frame becomes available, we add a cache-bust suffix so
+            // ColorQuantizer reloads even if the path is identical.
+            if (ff) return ff + "?ff=1"
+            if (wallpaperPath) {
+                Wallpapers.ensureVideoFirstFrame(wallpaperPath)
+                const expected = Wallpapers._videoThumbDir + "/" + MD5.hash(wallpaperPath) + ".jpg"
+                return expected + "?ff=0"
+            }
+            return ""
+        }
+        source: Qt.resolvedUrl(wallpaperIsVideo ? _videoImageSource : wallpaperPath)
         depth: 0 // 2^0 = 1 color
         rescaleSize: 10
+    }
+    readonly property color wallpaperDominantColor: wallColorQuant?.colors?.[0] ?? colors.colPrimary
+    readonly property QtObject wallpaperBlendedColors: AdaptedMaterialScheme {
+        color: ColorUtils.mix(root.wallpaperDominantColor, root.colors.colPrimaryContainer, 0.8) || root.m3colors.m3secondaryContainer
     }
     property real wallpaperVibrancy: (wallColorQuant.colors[0]?.hslSaturation + wallColorQuant.colors[0]?.hslLightness) / 2
     property real autoBackgroundTransparency: { // y = 0.5768x^2 - 0.759x + 0.2896
@@ -49,8 +70,10 @@ Singleton {
     // Global style - centralized style detection (reactive bindings)
     readonly property string globalStyle: Config?.options?.appearance?.globalStyle ?? "material"
     readonly property bool inirEverywhere: globalStyle === "inir"
-    // auroraEverywhere controls blur/glass backgrounds
-    readonly property bool auroraEverywhere: globalStyle === "aurora"
+    // angelEverywhere - flagship neo-brutalism glass style (superset of aurora)
+    readonly property bool angelEverywhere: globalStyle === "angel"
+    // auroraEverywhere controls blur/glass backgrounds — angel inherits aurora blur
+    readonly property bool auroraEverywhere: globalStyle === "aurora" || globalStyle === "angel"
     
     // Aurora light mode: when aurora + light theme, use ink-colored text for contrast
     // Ink colors are muted dark tones (not pure black) that work well over light/transparent backgrounds
@@ -314,12 +337,18 @@ Singleton {
     // 3. Theme requests serif (Angel) -> Serif (if mapped)
     // 4. Default -> Config Main Font
     readonly property bool _forceMono: globalStyle === "inir" || _themeMeta.fontStyle === "mono"
+    readonly property string _angelFont: "Oxanium"
+    readonly property bool _useAngelFont: globalStyle === "angel"
     
     font: QtObject {
         property QtObject family: QtObject {
-            property string main: root._forceMono ? monospace : (Config.options?.appearance?.typography?.mainFont ?? "Roboto Flex")
-            property string numbers: "Rubik"
-            property string title: root._forceMono ? monospace : (Config.options?.appearance?.typography?.titleFont ?? "Gabarito")
+            property string main: root._useAngelFont ? root._angelFont
+                                : root._forceMono ? monospace
+                                : (Config.options?.appearance?.typography?.mainFont ?? "Roboto Flex")
+            property string numbers: root._useAngelFont ? root._angelFont : "Rubik"
+            property string title: root._useAngelFont ? root._angelFont
+                                 : root._forceMono ? monospace
+                                 : (Config.options?.appearance?.typography?.titleFont ?? "Gabarito")
             property string iconMaterial: "Material Symbols Rounded"
             property string iconNerd: "JetBrains Mono NF"
             property string monospace: Config.options?.appearance?.typography?.monospaceFont ?? "JetBrainsMono Nerd Font"
@@ -558,7 +587,7 @@ Singleton {
         // Scale border width for themes like Matrix/Synthwave
         readonly property real borderScale: root._themeMeta.borderWidthScale ?? 1.0
         
-        readonly property color colBorder: ColorUtils.transparentize(root.m3colors.m3outlineVariant, 0.3)
+        readonly property color colBorder: root.m3colors.m3outlineVariant ? ColorUtils.transparentize(root.m3colors.m3outlineVariant, 0.3) : "transparent"
         readonly property color colBorderHover: root.m3colors.m3outlineVariant
         readonly property color colBorderAccent: ColorUtils.transparentize(root.m3colors.m3primary, 0.6)
         readonly property color colBorderFocus: ColorUtils.transparentize(root.m3colors.m3primary, 0.3)
@@ -596,6 +625,9 @@ Singleton {
         readonly property color colOnSecondaryContainer: root.m3colors.m3onSecondaryContainer
         
         readonly property color colTertiary: root.m3colors.m3tertiary
+        
+        // Accent alias for consistency with other styles
+        readonly property color colAccent: root.m3colors.m3primary
         
         // ═══════════════════════════════════════════════════════════════
         // SELECTION (subtle, elegant highlighting)
@@ -647,6 +679,154 @@ Singleton {
         readonly property int roundingSmall: 6
         readonly property int roundingNormal: 8
         readonly property int roundingLarge: 12
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ANGEL — Flagship neo-brutalism glass style
+    // Combines refined aurora blur with escalonado offset shadows,
+    // partial accent borders, inset glow, and sharp corners.
+    // Inspired by docs-site TUI aesthetic (glass-btn, feature-card).
+    // Angel is a SUPERSET of aurora: auroraEverywhere=true when angel active.
+    // ═══════════════════════════════════════════════════════════════════
+    angel: QtObject {
+        // All angel params read DIRECTLY from Config for live reactivity.
+        // Do NOT use intermediate var references — QML can't detect nested var changes.
+
+        // ─── BLUR SYSTEM ───
+        readonly property real blurIntensity: Config.options?.appearance?.angel?.blur?.intensity ?? 0.25
+        readonly property real blurSaturation: Config.options?.appearance?.angel?.blur?.saturation ?? 0.15
+        readonly property real overlayOpacity: Config.options?.appearance?.angel?.blur?.overlayOpacity ?? 0.35
+        readonly property real noiseOpacity: Config.options?.appearance?.angel?.blur?.noiseOpacity ?? 0.15
+        readonly property real vignetteStrength: Config.options?.appearance?.angel?.blur?.vignetteStrength ?? 0.4
+
+        // ─── GLASS TRANSPARENCY (higher = more see-through) ───
+        readonly property real panelTransparentize: Config.options?.appearance?.angel?.transparency?.panel ?? 0.35
+        readonly property real cardTransparentize: Config.options?.appearance?.angel?.transparency?.card ?? 0.50
+        readonly property real popupTransparentize: Config.options?.appearance?.angel?.transparency?.popup ?? 0.35
+        readonly property real tooltipTransparentize: Config.options?.appearance?.angel?.transparency?.tooltip ?? 0.25
+
+        // ─── LAYER SYSTEM (glass variants derived from m3colors) ───
+        readonly property color colGlassPanel: ColorUtils.transparentize(
+            root.colors.colLayer0Base, panelTransparentize)
+        readonly property color colGlassCard: ColorUtils.transparentize(
+            root.colors.colLayer1Base, cardTransparentize)
+        readonly property color colGlassCardHover: ColorUtils.transparentize(
+            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.3), cardTransparentize)
+        readonly property color colGlassCardActive: ColorUtils.transparentize(
+            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.3), cardTransparentize)
+        readonly property color colGlassPopup: ColorUtils.transparentize(
+            root.colors.colLayer2Base, popupTransparentize)
+        readonly property color colGlassPopupHover: ColorUtils.transparentize(
+            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.3), popupTransparentize)
+        readonly property color colGlassPopupActive: ColorUtils.transparentize(
+            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.85), popupTransparentize)
+        readonly property color colGlassTooltip: ColorUtils.transparentize(
+            root.colors.colLayer3Base, tooltipTransparentize)
+        readonly property color colGlassDialog: ColorUtils.transparentize(
+            root.colors.colLayer3Base, popupTransparentize * 0.85)
+        readonly property color colGlassElevated: ColorUtils.transparentize(
+            root.colors.colLayer2Base, cardTransparentize * 0.9)
+        readonly property color colGlassElevatedHover: ColorUtils.transparentize(
+            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.92), cardTransparentize * 0.9)
+
+        // ─── COLOR STRENGTH (multiplier for accent tint intensity) ───
+        readonly property real colorStrength: Math.max(0.01, Config.options?.appearance?.angel?.colorStrength ?? 1.0)
+
+        // ─── ESCALONADO SYSTEM (StyledRectangularShadow — 52+ usages, simple offset) ───
+        readonly property int escalonadoOffsetX: Config.options?.appearance?.angel?.escalonado?.offsetX ?? 2
+        readonly property int escalonadoOffsetY: Config.options?.appearance?.angel?.escalonado?.offsetY ?? 2
+        readonly property int escalonadoHoverOffsetX: Config.options?.appearance?.angel?.escalonado?.hoverOffsetX ?? 7
+        readonly property int escalonadoHoverOffsetY: Config.options?.appearance?.angel?.escalonado?.hoverOffsetY ?? 7
+        readonly property real escalonadoOpacity: Config.options?.appearance?.angel?.escalonado?.opacity ?? 0.40
+        readonly property real escalonadoBorderOpacity: Config.options?.appearance?.angel?.escalonado?.borderOpacity ?? 0.60
+        readonly property real escalonadoHoverOpacity: Config.options?.appearance?.angel?.escalonado?.hoverOpacity ?? 0.60
+        readonly property color colEscalonado: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, escalonadoOpacity / colorStrength))
+        readonly property color colEscalonadoBorder: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, escalonadoBorderOpacity / colorStrength))
+        readonly property color colEscalonadoHover: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, escalonadoHoverOpacity / colorStrength))
+
+        // ─── ESCALONADO SHADOW (EscalonadoShadow — glass-backed, settings cards) ───
+        readonly property int shadowOffsetX: Config.options?.appearance?.angel?.escalonadoShadow?.offsetX ?? 4
+        readonly property int shadowOffsetY: Config.options?.appearance?.angel?.escalonadoShadow?.offsetY ?? 4
+        readonly property int shadowHoverOffsetX: Config.options?.appearance?.angel?.escalonadoShadow?.hoverOffsetX ?? 10
+        readonly property int shadowHoverOffsetY: Config.options?.appearance?.angel?.escalonadoShadow?.hoverOffsetY ?? 10
+        readonly property real shadowOpacity: Config.options?.appearance?.angel?.escalonadoShadow?.opacity ?? 0.30
+        readonly property real shadowBorderOpacity: Config.options?.appearance?.angel?.escalonadoShadow?.borderOpacity ?? 0.50
+        readonly property real shadowHoverOpacity: Config.options?.appearance?.angel?.escalonadoShadow?.hoverOpacity ?? 0.50
+        readonly property bool shadowGlass: Config.options?.appearance?.angel?.escalonadoShadow?.glass ?? true
+        readonly property real shadowGlassBlur: Config.options?.appearance?.angel?.escalonadoShadow?.glassBlur ?? 0.15
+        readonly property real shadowGlassOverlay: Config.options?.appearance?.angel?.escalonadoShadow?.glassOverlay ?? 0.50
+        readonly property color colShadow: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, shadowOpacity / colorStrength))
+        readonly property color colShadowBorder: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, shadowBorderOpacity / colorStrength))
+        readonly property color colShadowHover: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, shadowHoverOpacity / colorStrength))
+
+        // ─── PARTIAL BORDER SYSTEM ───
+        readonly property real borderWidth: Config.options?.appearance?.angel?.border?.width ?? 1.5
+        readonly property int accentBarHeight: Config.options?.appearance?.angel?.border?.accentBarHeight ?? 0
+        readonly property int accentBarWidth: Config.options?.appearance?.angel?.border?.accentBarWidth ?? 0
+        readonly property real borderCoverage: Config.options?.appearance?.angel?.border?.coverage ?? 0.0
+        readonly property color colAccentBar: root.m3colors.m3primary
+        readonly property real borderOpacity: Config.options?.appearance?.angel?.border?.opacity ?? 0.0
+        readonly property real borderHoverOpacity: Config.options?.appearance?.angel?.border?.hoverOpacity ?? 0.0
+        readonly property real borderActiveOpacity: Config.options?.appearance?.angel?.border?.activeOpacity ?? 0.0
+        readonly property color colBorder: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (0.99 - borderOpacity) / colorStrength))
+        readonly property color colBorderHover: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (0.99 - borderHoverOpacity) / colorStrength))
+        readonly property color colBorderActive: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (0.99 - borderActiveOpacity) / colorStrength))
+        readonly property color colBorderSubtle: ColorUtils.transparentize(
+            root.m3colors.m3outlineVariant, 0.82)
+
+        // ─── SURFACE BORDERS (panel/card inner borders) ───
+        readonly property int panelBorderWidth: Config.options?.appearance?.angel?.surface?.panelBorderWidth ?? 0
+        readonly property int cardBorderWidth: Config.options?.appearance?.angel?.surface?.cardBorderWidth ?? 1
+        readonly property real panelBorderOpacity: Config.options?.appearance?.angel?.surface?.panelBorderOpacity ?? 0.0
+        readonly property real cardBorderOpacity: Config.options?.appearance?.angel?.surface?.cardBorderOpacity ?? 0.30
+        readonly property color colPanelBorder: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (0.99 - panelBorderOpacity) / colorStrength))
+        readonly property color colCardBorder: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (0.99 - cardBorderOpacity) / colorStrength))
+
+        // Inset glow — light-from-above effect on top edge
+        readonly property real insetGlowOpacity: Config.options?.appearance?.angel?.border?.insetGlowOpacity ?? 0.0
+        readonly property color colInsetGlow: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, (1.0 - insetGlowOpacity) / colorStrength))
+        readonly property int insetGlowHeight: Config.options?.appearance?.angel?.border?.insetGlowHeight ?? 0
+
+        // ─── GLOW SYSTEM ───
+        readonly property real glowOpacity: Config.options?.appearance?.angel?.glow?.opacity ?? 0.80
+        readonly property real glowStrongOpacity: Config.options?.appearance?.angel?.glow?.strongOpacity ?? 0.65
+        readonly property color colGlow: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, glowOpacity / colorStrength))
+        readonly property color colGlowStrong: ColorUtils.transparentize(
+            root.m3colors.m3primary, Math.min(1, glowStrongOpacity / colorStrength))
+
+        // ─── TEXT COLORS ───
+        readonly property color colText: root.m3colors.m3onSurface
+        readonly property color colTextSecondary: root.m3colors.m3onSurfaceVariant
+        readonly property color colTextMuted: ColorUtils.transparentize(
+            root.m3colors.m3onSurfaceVariant, 0.3)
+        readonly property color colTextDim: ColorUtils.transparentize(
+            root.m3colors.m3outline, 0.1)
+
+        // ─── PRIMARY/ACCENT ───
+        readonly property color colPrimary: root.m3colors.m3primary
+        readonly property color colPrimaryHover: ColorUtils.mix(
+            root.m3colors.m3primary, root.m3colors.m3onPrimary, 0.3)
+        readonly property color colOnPrimary: root.m3colors.m3onPrimary
+        readonly property color colSecondary: root.m3colors.m3secondary
+        readonly property color colTertiary: root.m3colors.m3tertiary
+
+        // ─── ROUNDING ───
+        readonly property int roundingSmall: Config.options?.appearance?.angel?.rounding?.small ?? 10
+        readonly property int roundingNormal: Config.options?.appearance?.angel?.rounding?.normal ?? 15
+        readonly property int roundingLarge: Config.options?.appearance?.angel?.rounding?.large ?? 25
     }
 
     sizes: QtObject {

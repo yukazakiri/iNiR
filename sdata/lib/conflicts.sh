@@ -104,8 +104,15 @@ check_conflicts() {
                     echo -e "  ${STY_FAINT}systemctl --user disable --now <service>${STY_RST}"
                 fi
             else
-                echo -e "${STY_YELLOW}Non-interactive mode: Skipping service disable${STY_RST}"
-                echo -e "${STY_YELLOW}Disable manually with: systemctl --user disable --now <service>${STY_RST}"
+                # Non-interactive (-y): auto-disable conflicting services
+                echo -e "${STY_CYAN}Non-interactive mode: Auto-disabling conflicting services...${STY_RST}"
+                for svc in "${conflict_services[@]}"; do
+                    if systemctl --user is-enabled "$svc" &>/dev/null 2>&1 || systemctl --user is-active "$svc" &>/dev/null 2>&1; then
+                        systemctl --user disable --now "$svc" 2>/dev/null && \
+                            log_success "Disabled $svc" || \
+                            log_warning "Could not disable $svc"
+                    fi
+                done
             fi
         else
             echo -e "${STY_YELLOW}Recommendation: Uninstall or disable them manually.${STY_RST}"

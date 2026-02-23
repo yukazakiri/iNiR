@@ -9,7 +9,7 @@
 #####################################################################################
 
 install-yay(){
-  echo -e "${STY_CYAN}Installing yay (AUR helper)...${STY_RST}"
+  tui_info "Installing yay (AUR helper)..."
 
   # Clean up previous attempts
   rm -rf /tmp/buildyay
@@ -36,7 +36,7 @@ install-yay(){
 }
 
 install-paru(){
-  echo -e "${STY_CYAN}Installing paru (AUR helper)...${STY_RST}"
+  tui_info "Installing paru (AUR helper)..."
   x sudo pacman -S --needed --noconfirm base-devel git
   x git clone https://aur.archlinux.org/paru-bin.git /tmp/buildparu
   x cd /tmp/buildparu
@@ -54,8 +54,7 @@ ensure_aur_helper(){
     return 0
   fi
 
-  echo -e "${STY_YELLOW}No AUR helper found.${STY_RST}"
-  echo "Installing yay..."
+  log_warning "No AUR helper found — installing yay..."
   install-yay
   AUR_HELPER="yay"
 }
@@ -77,7 +76,7 @@ install-local-pkgbuild() {
 #####################################################################################
 
 install-python-packages(){
-  echo -e "${STY_CYAN}Setting up Python virtual environment...${STY_RST}"
+  tui_info "Setting up Python virtual environment..."
 
   local venv_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/.venv"
 
@@ -123,20 +122,20 @@ install-font-from-url(){
 
   mkdir -p "$font_dir"
 
-  echo -e "${STY_BLUE}Downloading $font_name...${STY_RST}"
+  log_info "Downloading $font_name..."
   if curl -fsSL -o "$font_dir/${font_name}.ttf" "$url" 2>/dev/null; then
     fc-cache -f "$font_dir" 2>/dev/null
-    echo -e "${STY_GREEN}$font_name installed.${STY_RST}"
+    log_success "$font_name installed"
     return 0
   else
-    echo -e "${STY_YELLOW}Could not download $font_name.${STY_RST}"
+    log_warning "Could not download $font_name"
     return 1
   fi
 }
 
 install-material-symbols-rounded(){
   if fc-list | grep -qi "Material Symbols Rounded"; then
-    echo -e "${STY_GREEN}Material Symbols Rounded already installed.${STY_RST}"
+    log_success "Material Symbols Rounded already installed"
     return 0
   fi
 
@@ -146,7 +145,7 @@ install-material-symbols-rounded(){
 
 install-material-symbols-outlined(){
   if fc-list | grep -qi "Material Symbols Outlined"; then
-    echo -e "${STY_GREEN}Material Symbols Outlined already installed.${STY_RST}"
+    log_success "Material Symbols Outlined already installed"
     return 0
   fi
 
@@ -156,11 +155,11 @@ install-material-symbols-outlined(){
 
 install-jetbrains-mono-nerd(){
   if fc-list | grep -qi "JetBrainsMono Nerd"; then
-    echo -e "${STY_GREEN}JetBrains Mono Nerd Font already installed.${STY_RST}"
+    log_success "JetBrains Mono Nerd Font already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Downloading JetBrains Mono Nerd Font...${STY_RST}"
+  log_info "Downloading JetBrains Mono Nerd Font..."
 
   local font_dir="${HOME}/.local/share/fonts"
   local temp_dir="/tmp/nerdfonts-$$"
@@ -170,9 +169,9 @@ install-jetbrains-mono-nerd(){
     "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"; then
     unzip -o "$temp_dir/JetBrainsMono.zip" -d "$font_dir" >/dev/null 2>&1
     fc-cache -f "$font_dir"
-    echo -e "${STY_GREEN}JetBrains Mono Nerd Font installed.${STY_RST}"
+    log_success "JetBrains Mono Nerd Font installed"
   else
-    echo -e "${STY_YELLOW}Could not download JetBrains Mono Nerd Font.${STY_RST}"
+    log_warning "Could not download JetBrains Mono Nerd Font"
   fi
 
   rm -rf "$temp_dir"
@@ -180,11 +179,11 @@ install-jetbrains-mono-nerd(){
 
 install-geist-font(){
   if fc-list | grep -qi "Geist"; then
-    echo -e "${STY_GREEN}Geist font already installed.${STY_RST}"
+    log_success "Geist font already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Downloading Geist font...${STY_RST}"
+  log_info "Downloading Geist font..."
 
   local font_dir="${HOME}/.local/share/fonts"
   local temp_dir="/tmp/geist-font-$$"
@@ -195,9 +194,9 @@ install-geist-font(){
     unzip -o "$temp_dir/geist.zip" -d "$temp_dir" >/dev/null 2>&1
     find "$temp_dir" -name "*.ttf" -exec cp {} "$font_dir/" \;
     fc-cache -f "$font_dir"
-    echo -e "${STY_GREEN}Geist font installed.${STY_RST}"
+    log_success "Geist font installed"
   else
-    echo -e "${STY_YELLOW}Could not download Geist font.${STY_RST}"
+    log_warning "Could not download Geist font"
   fi
 
   rm -rf "$temp_dir"
@@ -205,7 +204,7 @@ install-geist-font(){
 
 install-space-grotesk(){
   if fc-list | grep -qi "Space Grotesk"; then
-    echo -e "${STY_GREEN}Space Grotesk already installed.${STY_RST}"
+    log_success "Space Grotesk already installed"
     return 0
   fi
 
@@ -215,7 +214,7 @@ install-space-grotesk(){
 
 install-rubik-font(){
   if fc-list | grep -qi "Rubik"; then
-    echo -e "${STY_GREEN}Rubik font already installed.${STY_RST}"
+    log_success "Rubik font already installed"
     return 0
   fi
 
@@ -231,11 +230,11 @@ install-whitesur-icons(){
   local icon_dir="${HOME}/.local/share/icons"
 
   if [[ -d "$icon_dir/WhiteSur-dark" ]]; then
-    echo -e "${STY_GREEN}WhiteSur icon theme already installed.${STY_RST}"
+    log_success "WhiteSur icon theme already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing WhiteSur icon theme...${STY_RST}"
+  log_info "Installing WhiteSur icon theme..."
 
   local temp_dir="/tmp/whitesur-icons-$$"
   mkdir -p "$temp_dir" "$icon_dir"
@@ -251,9 +250,9 @@ install-whitesur-icons(){
       cp -r src/WhiteSur-light "$icon_dir/WhiteSur-light" 2>/dev/null || true
     }
     cd - >/dev/null
-    echo -e "${STY_GREEN}WhiteSur icon theme installed.${STY_RST}"
+    log_success "WhiteSur icon theme installed"
   else
-    echo -e "${STY_YELLOW}Could not download WhiteSur icon theme.${STY_RST}"
+    log_warning "Could not download WhiteSur icon theme"
   fi
 
   rm -rf "$temp_dir"
@@ -263,11 +262,11 @@ install-mactahoe-icons(){
   local icon_dir="${HOME}/.local/share/icons"
 
   if [[ -d "$icon_dir/MacTahoe" ]]; then
-    echo -e "${STY_GREEN}MacTahoe icon theme already installed.${STY_RST}"
+    log_success "MacTahoe icon theme already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing MacTahoe icon theme...${STY_RST}"
+  log_info "Installing MacTahoe icon theme..."
 
   local temp_dir="/tmp/mactahoe-icons-$$"
   mkdir -p "$temp_dir" "$icon_dir"
@@ -278,9 +277,9 @@ install-mactahoe-icons(){
     cd "$temp_dir/MacTahoe-icon-theme-master" 2>/dev/null || cd "$temp_dir/MacTahoe-icon-theme-main"
     ./install.sh -d "$icon_dir" >/dev/null 2>&1
     cd - >/dev/null
-    echo -e "${STY_GREEN}MacTahoe icon theme installed.${STY_RST}"
+    log_success "MacTahoe icon theme installed"
   else
-    echo -e "${STY_YELLOW}Could not download MacTahoe icon theme.${STY_RST}"
+    log_warning "Could not download MacTahoe icon theme"
   fi
 
   rm -rf "$temp_dir"
@@ -294,11 +293,11 @@ install-bibata-cursors(){
   local icon_dir="${HOME}/.local/share/icons"
 
   if [[ -d "$icon_dir/Bibata-Modern-Classic" ]]; then
-    echo -e "${STY_GREEN}Bibata cursor theme already installed.${STY_RST}"
+    log_success "Bibata cursor theme already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing Bibata cursor theme...${STY_RST}"
+  log_info "Installing Bibata cursor theme..."
 
   local temp_dir="/tmp/bibata-cursors-$$"
   mkdir -p "$temp_dir" "$icon_dir"
@@ -307,14 +306,14 @@ install-bibata-cursors(){
   if curl -fsSL -o "$temp_dir/bibata-classic.tar.xz" \
     "https://github.com/ful1e5/Bibata_Cursor/releases/latest/download/Bibata-Modern-Classic.tar.xz"; then
     tar -xf "$temp_dir/bibata-classic.tar.xz" -C "$icon_dir"
-    echo -e "${STY_GREEN}Bibata Modern Classic cursor installed.${STY_RST}"
+    log_success "Bibata Modern Classic cursor installed"
   fi
 
   # Download Bibata Modern Ice (light)
   if curl -fsSL -o "$temp_dir/bibata-ice.tar.xz" \
     "https://github.com/ful1e5/Bibata_Cursor/releases/latest/download/Bibata-Modern-Ice.tar.xz"; then
     tar -xf "$temp_dir/bibata-ice.tar.xz" -C "$icon_dir"
-    echo -e "${STY_GREEN}Bibata Modern Ice cursor installed.${STY_RST}"
+    log_success "Bibata Modern Ice cursor installed"
   fi
 
   rm -rf "$temp_dir"
@@ -331,18 +330,18 @@ install-github-binary(){
   local install_path="${4:-/usr/local/bin}"
 
   if command -v "$name" &>/dev/null; then
-    echo -e "${STY_GREEN}$name already installed.${STY_RST}"
+    log_success "$name already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing $name from GitHub...${STY_RST}"
+  log_info "Installing $name from GitHub..."
 
   local download_url
   download_url=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" | \
     jq -r ".assets[] | select(.name | test(\"${asset_pattern}\")) | .browser_download_url" | head -1)
 
   if [[ -z "$download_url" || "$download_url" == "null" ]]; then
-    echo -e "${STY_YELLOW}Could not find $name binary, skipping...${STY_RST}"
+    log_warning "Could not find $name binary, skipping"
     return 1
   fi
 
@@ -376,9 +375,9 @@ install-github-binary(){
         ;;
     esac
     sudo chmod +x "$install_path/$name" 2>/dev/null
-    echo -e "${STY_GREEN}$name installed successfully.${STY_RST}"
+    log_success "$name installed"
   else
-    echo -e "${STY_YELLOW}Failed to download $name.${STY_RST}"
+    log_warning "Failed to download $name"
   fi
 
   rm -rf "$temp_dir"
@@ -394,38 +393,38 @@ install-matugen(){
 
 install-starship(){
   if command -v starship &>/dev/null; then
-    echo -e "${STY_GREEN}Starship already installed.${STY_RST}"
+    log_success "Starship already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing Starship prompt...${STY_RST}"
+  log_info "Installing Starship prompt..."
 
   mkdir -p ~/.local/bin
   curl -sS https://starship.rs/install.sh | sh -s -- -y -b ~/.local/bin 2>/dev/null
 
   if command -v ~/.local/bin/starship &>/dev/null; then
-    echo -e "${STY_GREEN}Starship installed.${STY_RST}"
+    log_success "Starship installed"
   else
-    echo -e "${STY_YELLOW}Could not install Starship.${STY_RST}"
+    log_warning "Could not install Starship"
   fi
 }
 
 install-eza(){
   if command -v eza &>/dev/null; then
-    echo -e "${STY_GREEN}Eza already installed.${STY_RST}"
+    log_success "Eza already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing Eza...${STY_RST}"
+  log_info "Installing Eza..."
 
   mkdir -p ~/.local/bin
   if curl -fsSL -o /tmp/eza.tar.gz \
     'https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-musl.tar.gz'; then
     tar -xzf /tmp/eza.tar.gz -C ~/.local/bin
     chmod +x ~/.local/bin/eza
-    echo -e "${STY_GREEN}Eza installed.${STY_RST}"
+    log_success "Eza installed"
   else
-    echo -e "${STY_YELLOW}Could not install Eza.${STY_RST}"
+    log_warning "Could not install Eza"
   fi
 
   rm -f /tmp/eza.tar.gz
@@ -433,18 +432,18 @@ install-eza(){
 
 install-uv(){
   if command -v uv &>/dev/null; then
-    echo -e "${STY_GREEN}uv already installed.${STY_RST}"
+    log_success "uv already installed"
     return 0
   fi
 
-  echo -e "${STY_BLUE}Installing uv (Python package manager)...${STY_RST}"
+  log_info "Installing uv (Python package manager)..."
 
   curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null || {
-    echo -e "${STY_YELLOW}Could not install uv.${STY_RST}"
+    log_warning "Could not install uv"
     return 1
   }
 
-  echo -e "${STY_GREEN}uv installed.${STY_RST}"
+  log_success "uv installed"
 }
 
 install-zoxide(){
@@ -543,7 +542,7 @@ setup-gtk-config(){
   local gtk_theme="${3:-adw-gtk3-dark}"
   local font="${4:-Geist}"
 
-  echo -e "${STY_BLUE}Setting up GTK configuration...${STY_RST}"
+  log_info "Setting up GTK configuration..."
 
   # GTK 3
   mkdir -p ~/.config/gtk-3.0
@@ -574,13 +573,13 @@ EOF
   mkdir -p ~/.config/gtk-4.0
   cp ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini
 
-  echo -e "${STY_GREEN}GTK configuration set.${STY_RST}"
+  log_success "GTK configuration set"
 }
 
 setup-kvantum-config(){
   local theme="${1:-MaterialAdw}"
 
-  echo -e "${STY_BLUE}Setting up Kvantum configuration...${STY_RST}"
+  log_info "Setting up Kvantum configuration..."
 
   mkdir -p ~/.config/Kvantum
   cat > ~/.config/Kvantum/kvantum.kvconfig << EOF
@@ -588,13 +587,21 @@ setup-kvantum-config(){
 theme=${theme}
 EOF
 
-  echo -e "${STY_GREEN}Kvantum configuration set.${STY_RST}"
+  log_success "Kvantum configuration set"
 }
 
 setup-environment-config(){
   local cursor_theme="${1:-Bibata-Modern-Classic}"
 
-  echo -e "${STY_BLUE}Setting up environment variables...${STY_RST}"
+  log_info "Setting up environment variables..."
+
+  # Detect Qt platform theme: use kde if Plasma is installed, qt6ct otherwise
+  local qt_theme="qt6ct"
+  if pacman -Q plasma-desktop &>/dev/null 2>&1 || pacman -Q plasma-workspace &>/dev/null 2>&1 || \
+     dpkg -l plasma-desktop 2>/dev/null | grep -q '^ii' || \
+     rpm -q plasma-desktop &>/dev/null 2>&1; then
+    qt_theme="kde"
+  fi
 
   mkdir -p ~/.config/environment.d
   cat > ~/.config/environment.d/inir.conf << EOF
@@ -602,18 +609,18 @@ setup-environment-config(){
 XCURSOR_THEME=${cursor_theme}
 XCURSOR_SIZE=24
 QT_QPA_PLATFORM=wayland
-QT_QPA_PLATFORMTHEME=kde
+QT_QPA_PLATFORMTHEME=${qt_theme}
 QT_STYLE_OVERRIDE=Darkly
 GTK_THEME=adw-gtk3-dark
 ELECTRON_OZONE_PLATFORM_HINT=auto
 ILLOGICAL_IMPULSE_VIRTUAL_ENV=\$HOME/.local/state/quickshell/.venv
 EOF
 
-  echo -e "${STY_GREEN}Environment configuration set.${STY_RST}"
+  log_success "Environment configuration set"
 }
 
 setup-foot-config(){
-  echo -e "${STY_BLUE}Setting up Foot terminal configuration...${STY_RST}"
+  log_info "Setting up Foot terminal configuration..."
 
   mkdir -p ~/.config/foot
 
@@ -633,7 +640,7 @@ pad=25x25
 
 bold-text-in-bright=no
 
-include=~/.config/foot/colors.ini
+include=~/.config/foot/inir-colors.ini
 
 [scrollback]
 lines=10000
@@ -664,18 +671,19 @@ delete-prev-word=Control+BackSpace
 EOF
   else
     # Existing config - ensure include line is present for theming
-    if ! grep -q "include=.*colors.ini" ~/.config/foot/foot.ini; then
-      echo -e "${STY_YELLOW}Adding colors.ini include to existing foot.ini...${STY_RST}"
-      # Add include at the top of the file (before any sections)
-      sed -i '1i include=~/.config/foot/colors.ini' ~/.config/foot/foot.ini
+    if ! grep -q "include=.*inir-colors\.ini" ~/.config/foot/foot.ini; then
+      log_info "Adding inir-colors.ini include to existing foot.ini..."
+      sed -i '1i include=~/.config/foot/inir-colors.ini' ~/.config/foot/foot.ini
     fi
+    # Remove stale colors.ini include if present (legacy matugen terminal template)
+    sed -i '/^include=.*\/colors\.ini$/d' ~/.config/foot/foot.ini
   fi
 
-  echo -e "${STY_GREEN}Foot terminal configuration set.${STY_RST}"
+  log_success "Foot terminal configuration set"
 }
 
 setup-kitty-config(){
-  echo -e "${STY_BLUE}Setting up Kitty terminal configuration...${STY_RST}"
+  log_info "Setting up Kitty terminal configuration..."
 
   mkdir -p ~/.config/kitty
 
@@ -734,26 +742,26 @@ EOF
   else
     # Existing config - ensure include line is present for theming
     if ! grep -q "include.*current-theme.conf" ~/.config/kitty/kitty.conf; then
-      echo -e "${STY_YELLOW}Adding current-theme.conf include to existing kitty.conf...${STY_RST}"
+      log_info "Adding current-theme.conf include to kitty.conf..."
       sed -i '1i include current-theme.conf' ~/.config/kitty/kitty.conf
     fi
     # Add transparency if not present
     if ! grep -q "background_opacity" ~/.config/kitty/kitty.conf; then
-      echo -e "${STY_YELLOW}Adding transparency settings to kitty.conf...${STY_RST}"
+      log_info "Adding transparency settings to kitty.conf..."
       printf '\n# Transparency and blur (Wayland)\nbackground_opacity 0.85\nbackground_blur 32\n' >> ~/.config/kitty/kitty.conf
     fi
     # Add remote control socket if not present
     if ! grep -q "listen_on" ~/.config/kitty/kitty.conf; then
-      echo -e "${STY_YELLOW}Adding remote control socket to kitty.conf...${STY_RST}"
+      log_info "Adding remote control socket to kitty.conf..."
       printf '\n# Remote control for live color reload\nlisten_on unix:/tmp/kitty-socket\nallow_remote_control socket-only\n' >> ~/.config/kitty/kitty.conf
     fi
   fi
 
-  echo -e "${STY_GREEN}Kitty terminal configuration set.${STY_RST}"
+  log_success "Kitty terminal configuration set"
 }
 
 setup-fish-config(){
-  echo -e "${STY_BLUE}Setting up Fish shell configuration...${STY_RST}"
+  log_info "Setting up Fish shell configuration..."
 
   mkdir -p ~/.config/fish
 
@@ -799,11 +807,11 @@ end
 EOF
   fi
 
-  echo -e "${STY_GREEN}Fish shell configuration set.${STY_RST}"
+  log_success "Fish shell configuration set"
 }
 
 setup-bash-config(){
-  echo -e "${STY_BLUE}Setting up Bash shell configuration...${STY_RST}"
+  log_info "Setting up Bash shell configuration..."
 
   local bashrc="$HOME/.bashrc"
   local ii_config="$HOME/.config/ii/bashrc"
@@ -849,20 +857,20 @@ EOF
   if [[ -f "$bashrc" ]]; then
     if ! grep -q "source.*ii/bashrc" "$bashrc" && ! grep -q "\..*ii/bashrc" "$bashrc"; then
       echo -e "\n# ii shell integration\n[[ -f ~/.config/ii/bashrc ]] && source ~/.config/ii/bashrc" >> "$bashrc"
-      echo -e "${STY_GREEN}Added ii integration to .bashrc${STY_RST}"
+      log_success "Added ii integration to .bashrc"
     else
-      echo -e "${STY_CYAN}ii integration already in .bashrc${STY_RST}"
+      log_info "ii integration already in .bashrc"
     fi
   else
     echo -e "# ii shell integration\n[[ -f ~/.config/ii/bashrc ]] && source ~/.config/ii/bashrc" > "$bashrc"
-    echo -e "${STY_GREEN}Created .bashrc with ii integration${STY_RST}"
+    log_success "Created .bashrc with ii integration"
   fi
 
-  echo -e "${STY_GREEN}Bash shell configuration set.${STY_RST}"
+  log_success "Bash shell configuration set"
 }
 
 setup-zsh-config(){
-  echo -e "${STY_BLUE}Setting up Zsh shell configuration...${STY_RST}"
+  log_info "Setting up Zsh shell configuration..."
 
   local zshrc="$HOME/.zshrc"
   local ii_config="$HOME/.config/ii/zshrc"
@@ -908,16 +916,16 @@ EOF
   if [[ -f "$zshrc" ]]; then
     if ! grep -q "source.*ii/zshrc" "$zshrc" && ! grep -q "\..*ii/zshrc" "$zshrc"; then
       echo -e "\n# ii shell integration\n[[ -f ~/.config/ii/zshrc ]] && source ~/.config/ii/zshrc" >> "$zshrc"
-      echo -e "${STY_GREEN}Added ii integration to .zshrc${STY_RST}"
+      log_success "Added ii integration to .zshrc"
     else
-      echo -e "${STY_CYAN}ii integration already in .zshrc${STY_RST}"
+      log_info "ii integration already in .zshrc"
     fi
   else
     # Don't create .zshrc if it doesn't exist - user might not use zsh
-    echo -e "${STY_CYAN}No .zshrc found, skipping zsh setup${STY_RST}"
+    log_info "No .zshrc found, skipping zsh setup"
   fi
 
-  echo -e "${STY_GREEN}Zsh shell configuration set.${STY_RST}"
+  log_success "Zsh shell configuration set"
 }
 
 #####################################################################################
@@ -953,7 +961,7 @@ get-polkit-agent(){
 #####################################################################################
 
 install-all-fonts(){
-  echo -e "${STY_CYAN}Installing all required fonts...${STY_RST}"
+  tui_info "Installing all required fonts..."
 
   install-material-symbols-rounded
   install-material-symbols-outlined
@@ -965,21 +973,21 @@ install-all-fonts(){
   # Refresh font cache
   fc-cache -f ~/.local/share/fonts 2>/dev/null
 
-  echo -e "${STY_GREEN}All fonts installed.${STY_RST}"
+  log_success "All fonts installed"
 }
 
 install-all-themes(){
-  echo -e "${STY_CYAN}Installing all themes...${STY_RST}"
+  tui_info "Installing all themes..."
 
   install-whitesur-icons
   install-mactahoe-icons
   install-bibata-cursors
 
-  echo -e "${STY_GREEN}All themes installed.${STY_RST}"
+  log_success "All themes installed"
 }
 
 install-all-tools(){
-  echo -e "${STY_CYAN}Installing CLI tools...${STY_RST}"
+  tui_info "Installing CLI tools..."
 
   install-starship
   install-eza
@@ -988,11 +996,11 @@ install-all-tools(){
   install-matugen
   install-zoxide
 
-  echo -e "${STY_GREEN}All tools installed.${STY_RST}"
+  log_success "All tools installed"
 }
 
 setup-all-configs(){
-  echo -e "${STY_CYAN}Setting up all configurations...${STY_RST}"
+  tui_info "Setting up all configurations..."
 
   setup-gtk-config
   setup-kvantum-config
@@ -1003,5 +1011,5 @@ setup-all-configs(){
   setup-bash-config
   setup-zsh-config
 
-  echo -e "${STY_GREEN}All configurations set.${STY_RST}"
+  log_success "All configurations set"
 }

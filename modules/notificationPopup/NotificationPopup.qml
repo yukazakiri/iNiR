@@ -56,9 +56,17 @@ Scope {
         NotificationListView {
             id: listview
             anchors {
-                fill: parent
-                margins: root.edgeMargin
+                top: parent.top
+                left: parent.left
+                right: parent.right
+                topMargin: root.edgeMargin
+                leftMargin: root.edgeMargin
+                rightMargin: root.edgeMargin
             }
+            // Size to content — don't stretch to fill PanelWindow
+            // The heightBuffer only enlarges the window (prevents Wayland clipping)
+            // but the listview stays content-sized so no empty space is visible
+            implicitHeight: contentHeight
             // Clip content to prevent overflow while PanelWindow resizes asynchronously
             clip: true
             popup: true

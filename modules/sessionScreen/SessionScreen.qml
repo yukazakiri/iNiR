@@ -92,11 +92,26 @@ Scope {
                 right: true
             }
 
+            // Resolve wallpaper path: use thumbnail for video/gif
+            readonly property string _wallpaperSource: Config.options?.background?.wallpaperPath ?? ""
+            readonly property string _wallpaperPath: {
+                const path = _wallpaperSource;
+                if (!path) return "";
+                const lowerPath = path.toLowerCase();
+                const isVideo = lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm") || lowerPath.endsWith(".mkv") || lowerPath.endsWith(".avi") || lowerPath.endsWith(".mov");
+                const isGif = lowerPath.endsWith(".gif");
+                if (isVideo || isGif) {
+                    const thumbnail = Config.options?.background?.thumbnailPath ?? "";
+                    return thumbnail || path;
+                }
+                return path;
+            }
+            
             // Background wallpaper with blur (like lock screen)
             Image {
                 id: backgroundWallpaper
                 anchors.fill: parent
-                source: Config.options?.background?.wallpaperPath ?? ""
+                source: sessionRoot._wallpaperPath
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 

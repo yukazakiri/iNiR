@@ -1302,7 +1302,7 @@ ContentPage {
                         Layout.fillWidth: true
                         spacing: 6
 
-                        TextField {
+                        MaterialTextField {
                             id: subInput
                             Layout.fillWidth: true
                             placeholderText: Translation.tr("Add subreddit...")
@@ -1376,7 +1376,7 @@ ContentPage {
                             color: Appearance.colors.colOnLayer1
                         }
 
-                        TextField {
+                        MaterialTextField {
                             Layout.fillWidth: true
                             placeholderText: "https://hianime.to/search?keyword=%s"
                             text: Config.options.sidebar?.animeSchedule?.watchSite ?? ""
@@ -1430,7 +1430,7 @@ ContentPage {
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colOnSecondaryContainer
                     }
-                    TextField {
+                    MaterialTextField {
                         id: wallhavenApiInput
                         Layout.fillWidth: true
                         placeholderText: Translation.tr("Optional - for NSFW content")
@@ -1725,9 +1725,9 @@ ContentPage {
                 ColumnLayout {
                     id: quickLaunchEditor
                     Layout.fillWidth: true
-                    Layout.leftMargin: 40
-                    Layout.topMargin: 4
-                    spacing: 4
+                    Layout.leftMargin: 16
+                    Layout.topMargin: 2
+                    spacing: 2
                     visible: Config.options?.sidebar?.widgets?.launch ?? true
 
                     property var shortcuts: Config.options?.sidebar?.widgets?.quickLaunch ?? [
@@ -1776,101 +1776,113 @@ ContentPage {
                     Repeater {
                         model: quickLaunchEditor.shortcuts.length
 
-                        delegate: Rectangle {
+                        delegate: Item {
                             id: launchItem
                             required property int index
                             readonly property var itemData: quickLaunchEditor.shortcuts[index] ?? {}
                             Layout.fillWidth: true
-                            implicitHeight: 40
-                            radius: SettingsMaterialPreset.groupRadius
-                            color: Appearance.colors.colLayer2
+                            implicitHeight: itemRow.implicitHeight + 8
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Appearance.rounding.small
+                                color: itemHover.containsMouse ? Appearance.colors.colLayer2Hover : "transparent"
+                                Behavior on color {
+                                    enabled: Appearance.animationsEnabled
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                }
+                            }
+
+                            MouseArea {
+                                id: itemHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                            }
 
                             RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 6
-                                spacing: 6
-
-                                MaterialSymbol {
-                                    text: launchItem.itemData.icon ?? "apps"
-                                    iconSize: 20
-                                    color: Appearance.colors.colPrimary
+                                id: itemRow
+                                anchors {
+                                    left: parent.left; right: parent.right
+                                    verticalCenter: parent.verticalCenter
+                                    leftMargin: 8; rightMargin: 4
                                 }
+                                spacing: 8
 
-                                TextInput {
-                                    Layout.preferredWidth: 60
-                                    text: launchItem.itemData.icon ?? ""
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
-                                    font.family: Appearance.font.family.main
-                                    color: Appearance.colors.colSubtext
-                                    selectByMouse: true
-                                    clip: true
-                                    onTextEdited: quickLaunchEditor.queueUpdate(launchItem.index, "icon", text)
-
-                                    Text {
-                                        anchors.fill: parent
-                                        text: "icon"
-                                        color: Appearance.colors.colOutline
-                                        font: parent.font
-                                        visible: !parent.text && !parent.activeFocus
+                                // Icon preview
+                                Rectangle {
+                                    implicitWidth: 32; implicitHeight: 32
+                                    radius: Appearance.rounding.small
+                                    color: Appearance.colors.colSecondaryContainer
+                                    MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: launchItem.itemData.icon ?? "apps"
+                                        iconSize: 18
+                                        color: Appearance.colors.colOnSecondaryContainer
                                     }
                                 }
 
-                                Rectangle { width: 1; Layout.fillHeight: true; Layout.topMargin: 8; Layout.bottomMargin: 8; color: Appearance.colors.colOutlineVariant }
-
-                                TextInput {
+                                // Icon name
+                                ToolbarTextField {
                                     Layout.preferredWidth: 70
-                                    text: launchItem.itemData.name ?? ""
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    font.family: Appearance.font.family.main
-                                    color: Appearance.colors.colOnLayer1
+                                    implicitHeight: 30
+                                    padding: 6
+                                    text: launchItem.itemData.icon ?? ""
+                                    placeholderText: Translation.tr("Icon")
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
                                     selectByMouse: true
-                                    clip: true
-                                    onTextEdited: quickLaunchEditor.queueUpdate(launchItem.index, "name", text)
-
-                                    Text {
-                                        anchors.fill: parent
-                                        text: Translation.tr("Name")
-                                        color: Appearance.colors.colOutline
-                                        font: parent.font
-                                        visible: !parent.text && !parent.activeFocus
-                                    }
+                                    onTextEdited: quickLaunchEditor.queueUpdate(launchItem.index, "icon", text)
                                 }
 
-                                Rectangle { width: 1; Layout.fillHeight: true; Layout.topMargin: 8; Layout.bottomMargin: 8; color: Appearance.colors.colOutlineVariant }
-
-                                TextInput {
+                                // Display name
+                                ToolbarTextField {
+                                    Layout.preferredWidth: 100
                                     Layout.fillWidth: true
+                                    Layout.maximumWidth: 140
+                                    implicitHeight: 30
+                                    padding: 6
+                                    text: launchItem.itemData.name ?? ""
+                                    placeholderText: Translation.tr("Name")
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.weight: Font.Medium
+                                    selectByMouse: true
+                                    onTextEdited: quickLaunchEditor.queueUpdate(launchItem.index, "name", text)
+                                }
+
+                                // Command
+                                ToolbarTextField {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 30
+                                    padding: 6
                                     text: launchItem.itemData.cmd ?? ""
+                                    placeholderText: Translation.tr("Command")
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                     font.family: Appearance.font.family.monospace
                                     color: Appearance.colors.colSubtext
                                     selectByMouse: true
-                                    clip: true
                                     onTextEdited: quickLaunchEditor.queueUpdate(launchItem.index, "cmd", text)
-
-                                    Text {
-                                        anchors.fill: parent
-                                        text: Translation.tr("Command")
-                                        color: Appearance.colors.colOutline
-                                        font: parent.font
-                                        visible: !parent.text && !parent.activeFocus
-                                    }
                                 }
 
+                                // Delete
                                 RippleButton {
-                                    implicitWidth: 28; implicitHeight: 28
+                                    implicitWidth: 24; implicitHeight: 24
                                     buttonRadius: Appearance.rounding.full
                                     colBackground: "transparent"
                                     colBackgroundHover: Appearance.colors.colErrorContainer
                                     colRipple: Appearance.colors.colError
+                                    opacity: itemHover.containsMouse ? 1 : 0.3
                                     onClicked: quickLaunchEditor.removeShortcut(launchItem.index)
+
+                                    Behavior on opacity {
+                                        enabled: Appearance.animationsEnabled
+                                        NumberAnimation { duration: 150 }
+                                    }
 
                                     contentItem: MaterialSymbol {
                                         anchors.centerIn: parent
                                         text: "close"
                                         iconSize: 14
-                                        color: Appearance.colors.colSubtext
+                                        color: Appearance.colors.colError
                                     }
 
                                     StyledToolTip { text: Translation.tr("Remove") }
@@ -1879,20 +1891,29 @@ ContentPage {
                         }
                     }
 
+                    // Add button
                     RippleButton {
                         Layout.fillWidth: true
-                        implicitHeight: 32
-                        buttonRadius: SettingsMaterialPreset.groupRadius
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.small
                         colBackground: "transparent"
                         colBackgroundHover: Appearance.colors.colLayer2Hover
-                        colRipple: Appearance.colors.colLayer2Active
+                        colRipple: Appearance.colors.colPrimaryContainer
                         onClicked: quickLaunchEditor.addShortcut()
 
                         contentItem: RowLayout {
                             anchors.centerIn: parent
                             spacing: 6
-                            MaterialSymbol { text: "add"; iconSize: 16; color: Appearance.colors.colPrimary }
-                            StyledText { text: Translation.tr("Add shortcut"); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
+                            MaterialSymbol {
+                                text: "add"
+                                iconSize: 18
+                                color: Appearance.colors.colPrimary
+                            }
+                            StyledText {
+                                text: Translation.tr("Add shortcut")
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colPrimary
+                            }
                         }
                     }
                 }
@@ -1993,14 +2014,15 @@ ContentPage {
                 }
 
                 // Coin input with autocomplete
-                Item {
+                ConfigRow {
                     Layout.fillWidth: true
                     implicitHeight: coinInput.implicitHeight
 
-                    TextField {
+                    MaterialTextField {
                         id: coinInput
                         width: parent.width
                         placeholderText: Translation.tr("Type to search coins...")
+                        text: ""
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.m3colors.m3onSurface
                         placeholderTextColor: Appearance.colors.colSubtext
@@ -2804,6 +2826,47 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("settingsUi.overlayMode", checked)
                 StyledToolTip {
                     text: Translation.tr("When enabled, Settings opens as a floating overlay inside the shell instead of a separate window. This lets you preview changes instantly.\nRequires a shell restart to take effect.")
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Overlay appearance")
+                visible: Config.options?.settingsUi?.overlayMode ?? false
+
+                ConfigSpinBox {
+                    icon: "water"
+                    text: Translation.tr("Background dim (%)")
+                    value: Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35
+                    from: 0
+                    to: 80
+                    stepSize: 5
+                    onValueChanged: Config.setNestedValue("settingsUi.overlayAppearance.scrimDim", value)
+                    StyledToolTip {
+                        text: Translation.tr("How dark the backdrop behind the Settings panel should be (0 = transparent, 80 = very dark)")
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Panel background opacity (%)")
+                    value: Math.round((Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0) * 100)
+                    from: 20
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: Config.setNestedValue("settingsUi.overlayAppearance.backgroundOpacity", value / 100)
+                    StyledToolTip {
+                        text: Translation.tr("Opacity of the Settings panel background. Lower values let the shell show through.")
+                    }
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "blur_on"
+                    text: Translation.tr("Enhanced blur (aurora/angel only)")
+                    checked: Config.options?.settingsUi?.overlayAppearance?.enableBlur ?? false
+                    onCheckedChanged: Config.setNestedValue("settingsUi.overlayAppearance.enableBlur", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Apply extra glass blur behind the Settings panel. Only visible with aurora or angel global style.")
+                    }
                 }
             }
 

@@ -29,14 +29,17 @@ Item {
         id: card
         width: contentLayout.implicitWidth + 32
         height: contentLayout.implicitHeight + 20
-        radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+            : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+            : Appearance.rounding.normal
         fallbackColor: Appearance.colors.colLayer1
         inirColor: Appearance.inir.colLayer2
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: 1
         border.color: root.isError 
             ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
-            : (Appearance.inirEverywhere ? Appearance.inir.colBorder 
+            : (Appearance.angelEverywhere ? Appearance.angel.colBorder
+                : Appearance.inirEverywhere ? Appearance.inir.colBorder 
                 : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colOutlineVariant)
         
         MouseArea {
@@ -57,8 +60,10 @@ Item {
                 text: root.icon
                 iconSize: 20
                 color: root.isError 
-                    ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
-                    : (Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colOnLayer1)
+                    ? (Appearance.angelEverywhere ? Appearance.m3colors.m3error
+                        : Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
+                    : (Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                        : Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colOnLayer1)
             }
             
             // Content
@@ -89,10 +94,12 @@ Item {
                 visible: root.isError && root.message !== ""
                 implicitWidth: 28
                 implicitHeight: 28
-                buttonRadius: Appearance.rounding.small
+                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.small
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Qt.rgba(0, 0, 0, 0.1)
-                colRipple: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
+                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Qt.rgba(0, 0, 0, 0.1)
+                colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
                 onClicked: {
                     console.log("[Toast] Copying to clipboard:", root.message.substring(0, 50))
                     copyProcess.running = true
@@ -121,10 +128,12 @@ Item {
             RippleButton {
                 implicitWidth: 28
                 implicitHeight: 28
-                buttonRadius: Appearance.rounding.small
+                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.small
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Qt.rgba(0, 0, 0, 0.1)
-                colRipple: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
+                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Qt.rgba(0, 0, 0, 0.1)
+                colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
                 onClicked: root.dismissed()
                 
                 contentItem: MaterialSymbol {
@@ -143,8 +152,9 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 6
             height: 3
-            radius: Appearance.rounding.unsharpen
-            color: root.isError ? Appearance.colors.colError : Appearance.colors.colPrimary
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.unsharpen
+            color: root.isError ? Appearance.colors.colError
+                : Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.colors.colPrimary
             
             PropertyAnimation {
                 id: progressAnim

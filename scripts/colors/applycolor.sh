@@ -90,31 +90,20 @@ apply_terminal_configs() {
     return
   fi
 
-  # Get enabled terminals from config, but only if actually installed
-  local enabled_terminals=()
-  if [ -f "$CONFIG_FILE" ]; then
-    local enable_kitty=$(jq -r '.appearance.wallpaperTheming.terminals.kitty // true' "$CONFIG_FILE")
-    local enable_alacritty=$(jq -r '.appearance.wallpaperTheming.terminals.alacritty // true' "$CONFIG_FILE")
-    local enable_foot=$(jq -r '.appearance.wallpaperTheming.terminals.foot // true' "$CONFIG_FILE")
-    local enable_wezterm=$(jq -r '.appearance.wallpaperTheming.terminals.wezterm // true' "$CONFIG_FILE")
-    local enable_ghostty=$(jq -r '.appearance.wallpaperTheming.terminals.ghostty // true' "$CONFIG_FILE")
-    local enable_konsole=$(jq -r '.appearance.wallpaperTheming.terminals.konsole // true' "$CONFIG_FILE")
-    local enable_starship=$(jq -r '.appearance.wallpaperTheming.terminals.starship // true' "$CONFIG_FILE")
+  # Single source of truth for all supported targets.
+  # Mirrors TERMINAL_REGISTRY in generate_terminal_configs.py.
+  # To add a new target: add it here + add generate_X_config() and registry entry in the Python script.
+  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi)
 
-    # Only add terminals that are both enabled AND installed
-    [[ "$enable_kitty" == "true" ]] && command -v kitty &>/dev/null && enabled_terminals+=(kitty)
-    [[ "$enable_alacritty" == "true" ]] && command -v alacritty &>/dev/null && enabled_terminals+=(alacritty)
-    [[ "$enable_foot" == "true" ]] && command -v foot &>/dev/null && enabled_terminals+=(foot)
-    [[ "$enable_wezterm" == "true" ]] && command -v wezterm &>/dev/null && enabled_terminals+=(wezterm)
-    [[ "$enable_ghostty" == "true" ]] && command -v ghostty &>/dev/null && enabled_terminals+=(ghostty)
-    [[ "$enable_konsole" == "true" ]] && command -v konsole &>/dev/null && enabled_terminals+=(konsole)
-    [[ "$enable_starship" == "true" ]] && command -v starship &>/dev/null && enabled_terminals+=(starship)
-  else
-    # Default: only generate for installed terminals + starship
-    for term in kitty alacritty foot wezterm ghostty konsole starship; do
-      command -v "$term" &>/dev/null && enabled_terminals+=("$term")
-    done
-  fi
+  # Build enabled list: config-enabled (default true) AND installed
+  local enabled_terminals=()
+  for term in "${all_supported[@]}"; do
+    local term_enabled="true"
+    if [ -f "$CONFIG_FILE" ]; then
+      term_enabled=$(jq -r ".appearance.wallpaperTheming.terminals.${term} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
+    fi
+    [[ "$term_enabled" == "true" ]] && command -v "$term" &>/dev/null && enabled_terminals+=("$term")
+  done
 
   if [ ${#enabled_terminals[@]} -eq 0 ]; then
     echo "[terminal-colors] No enabled terminals found installed. Skipping." >> "$log_file" 2>/dev/null
@@ -123,7 +112,13 @@ apply_terminal_configs() {
 
   # Run the Python script to generate configs
   local python_cmd="python3"
-  local venv_python="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}/bin/python"
+  local _ac_venv
+  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+  else
+    _ac_venv="$HOME/.local/state/quickshell/.venv"
+  fi
+  local venv_python="$_ac_venv/bin/python3"
   if [[ -x "$venv_python" ]]; then
     python_cmd="$venv_python"
   fi
@@ -210,25 +205,10 @@ apply_qt() {
 }
 
 apply_gtk_kde() {
-  local scss_file="$STATE_DIR/user/generated/material_colors.scss"
-  if [ ! -f "$scss_file" ]; then
-    return
-  fi
-
-  # Extract colors from scss (format: $colorname: #hex;)
-  get_color() {
-    grep "^\$$1:" "$scss_file" | cut -d: -f2 | tr -d ' ;'
-  }
-
-  local bg=$(get_color "background")
-  local fg=$(get_color "onBackground")
-  local primary=$(get_color "primary")
-  local on_primary=$(get_color "onPrimary")
-  local surface=$(get_color "surface")
-  local surface_dim=$(get_color "surfaceDim")
-
-  # Call apply-gtk-theme.sh with extracted colors
-  "$SCRIPT_DIR/apply-gtk-theme.sh" "$bg" "$fg" "$primary" "$on_primary" "$surface" "$surface_dim"
+  # apply-gtk-theme.sh reads colors.json (matugen's output) directly
+  # It generates: kdeglobals, Darkly.colors, pywalfox colors
+  # GTK CSS is handled by matugen templates
+  "$SCRIPT_DIR/apply-gtk-theme.sh"
 }
 
 # Check if terminal theming is enabled in config
@@ -258,16 +238,8 @@ else
   apply_gtk_kde &
 fi
 
-# Apply SDDM theming if enabled
-apply_sddm() {
-  if [ -f "$CONFIG_DIR/scripts/sddm/sync-sddm-theme.py" ]; then
-    python3 "$CONFIG_DIR/scripts/sddm/sync-sddm-theme.py" &
-  fi
-}
-
-if [ -f "$CONFIG_FILE" ]; then
-  enable_sddm=$(jq -r '.appearance.wallpaperTheming.enableSddm // false' "$CONFIG_FILE")
-  if [ "$enable_sddm" = "true" ]; then
-    apply_sddm &
-  fi
+# Sync ii-pixel SDDM theme colors (if installed)
+SDDM_SYNC_SCRIPT="$SCRIPT_DIR/../sddm/sync-pixel-sddm.py"
+if [[ -d "/usr/share/sddm/themes/ii-pixel" && -f "$SDDM_SYNC_SCRIPT" ]]; then
+  python3 "$SDDM_SYNC_SCRIPT" &
 fi

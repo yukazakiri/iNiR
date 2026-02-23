@@ -57,20 +57,40 @@ Variants {
         readonly property var workSafetyTriggerOptions: workSafetyOptions.triggerCondition ?? {}
         readonly property var lockBlurOptions: Config.options?.lock?.blur ?? {}
         readonly property var backgroundWidgetsOptions: backgroundOptions.widgets ?? {}
-        
-        // Wallpaper
-        readonly property string wallpaperPathRaw: bgRoot.backgroundOptions.wallpaperPath ?? ""
+
+        // Multi-monitor wallpaper support
+        // IMPORTANT: Only use WallpaperListener when multi-monitor is enabled.
+        // When disabled, use direct config path to preserve QML reactive bindings
+        // that Aurora glass/blur depends on.
+        readonly property bool _multiMonEnabled: WallpaperListener.multiMonitorEnabled
+        readonly property string monitorName: {
+            if (CompositorService.isNiri) {
+                return modelData.name ?? ""
+            } else if (CompositorService.isHyprland && bgRoot.monitor) {
+                return bgRoot.monitor.name ?? ""
+            }
+            return modelData.name ?? ""
+        }
+        readonly property var wallpaperData: _multiMonEnabled
+            ? (WallpaperListener.effectivePerMonitor[monitorName] ?? { path: "" })
+            : ({ path: "" })
+
+        // Per-monitor workspace range for parallax
+        readonly property bool usePerMonitorRange: _multiMonEnabled &&
+            (wallpaperData.workspaceFirst !== undefined && wallpaperData.workspaceLast !== undefined)
+        readonly property int effectiveWorkspaceFirst: usePerMonitorRange ? wallpaperData.workspaceFirst : 1
+        readonly property int effectiveWorkspaceLast: usePerMonitorRange ? wallpaperData.workspaceLast : (Config.options?.bar?.workspaces?.shown ?? 10)
+
+        // Wallpaper — use per-monitor path when multi-monitor enabled, otherwise direct config
+        readonly property string wallpaperPathRaw: {
+            if (_multiMonEnabled && wallpaperData.path) return wallpaperData.path
+            return bgRoot.backgroundOptions.wallpaperPath ?? ""
+        }
         readonly property string wallpaperThumbnailPath: bgRoot.backgroundOptions.thumbnailPath ?? bgRoot.wallpaperPathRaw
         readonly property bool enableAnimation: bgRoot.backgroundOptions.enableAnimation ?? true
         property bool wallpaperIsVideo: wallpaperPathRaw.endsWith(".mp4") || wallpaperPathRaw.endsWith(".webm") || wallpaperPathRaw.endsWith(".mkv") || wallpaperPathRaw.endsWith(".avi") || wallpaperPathRaw.endsWith(".mov")
         property bool wallpaperIsGif: wallpaperPathRaw.toLowerCase().endsWith(".gif")
-        // Effective path: use thumbnail if animation is disabled for videos/GIFs
-        property string wallpaperPath: {
-            if (!bgRoot.enableAnimation && (bgRoot.wallpaperIsVideo || bgRoot.wallpaperIsGif)) {
-                return bgRoot.wallpaperThumbnailPath;
-            }
-            return bgRoot.wallpaperPathRaw;
-        }
+        property string wallpaperPath: bgRoot.wallpaperPathRaw
         property bool wallpaperSafetyTriggered: {
             const enabled = bgRoot.workSafetyEnableOptions.wallpaper ?? false;
             const fileKeywords = bgRoot.workSafetyTriggerOptions.fileKeywords ?? [];
@@ -127,7 +147,8 @@ Variants {
         property bool focusWindowsPresent: !GlobalStates.screenLocked && hasWindowsOnCurrentWorkspace
         property real focusPresenceProgress: focusWindowsPresent ? 1 : 0
         Behavior on focusPresenceProgress {
-            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            enabled: Appearance.animationsEnabled
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
         property real blurProgress: {
@@ -141,8 +162,8 @@ Variants {
         // Layer props
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
-        // Only use Overlay when strictly necessary (locked and stable). Otherwise Bottom.
-        WlrLayershell.layer: (GlobalStates.screenLocked && !scaleAnim.running) ? WlrLayer.Overlay : WlrLayer.Bottom
+        // Keep background behind the lock surface. Moving this to Overlay can capture input.
+        WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "quickshell:background"
         anchors { top: true; bottom: true; left: true; right: true }
         color: {
@@ -210,9 +231,15 @@ Variants {
             // Wallpaper container - used as reference for blur and widgets
             Item {
                 id: wallpaperContainer
-                property int chunkSize: Config?.options?.bar?.workspaces?.shown ?? 10
-                property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
-                property int upper: Math.ceil(bgRoot.lastWorkspaceId / chunkSize) * chunkSize
+                property int chunkSize: bgRoot.usePerMonitorRange ?
+                    (bgRoot.effectiveWorkspaceLast - bgRoot.effectiveWorkspaceFirst + 1) :
+                    (Config?.options?.bar?.workspaces?.shown ?? 10)
+                property int lower: bgRoot.usePerMonitorRange ?
+                    bgRoot.effectiveWorkspaceFirst :
+                    (Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize)
+                property int upper: bgRoot.usePerMonitorRange ?
+                    bgRoot.effectiveWorkspaceLast :
+                    (Math.ceil(bgRoot.lastWorkspaceId / chunkSize) * chunkSize)
                 property int range: upper - lower
                 property real valueX: {
                     let result = 0.5;
@@ -239,22 +266,31 @@ Variants {
                 readonly property bool useParallax: bgRoot.fillMode === "fill" && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
                 x: useParallax ? (-(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace) : 0
                 y: useParallax ? (-(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace) : 0
-                Behavior on x { NumberAnimation { duration: wallpaperContainer.useParallax ? 600 : 0; easing.type: Easing.OutCubic } }
-                Behavior on y { NumberAnimation { duration: wallpaperContainer.useParallax ? 600 : 0; easing.type: Easing.OutCubic } }
+                Behavior on x {
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+                Behavior on y {
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
                 width: useParallax ? (bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.width
                 height: useParallax ? (bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.height
 
-                // Static wallpaper (non-GIF, non-video images OR thumbnails when animation disabled)
+                // Static wallpaper (non-GIF, non-video images only)
                 StyledImage {
                     id: wallpaper
                     anchors.fill: parent
-                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && (!bgRoot.wallpaperIsGif || !bgRoot.enableAnimation) && (!bgRoot.wallpaperIsVideo || !bgRoot.enableAnimation)
-                    opacity: (status === Image.Ready && ((!bgRoot.wallpaperIsVideo && !bgRoot.wallpaperIsGif) || !bgRoot.enableAnimation)) ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
+                    opacity: (!bgRoot.wallpaperIsVideo && !bgRoot.wallpaperIsGif && status === Image.Ready) ? 1 : 0
+                    Behavior on opacity {
+                        enabled: Appearance.animationsEnabled
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                     cache: true
                     smooth: true
                     mipmap: true
-                    source: (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo) ? "" : bgRoot.wallpaperPath
+                    source: (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperIsGif) ? "" : bgRoot.wallpaperPath
                     fillMode: bgRoot.fillMode === "fit" ? Image.PreserveAspectFit
                             : bgRoot.fillMode === "tile" ? Image.Tile
                             : bgRoot.fillMode === "center" ? Image.Pad
@@ -265,49 +301,74 @@ Variants {
                     }
                 }
 
-                // Animated GIF wallpaper (only when animation enabled)
+                // Animated GIF wallpaper
+                // Always loaded for GIFs: plays when animation enabled, frozen (first frame) when disabled
                 AnimatedImage {
                     id: gifWallpaper
                     anchors.fill: parent
-                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsGif && bgRoot.enableAnimation
-                    opacity: (status === AnimatedImage.Ready && bgRoot.wallpaperIsGif && bgRoot.enableAnimation) ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsGif
+                    opacity: (status === AnimatedImage.Ready && bgRoot.wallpaperIsGif) ? 1 : 0
+                    Behavior on opacity {
+                        enabled: Appearance.animationsEnabled
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                     cache: true
-                    playing: visible && !GlobalStates.screenLocked && !Appearance._gameModeActive
+                    playing: visible && bgRoot.enableAnimation && !GlobalStates.screenLocked && !Appearance._gameModeActive
                     asynchronous: true
-                    source: (bgRoot.wallpaperSafetyTriggered || !bgRoot.wallpaperIsGif || !bgRoot.enableAnimation) ? "" : bgRoot.wallpaperPathRaw
+                    source: (bgRoot.wallpaperSafetyTriggered || !bgRoot.wallpaperIsGif) ? "" : bgRoot.wallpaperPathRaw
                     fillMode: Image.PreserveAspectCrop
                     // No sourceSize for GIFs - let Qt handle native size for performance
                 }
 
-                // Video wallpaper (Qt Multimedia - only when animation enabled)
+                // Video wallpaper (Qt Multimedia)
+                // Always loaded for videos: plays when animation enabled, frozen (paused) when disabled
                 Video {
                     id: videoWallpaper
                     anchors.fill: parent
-                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsVideo && bgRoot.enableAnimation
-                    opacity: (bgRoot.wallpaperIsVideo && bgRoot.enableAnimation) ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsVideo
+                    opacity: bgRoot.wallpaperIsVideo ? 1 : 0
+                    Behavior on opacity {
+                        enabled: Appearance.animationsEnabled
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                     source: {
-                        if (bgRoot.wallpaperSafetyTriggered || !bgRoot.wallpaperIsVideo || !bgRoot.enableAnimation) return "";
+                        if (bgRoot.wallpaperSafetyTriggered || !bgRoot.wallpaperIsVideo) return "";
                         const path = bgRoot.wallpaperPathRaw;
                         if (!path) return "";
-                        // Qt Multimedia needs file:// URL format
                         return path.startsWith("file://") ? path : ("file://" + path);
                     }
                     fillMode: VideoOutput.PreserveAspectCrop
                     loops: MediaPlayer.Infinite
                     muted: true
                     autoPlay: true
-                    
+
+                    readonly property bool shouldPlay: bgRoot.enableAnimation && !GlobalStates.screenLocked && !Appearance._gameModeActive
+
+                    function pauseAndShowFirstFrame() {
+                        pause()
+                        seek(0) // Ensure first frame is displayed when paused
+                    }
+
                     onPlaybackStateChanged: {
-                        if (playbackState === MediaPlayer.StoppedState && visible && !GlobalStates.screenLocked && !Appearance._gameModeActive) {
+                        if (playbackState === MediaPlayer.PlayingState && !shouldPlay) {
+                            pauseAndShowFirstFrame()
+                        }
+                        if (playbackState === MediaPlayer.StoppedState && visible && shouldPlay) {
                             play()
+                        }
+                    }
+
+                    onShouldPlayChanged: {
+                        if (visible && bgRoot.wallpaperIsVideo) {
+                            if (shouldPlay) play()
+                            else pauseAndShowFirstFrame()
                         }
                     }
                     
                     onVisibleChanged: {
-                        if (visible && !GlobalStates.screenLocked && bgRoot.wallpaperIsVideo && !Appearance._gameModeActive) {
-                            play()
+                        if (visible && bgRoot.wallpaperIsVideo) {
+                            if (shouldPlay) play()
+                            else pauseAndShowFirstFrame()
                         } else {
                             pause()
                         }
@@ -316,21 +377,20 @@ Variants {
                     Connections {
                         target: GlobalStates
                         function onScreenLockedChanged() {
-                            if (GlobalStates.screenLocked || Appearance._gameModeActive) {
-                                videoWallpaper.pause()
+                            if (!videoWallpaper.shouldPlay) {
+                                videoWallpaper.pauseAndShowFirstFrame()
                             } else if (videoWallpaper.visible && bgRoot.wallpaperIsVideo) {
                                 videoWallpaper.play()
                             }
                         }
                     }
 
-                    // Pause/resume video during GameMode for performance
                     Connections {
                         target: GameMode
                         function onActiveChanged() {
-                            if (GameMode.active) {
-                                videoWallpaper.pause()
-                            } else if (videoWallpaper.visible && bgRoot.wallpaperIsVideo && !GlobalStates.screenLocked) {
+                            if (!videoWallpaper.shouldPlay) {
+                                videoWallpaper.pauseAndShowFirstFrame()
+                            } else if (videoWallpaper.visible && bgRoot.wallpaperIsVideo) {
                                 videoWallpaper.play()
                             }
                         }
@@ -414,9 +474,49 @@ Variants {
                 }
             }
 
+            // Desktop right-click context menu
+            MouseArea {
+                anchors.fill: parent
+                z: 15  // Below WidgetCanvas (z: 20) so widgets can receive input
+                acceptedButtons: Qt.RightButton
+                onClicked: function(mouse) {
+                    desktopMenuAnchor.x = mouse.x
+                    desktopMenuAnchor.y = mouse.y
+                    desktopContextMenu.active = true
+                }
+            }
+
+            Item {
+                id: desktopMenuAnchor
+                z: 26
+                width: 1; height: 1
+            }
+
+            ContextMenu {
+                id: desktopContextMenu
+                z: 27
+                anchorItem: desktopMenuAnchor
+                popupAbove: false
+                closeOnFocusLost: false
+                closeOnHoverLost: true
+                model: [
+                    { text: Translation.tr("Settings"), iconName: "settings", monochromeIcon: true,
+                        action: () => { Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]) } },
+                    { type: "separator" },
+                    { text: Translation.tr("Change wallpaper"), iconName: "image", monochromeIcon: true,
+                        action: () => { GlobalStates.wallpaperSelectorOpen = true } },
+                    { text: Translation.tr("Screenshot"), iconName: "screenshot_monitor", monochromeIcon: true,
+                        action: () => { GlobalStates.regionSelectorOpen = true } },
+                    { type: "separator" },
+                    { text: Translation.tr("Reload shell"), iconName: "refresh", monochromeIcon: true,
+                        action: () => { Quickshell.reload() } }
+                ]
+            }
+
             WidgetCanvas {
                 id: widgetCanvas
                 z: 20
+                enabled: !GlobalStates.screenLocked  // Disable all widget input during lock
                 readonly property bool useParallax: wallpaperContainer.useParallax && !bgRoot.backdropActive
                 anchors {
                     left: useParallax ? wallpaperContainer.left : parent.left

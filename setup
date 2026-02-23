@@ -602,7 +602,7 @@ run_update() {
         done
 
         # Sync directories
-        for dir in modules services scripts assets translations sdata defaults; do
+        for dir in modules services scripts assets translations sdata defaults dots; do
             [[ -d "${II_SOURCE}/${dir}" ]] && mkdir -p "${II_TARGET}/${dir}" && rsync -a --delete "${II_SOURCE}/${dir}/" "${II_TARGET}/${dir}/"
         done
 
@@ -630,8 +630,44 @@ run_update() {
     
     # Update version
     set_installed_version "$repo_ver" "$repo_commit" "update"
-    
+
     tui_success "Files synced"
+
+    # Ensure matugen config contains the ii-pixel SDDM sync post_hook template.
+    # We only append the missing block (idempotent) to avoid overwriting user templates.
+    if command -v matugen >/dev/null 2>&1; then
+        local matugen_cfg="${XDG_CONFIG_HOME}/matugen/config.toml"
+        if [[ -f "$matugen_cfg" ]]; then
+            if ! grep -q "\[templates\.ii_pixel_sddm_sync\]" "$matugen_cfg" 2>/dev/null; then
+                echo "" >> "$matugen_cfg"
+                cat >> "$matugen_cfg" << 'MATUGEN_SDDM_EOF'
+
+# SDDM ii-pixel theme sync (safe no-op if script/theme are not present)
+[templates.ii_pixel_sddm_sync]
+input_path = '/dev/null'
+output_path = '/dev/null'
+post_hook = 'bash -lc "[[ -x ~/.local/bin/sync-pixel-sddm.py && -d /usr/share/sddm/themes/ii-pixel ]] && nohup python3 ~/.local/bin/sync-pixel-sddm.py >/dev/null 2>&1 &"'
+MATUGEN_SDDM_EOF
+            fi
+        fi
+    fi
+
+    # Refresh ii-pixel SDDM theme on update (keeps shipped theme in sync with fixes)
+    # Intelligent behavior:
+    # - interactive mode: installer decides (prompt if another SDDM theme is active)
+    # - non-interactive mode: never force-switch Current theme
+    if command -v sddm >/dev/null 2>&1; then
+        local sddm_script="${II_TARGET}/scripts/sddm/install-pixel-sddm.sh"
+        if [[ -f "$sddm_script" ]]; then
+            echo ""
+            tui_info "Refreshing ii-pixel SDDM theme..."
+            local _sddm_auto_apply="ask"
+            if [[ "$ask" != "true" ]]; then
+                _sddm_auto_apply="no"
+            fi
+            INIR_SDDM_AUTO_APPLY="${_sddm_auto_apply}" bash "$sddm_script" || tui_warn "SDDM refresh had issues (non-fatal)"
+        fi
+    fi
 
     # Update Vesktop themes (themes live outside the quickshell/ii tree)
     if [[ -d "${REPO_ROOT}/dots/.config/vesktop/themes" ]]; then

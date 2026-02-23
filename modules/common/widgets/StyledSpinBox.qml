@@ -10,15 +10,18 @@ SpinBox {
     id: root
 
     property real baseHeight: 35
-    property real radius: Appearance.rounding.small
-    property real innerButtonRadius: Appearance.rounding.unsharpen
+    property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+        : Appearance.rounding.small
+    property real innerButtonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+        : Appearance.rounding.unsharpen
     hoverEnabled: true
     editable: true
 
     opacity: root.enabled ? 1 : 0.4
 
     background: Rectangle {
-        color: Appearance.colors.colLayer2
+        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+            : Appearance.inirEverywhere ? Appearance.inir.colLayer2 : Appearance.colors.colLayer2
         radius: root.radius
     }
 
@@ -53,9 +56,9 @@ SpinBox {
         topRightRadius: root.innerButtonRadius
         bottomRightRadius: root.innerButtonRadius
 
-        color: root.down.pressed ? Appearance.colors.colLayer2Active : 
-            root.down.hovered ? Appearance.colors.colLayer2Hover : 
-            ColorUtils.transparentize(Appearance.colors.colLayer2)
+        color: root.down.pressed ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive : Appearance.colors.colLayer2Active) : 
+            root.down.hovered ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover : Appearance.colors.colLayer2Hover) : 
+            ColorUtils.transparentize(Appearance.angelEverywhere ? Appearance.angel.colGlassCard : Appearance.colors.colLayer2)
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
@@ -80,9 +83,9 @@ SpinBox {
         topLeftRadius: root.innerButtonRadius
         bottomLeftRadius: root.innerButtonRadius
 
-        color: root.up.pressed ? Appearance.colors.colLayer2Active : 
-            root.up.hovered ? Appearance.colors.colLayer2Hover : 
-            ColorUtils.transparentize(Appearance.colors.colLayer2)
+        color: root.up.pressed ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive : Appearance.colors.colLayer2Active) : 
+            root.up.hovered ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover : Appearance.colors.colLayer2Hover) : 
+            ColorUtils.transparentize(Appearance.angelEverywhere ? Appearance.angel.colGlassCard : Appearance.colors.colLayer2)
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }

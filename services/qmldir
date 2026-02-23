@@ -56,6 +56,7 @@ singleton TrayService 1.0 TrayService.qml
 singleton Updates 1.0 Updates.qml
 singleton VoiceSearch 1.0 VoiceSearch.qml
 singleton Wallhaven 1.0 Wallhaven.qml
+singleton WallpaperListener 1.0 WallpaperListener.qml
 singleton Wallpapers 1.0 Wallpapers.qml
 singleton Weather 1.0 Weather.qml
 singleton WindowPreviewService 1.0 WindowPreviewService.qml

@@ -5,8 +5,6 @@ import qs.modules.common.functions
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import Quickshell
 import Quickshell.Wayland
@@ -106,69 +104,28 @@ Scope {
             }
         }
 
-        // Glassmorphism backdrop - blur effect on wallpaper
-        Item {
-            id: blurBackdrop
+        // Scrim backdrop (matches Overview pattern)
+        Rectangle {
             anchors.fill: parent
-            visible: root.cheatsheetOpen
-            
-            // Wallpaper source for blur
-            Image {
-                id: wallpaperSource
-                anchors.fill: parent
-                source: {
-                    const wpPath = Config.options?.background?.wallpaperPath ?? "";
-                    // For videos, use thumbnail path instead
-                    const isVideo = wpPath.endsWith(".mp4") || wpPath.endsWith(".webm") || wpPath.endsWith(".mkv") || wpPath.endsWith(".avi") || wpPath.endsWith(".mov");
-                    return isVideo ? (Config.options?.background?.thumbnailPath ?? wpPath) : wpPath;
-                }
-                fillMode: Image.PreserveAspectCrop
-                visible: false // Hidden, only used as source for blur
-                cache: true
-                asynchronous: true
-            }
-            
-            // Blur effect applied to wallpaper
-            MultiEffect {
-                id: blurEffect
-                anchors.fill: parent
-                source: wallpaperSource
-                blurEnabled: Appearance.effectsEnabled
-                blur: Appearance.effectsEnabled ? 1.0 : 0
-                blurMax: 64
-                blurMultiplier: 1.0
-                saturation: Appearance.effectsEnabled ? 0.2 : 0
-                opacity: root.cheatsheetOpen ? 1 : 0
-                
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation {
-                        duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                    }
-                }
-            }
-            
-            // Tinted overlay with colLayer0 at 85% opacity
-            Rectangle {
-                id: tintOverlay
-                anchors.fill: parent
-                color: ColorUtils.applyAlpha(Appearance.colors?.colLayer0 ?? "#06070b", 0.85)
-                opacity: root.cheatsheetOpen ? 1 : 0
+            z: -1
+            color: ColorUtils.transparentize(Appearance.m3colors.m3background, 1 - 0.85)
+            opacity: root.cheatsheetOpen ? 1 : 0
 
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                }
-                
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation {
-                        duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                    }
+            Behavior on color {
+                enabled: Appearance.animationsEnabled
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
+            Behavior on opacity {
+                enabled: Appearance.animationsEnabled
+                NumberAnimation {
+                    duration: root.cheatsheetOpen
+                        ? (Appearance.animation.elementMoveEnter.duration)
+                        : (Appearance.animation.elementMoveExit.duration)
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: root.cheatsheetOpen
+                        ? Appearance.animationCurves.emphasizedDecel
+                        : Appearance.animationCurves.emphasizedAccel
                 }
             }
         }
@@ -197,10 +154,18 @@ Scope {
         Rectangle {
             id: cheatsheetBackground
             anchors.centerIn: parent
-            color: Appearance.colors?.colLayer0 ?? "#06070b"
-            border.width: 1
-            border.color: Appearance.colors?.colLayer0Border ?? "#3D455A"
-            radius: Appearance.rounding?.windowRounding ?? 18
+            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                 : Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                 : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                 : Appearance.colors.colLayer0
+            border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+                        : Appearance.inirEverywhere ? 1 : 1
+            border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                        : Appearance.colors.colLayer0Border
+            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+                  : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+                  : Appearance.rounding.windowRounding
 
             Behavior on color {
                 enabled: Appearance.animationsEnabled

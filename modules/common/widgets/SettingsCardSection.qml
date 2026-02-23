@@ -71,13 +71,27 @@ Item {
         }
     }
 
-    StyledRectangularShadow {
-        target: card
+    // Shadow — standard for material, escalonado for angel
+    Loader {
+        active: !Appearance.angelEverywhere
+        anchors.fill: card
+        sourceComponent: StyledRectangularShadow {
+            anchors.fill: undefined
+            target: card
+        }
+    }
+    Loader {
+        active: Appearance.angelEverywhere
+        sourceComponent: EscalonadoShadow {
+            target: card
+            hovered: root.expanded
+        }
     }
 
-    // Subtle left accent bar when expanded
+    // Subtle left accent bar when expanded (non-angel)
     Rectangle {
         id: accentBar
+        visible: !Appearance.angelEverywhere
         anchors {
             left: card.left
             top: card.top
@@ -104,8 +118,14 @@ Item {
         implicitHeight: cardColumn.implicitHeight + SettingsMaterialPreset.cardPadding * 2
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
-        border.width: 1
-        border.color: SettingsMaterialPreset.cardBorderColor
+        border.width: Appearance.angelEverywhere ? 0 : 1
+        border.color: Appearance.angelEverywhere ? "transparent" : SettingsMaterialPreset.cardBorderColor
+
+        // Angel partial border
+        AngelPartialBorder {
+            targetRadius: card.radius
+            hovered: root.expanded
+        }
 
         ColumnLayout {
             id: cardColumn

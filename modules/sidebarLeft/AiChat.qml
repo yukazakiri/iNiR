@@ -322,7 +322,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 implicitWidth: statusRowLayout.implicitWidth + 10 * 2
                 implicitHeight: Math.max(statusRowLayout.implicitHeight, 38)
                 radius: Appearance.rounding.normal - root.padding
-                color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                     : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
                 RowLayout {
                     id: statusRowLayout
@@ -366,8 +367,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 popin: false
                 topMargin: statusBg.implicitHeight + statusBg.anchors.topMargin * 2
 
-                touchpadScrollFactor: Config.options.interactions.scrolling.touchpadScrollFactor * 1.4
-                mouseScrollFactor: Config.options.interactions.scrolling.mouseScrollFactor * 1.4
+                touchpadScrollFactor: (Config.options?.interactions?.scrolling?.touchpadScrollFactor ?? 0.5) * 1.4
+                mouseScrollFactor: (Config.options?.interactions?.scrolling?.mouseScrollFactor ?? 1.0) * 1.4
 
                 property int lastResponseLength: 0
                 onContentHeightChanged: {
@@ -453,9 +454,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 }
                 delegate: ApiCommandButton {
                     id: commandButton
-                    colBackground: Appearance.auroraEverywhere 
-                        ? (suggestions.selectedIndex === index ? Appearance.aurora.colSubSurface : "transparent")
-                        : (suggestions.selectedIndex === index ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer)
+                    colBackground: Appearance.angelEverywhere
+                        ? (suggestions.selectedIndex === index ? Appearance.angel.colGlassCardHover : Appearance.angel.colGlassCard)
+                        : Appearance.auroraEverywhere 
+                            ? (suggestions.selectedIndex === index ? Appearance.aurora.colSubSurface : "transparent")
+                            : (suggestions.selectedIndex === index ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer)
                     bounce: false
                     contentItem: StyledText {
                         font.pixelSize: Appearance.font.pixelSize.smaller
@@ -507,7 +510,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             property real spacing: 5
             Layout.fillWidth: true
             radius: Appearance.rounding.normal - root.padding
-            color: Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
+            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
             implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + inputFieldRowLayout.anchors.topMargin + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + spacing, 45) + (attachedFileIndicator.implicitHeight + spacing + attachedFileIndicator.anchors.topMargin)
             clip: true
 

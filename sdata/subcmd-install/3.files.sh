@@ -3,6 +3,8 @@
 
 # shellcheck shell=bash
 
+_FILES_STAGE_START=$SECONDS
+
 if ! ${quiet:-false}; then
   printf "${STY_CYAN}[$0]: 3. Copying config files${STY_RST}\n"
 fi
@@ -36,9 +38,7 @@ NEW_NOTIF_PATH="${XDG_STATE_HOME}/quickshell/user/notifications.json"
 
 # Migrate from old cache location if exists
 if [[ -f "$OLD_NOTIF_PATH" && ! -f "$NEW_NOTIF_PATH" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Migrating notifications to persistent storage...${STY_RST}"
-  fi
+  tui_info "Migrating notifications to persistent storage..."
   mv "$OLD_NOTIF_PATH" "$NEW_NOTIF_PATH"
   rmdir "${XDG_CACHE_HOME}/quickshell/notifications" 2>/dev/null || true
   log_success "Notifications migrated to state directory"
@@ -69,29 +69,16 @@ esac
 function auto_backup_configs(){
   local backup=false
   case $ask in
-    false) if [[ ! -d "$BACKUP_DIR" ]]; then local backup=true;fi;;
+    false) [[ ! -d "$BACKUP_DIR" ]] && backup=true ;;
     *)
-      printf "${STY_YELLOW}"
-      printf "Would you like to backup existing configs to \"$BACKUP_DIR\"?\n"
-      printf "${STY_RST}"
-      while true;do
-        echo "  y = Yes, backup"
-        echo "  n = No, skip"
-        local p; read -p "====> " p
-        case $p in
-          [yY]) local backup=true;break ;;
-          [nN]) local backup=false;break ;;
-          *) echo -e "${STY_RED}Please enter [y/n].${STY_RST}";;
-        esac
-      done
+      if tui_confirm "Backup existing configs to ${BACKUP_DIR}?" "yes"; then
+        backup=true
+      fi
       ;;
   esac
-  if $backup;then
+  if $backup; then
     backup_clashing_targets dots/.config $XDG_CONFIG_HOME "${BACKUP_DIR}/.config"
-    # Only show message if backup dir was actually created
-    if [[ -d "${BACKUP_DIR}" ]]; then
-      printf "${STY_BLUE}Backup finished: ${BACKUP_DIR}${STY_RST}\n"
-    fi
+    [[ -d "${BACKUP_DIR}" ]] && log_success "Backup saved to ${BACKUP_DIR}"
   fi
 }
 
@@ -103,9 +90,7 @@ if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 case "${SKIP_QUICKSHELL}" in
   true) sleep 0;;
   *)
-    if ! ${quiet:-false}; then
-      echo -e "${STY_CYAN}Installing Quickshell ii config...${STY_RST}"
-    fi
+    tui_info "Installing Quickshell ii config..."
 
     # The ii QML code is in the root of this repo, not in dots/
     # We copy it to ~/.config/quickshell/ii/
@@ -164,9 +149,7 @@ case "${SKIP_QUICKSHELL}" in
       if ! verify_qs_loads 8; then
         log_error "Verification failed!"
         echo ""
-        echo -e "${STY_YELLOW}The update may have issues. Options:${STY_RST}"
-        echo "  1. Run ${STY_CYAN}./setup doctor${STY_RST} to diagnose"
-        echo "  2. Run ${STY_CYAN}./setup restore${STY_RST} to rollback"
+        log_warning "Update may have issues — run './setup doctor' or './setup restore' to rollback"
         echo ""
       else
         log_success "Verification passed"
@@ -178,9 +161,7 @@ esac
 #####################################################################################
 # Install config files from dots/
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Installing config files from dots/...${STY_RST}"
-fi
+tui_info "Installing config files..."
 
 # Niri config
 case "${SKIP_NIRI}" in
@@ -197,13 +178,80 @@ case "${SKIP_NIRI}" in
       install_file__auto_backup "dots/.config/niri/config.kdl" "${XDG_CONFIG_HOME}/niri/config.kdl"
       log_success "Niri config installed (dots)"
     fi
+
+    # Patch config.kdl: detect polkit agent
+    NIRI_CFG="${XDG_CONFIG_HOME}/niri/config.kdl"
+    if [[ -f "$NIRI_CFG" ]]; then
+      POLKIT_AGENT=""
+      for agent in \
+        "/usr/lib/polkit-kde-authentication-agent-1" \
+        "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1" \
+        "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1" \
+        "/usr/lib/lxpolkit/lxpolkit" \
+        "/usr/bin/lxqt-policykit-agent"
+      do
+        if [[ -f "$agent" ]] || [[ -x "$agent" ]]; then
+          POLKIT_AGENT="$agent"
+          break
+        fi
+      done
+      if [[ -n "$POLKIT_AGENT" ]]; then
+        sed -i "s|spawn-at-startup \"/usr/lib/mate-polkit/polkit-mate-authentication-agent-1\"|spawn-at-startup \"${POLKIT_AGENT}\"|" "$NIRI_CFG"
+        log_success "Polkit agent: $(basename "$(dirname "$POLKIT_AGENT")")/$(basename "$POLKIT_AGENT")"
+      else
+        log_warning "No polkit agent found — sudo dialogs may not work"
+      fi
+
+      # Patch config.kdl: detect QT platform theme
+      # plasma-integration provides the "kde" QPA platform theme plugin which reads
+      # colors from kdeglobals. Without it, Qt apps can't use KDE color schemes.
+      # We check for plasma-integration (not plasma-desktop) because it can be
+      # installed standalone for KDE theming without the full Plasma desktop.
+      if pacman -Q plasma-integration &>/dev/null 2>&1 || \
+         dpkg -l plasma-integration 2>/dev/null | grep -q '^ii' || \
+         rpm -q plasma-integration &>/dev/null 2>&1; then
+        : # plasma-integration installed — keep "kde" platform theme (reads kdeglobals)
+        log_success "Qt theme: kde (plasma-integration detected)"
+      else
+        # No plasma-integration: fall back to qt6ct
+        # NOTE: This is suboptimal — Darkly style won't read kdeglobals colors properly.
+        # The user should install plasma-integration for correct Material You Qt theming.
+        sed -i 's/QT_QPA_PLATFORMTHEME "kde"/QT_QPA_PLATFORMTHEME "qt6ct"/' "$NIRI_CFG"
+        log_warning "Qt theme: qt6ct (plasma-integration not found — install it for proper Qt theming)"
+      fi
+    fi
     ;;
 esac
 
-# Matugen (theming)
-if [[ -d "dots/.config/matugen" ]]; then
+# Matugen (theming) — defaults/ is the primary source (kept in sync with dots/)
+if [[ -d "defaults/matugen" ]]; then
+  install_dir__sync "defaults/matugen" "${XDG_CONFIG_HOME}/matugen"
+  log_success "Matugen config installed (defaults)"
+elif [[ -d "dots/.config/matugen" ]]; then
   install_dir__sync "dots/.config/matugen" "${XDG_CONFIG_HOME}/matugen"
-  log_success "Matugen config installed"
+  log_success "Matugen config installed (dots)"
+fi
+
+# ii-pixel-sddm theme (login screen matching ii lockscreen aesthetic)
+# This MUST run AFTER matugen config is deployed above, because the distributed
+# matugen config includes the SDDM sync post_hook template.
+if command -v sddm &>/dev/null; then
+  function setup_sddm_theme(){
+    tui_info "Setting up ii-pixel-sddm login theme..."
+    local sddm_script="${REPO_ROOT}/scripts/sddm/install-pixel-sddm.sh"
+    if [[ -f "$sddm_script" ]]; then
+      chmod +x "$sddm_script"
+      # Fresh install: apply theme automatically (user chose to install iNiR)
+      # Non-interactive (-y): also apply automatically (scripted installs want full setup)
+      # Only "ask" makes sense for updates where user might have another theme
+      local _sddm_auto_apply="yes"
+      INIR_SDDM_AUTO_APPLY="${_sddm_auto_apply}" bash "$sddm_script" || log_warning "ii-pixel-sddm setup had issues (non-fatal)"
+    else
+      log_warning "ii-pixel-sddm install script not found, skipping"
+    fi
+  }
+  showfun setup_sddm_theme
+  v setup_sddm_theme
 fi
 
 # Fuzzel (launcher)
@@ -218,6 +266,58 @@ if [[ -f "defaults/starship/starship.toml" ]]; then
   log_success "Starship config installed"
 fi
 
+# Fish shell config (starship init, terminal sequences, aliases)
+if [[ -d "dots/.config/fish" ]]; then
+  # Install config.fish and auto-Niri.fish (first run: overwrite, update: preserve)
+  for fish_file in config.fish auto-Niri.fish; do
+    if [[ -f "dots/.config/fish/${fish_file}" ]]; then
+      install_file__auto_backup "dots/.config/fish/${fish_file}" "${XDG_CONFIG_HOME}/fish/${fish_file}"
+    fi
+  done
+  log_success "Fish shell config installed"
+fi
+
+# Foot terminal config
+if [[ -f "dots/.config/foot/foot.ini" ]]; then
+  install_file__auto_backup "dots/.config/foot/foot.ini" "${XDG_CONFIG_HOME}/foot/foot.ini"
+  log_success "Foot terminal config installed"
+fi
+
+# Kitty terminal config
+if [[ -f "dots/.config/kitty/kitty.conf" ]]; then
+  install_file__auto_backup "dots/.config/kitty/kitty.conf" "${XDG_CONFIG_HOME}/kitty/kitty.conf"
+  log_success "Kitty terminal config installed"
+fi
+
+# Konsole config (if installed)
+if command -v konsole &>/dev/null; then
+  if [[ -f "dots/.config/konsolerc" ]]; then
+    install_file__auto_backup "dots/.config/konsolerc" "${XDG_CONFIG_HOME}/konsolerc"
+  fi
+  if [[ -f "dots/.local/share/konsole/Profile 1.profile" ]]; then
+    mkdir -p "${XDG_DATA_HOME}/konsole"
+    install_file "dots/.local/share/konsole/Profile 1.profile" "${XDG_DATA_HOME}/konsole/Profile 1.profile"
+  fi
+  log_success "Konsole config installed"
+fi
+
+# Electron app Wayland flags (Chrome, VS Code)
+for flagfile in chrome-flags.conf code-flags.conf; do
+  if [[ -f "dots/.config/${flagfile}" ]]; then
+    install_file__auto_backup "dots/.config/${flagfile}" "${XDG_CONFIG_HOME}/${flagfile}"
+  fi
+done
+
+# Darkly Qt style config
+if [[ -f "dots/.config/darklyrc" ]]; then
+  install_file "dots/.config/darklyrc" "${XDG_CONFIG_HOME}/darklyrc"
+fi
+
+# MPV config
+if [[ -f "dots/.config/mpv/mpv.conf" ]]; then
+  install_file__auto_backup "dots/.config/mpv/mpv.conf" "${XDG_CONFIG_HOME}/mpv/mpv.conf"
+fi
+
 # GTK settings
 for gtkver in gtk-3.0 gtk-4.0; do
   if [[ -d "dots/.config/${gtkver}" ]]; then
@@ -225,34 +325,45 @@ for gtkver in gtk-3.0 gtk-4.0; do
   fi
 done
 
-# KDE settings (for Dolphin and Qt apps)
+# KDE settings (for Qt apps like Dolphin, Kate, etc.)
 # These are controlled by iNiR for theming - always overwrite
 if [[ -f "defaults/kde/kdeglobals" ]]; then
   install_file "defaults/kde/kdeglobals" "${XDG_CONFIG_HOME}/kdeglobals"
 elif [[ -f "dots/.config/kdeglobals" ]]; then
   install_file "dots/.config/kdeglobals" "${XDG_CONFIG_HOME}/kdeglobals"
 fi
-if [[ -f "defaults/kde/dolphinrc" ]]; then
-  install_file "defaults/kde/dolphinrc" "${XDG_CONFIG_HOME}/dolphinrc"
-elif [[ -f "dots/.config/dolphinrc" ]]; then
-  install_file "dots/.config/dolphinrc" "${XDG_CONFIG_HOME}/dolphinrc"
-fi
 
-# Dolphin panel layout state
-# Dolphin stores panel visibility in dolphinstaterc which overrides dolphinrc.
-# Policy:
-# - Fresh install: apply our clean layout so users don't get all panels enabled.
-# - Update: preserve user's custom layout by default.
-# - User can force reset via --reset-dolphin-layout.
-DOLPHIN_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/dolphinstaterc"
-if [[ "${INSTALL_FIRSTRUN}" == true || "${RESET_DOLPHIN_LAYOUT}" == true ]]; then
-  if [[ -f "defaults/kde/dolphinstaterc" ]]; then
-    mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"
-    install_file "defaults/kde/dolphinstaterc" "${DOLPHIN_STATE_FILE}"
-    log_success "Dolphin panel layout state reset"
-  elif [[ -f "${DOLPHIN_STATE_FILE}" ]]; then
-    rm -f "${DOLPHIN_STATE_FILE}"
-    log_success "Dolphin panel layout state cleaned"
+# Dolphin config — only if dolphin is installed (nautilus is now the default file manager)
+if command -v dolphin &>/dev/null; then
+  if [[ -f "defaults/kde/dolphinrc" ]]; then
+    install_file "defaults/kde/dolphinrc" "${XDG_CONFIG_HOME}/dolphinrc"
+  elif [[ -f "dots/.config/dolphinrc" ]]; then
+    install_file "dots/.config/dolphinrc" "${XDG_CONFIG_HOME}/dolphinrc"
+  fi
+
+  # KDE service menu (enables "Open terminal here" in Dolphin right-click)
+  if [[ -f "defaults/kde/kservicemenurc" ]]; then
+    install_file "defaults/kde/kservicemenurc" "${XDG_CONFIG_HOME}/kservicemenurc"
+  elif [[ -f "dots/.config/kservicemenurc" ]]; then
+    install_file "dots/.config/kservicemenurc" "${XDG_CONFIG_HOME}/kservicemenurc"
+  fi
+
+  # Dolphin panel layout state
+  # Dolphin stores panel visibility in dolphinstaterc which overrides dolphinrc.
+  # Policy:
+  # - Fresh install: apply our clean layout so users don't get all panels enabled.
+  # - Update: preserve user's custom layout by default.
+  # - User can force reset via --reset-dolphin-layout.
+  DOLPHIN_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/dolphinstaterc"
+  if [[ "${INSTALL_FIRSTRUN}" == true || "${RESET_DOLPHIN_LAYOUT}" == true ]]; then
+    if [[ -f "defaults/kde/dolphinstaterc" ]]; then
+      mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"
+      install_file "defaults/kde/dolphinstaterc" "${DOLPHIN_STATE_FILE}"
+      log_success "Dolphin panel layout state reset"
+    elif [[ -f "${DOLPHIN_STATE_FILE}" ]]; then
+      rm -f "${DOLPHIN_STATE_FILE}"
+      log_success "Dolphin panel layout state cleaned"
+    fi
   fi
 fi
 
@@ -273,9 +384,7 @@ fi
 
 # Copy Colloid theme to user Kvantum folder if installed
 if [[ -d "/usr/share/Kvantum/Colloid" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Setting up Kvantum Colloid theme...${STY_RST}"
-  fi
+  tui_info "Setting up Kvantum Colloid theme..."
   mkdir -p "${XDG_CONFIG_HOME}/Kvantum/Colloid"
   cp -r /usr/share/Kvantum/Colloid/* "${XDG_CONFIG_HOME}/Kvantum/Colloid/"
   log_success "Kvantum Colloid theme configured"
@@ -321,10 +430,9 @@ if [[ -d "dots/.config/vesktop/themes" ]]; then
   VESKTOP_THEME_B="${XDG_CONFIG_HOME}/Vesktop/themes/system24.theme.css"
   if [[ ! -f "$VESKTOP_THEME_A" && ! -f "$VESKTOP_THEME_B" ]]; then
     log_warning "Vesktop theme file was not found after install"
-    echo -e "${STY_YELLOW}Expected one of:${STY_RST}"
-    echo -e "  ${STY_YELLOW}$VESKTOP_THEME_A${STY_RST}"
-    echo -e "  ${STY_YELLOW}$VESKTOP_THEME_B${STY_RST}"
-    echo -e "${STY_YELLOW}If Vesktop uses a different config dir, install manually or set SYSTEM24_PALETTE_CSS to your path.${STY_RST}"
+    log_warning "Expected: $VESKTOP_THEME_A"
+    log_warning "      or: $VESKTOP_THEME_B"
+    log_warning "Set SYSTEM24_PALETTE_CSS to your Vesktop themes path if it differs"
   fi
 fi
 
@@ -365,46 +473,65 @@ v dedup_and_sort_listfile "${INSTALLED_LISTFILE}" "${INSTALLED_LISTFILE}"
 #####################################################################################
 # Environment variables are configured in Niri
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Configuring environment variables...${STY_RST}"
-fi
+tui_info "Configuring environment variables..."
 
-# Note: ILLOGICAL_IMPULSE_VIRTUAL_ENV is set in ~/.config/niri/config.kdl
-# in the environment {} block. This is the proper way for Niri/Wayland compositors.
-# The Niri config has been installed with this variable already set.
+# Primary: environment {} block in Niri config.kdl (already installed)
+# Secondary: shell profile files for terminals outside Niri session (SSH, TTY, etc.)
 
-# Verify the variable will be available after Niri restart
+# Verify Niri config has the variable
 if grep -q "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "${XDG_CONFIG_HOME}/niri/config.kdl" 2>/dev/null; then
     log_success "Environment variable configured in Niri config"
 else
-    echo -e "${STY_YELLOW}Warning: ILLOGICAL_IMPULSE_VIRTUAL_ENV not found in Niri config${STY_RST}"
-    echo -e "${STY_YELLOW}Quickshell may not work correctly until you add it to ~/.config/niri/config.kdl${STY_RST}"
+    log_warning "ILLOGICAL_IMPULSE_VIRTUAL_ENV not found in Niri config"
 fi
 
-# Clean up legacy shell-specific files from previous versions
-for legacy_file in \
-    "${XDG_CONFIG_HOME}/fish/conf.d/inir-env.fish" \
-    "${XDG_CONFIG_HOME}/inir-env.sh" \
-    "${XDG_CONFIG_HOME}/environment.d/60-inir.conf"
-do
-    if [[ -f "$legacy_file" ]]; then
-        rm -f "$legacy_file"
-        log_success "Removed legacy config: $(basename $legacy_file)"
-    fi
-done
+# Write shell profile env vars (for SSH, TTY, non-Niri terminals)
+VENV_PATH="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/.venv"
 
-# Clean up legacy lines in shell rc files
+# Bash: source from .bashrc
+BASH_ENV_MARKER="# iNiR environment"
 if [[ -f "$HOME/.bashrc" ]]; then
-    if grep -q "iNiR-env.sh" "$HOME/.bashrc"; then
-        sed -i '/iNiR-env.sh/d' "$HOME/.bashrc"
-        log_success "Cleaned up .bashrc"
-    fi
+    # Clean up old markers
+    sed -i '/iNiR-env.sh/d' "$HOME/.bashrc"
+    # Remove any existing iNiR block
+    sed -i "/${BASH_ENV_MARKER}/,/# end iNiR/d" "$HOME/.bashrc"
 fi
+cat >> "$HOME/.bashrc" << BEOF
+
+${BASH_ENV_MARKER}
+export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${VENV_PATH}"
+# Apply terminal color sequences (Material You from wallpaper)
+if [ -f ~/.local/state/quickshell/user/generated/terminal/sequences.txt ]; then
+  cat ~/.local/state/quickshell/user/generated/terminal/sequences.txt
+fi
+# end iNiR
+BEOF
+log_success "Bash environment configured"
+
+# Fish: conf.d snippet
+FISH_CONF_DIR="${XDG_CONFIG_HOME}/fish/conf.d"
+mkdir -p "$FISH_CONF_DIR"
+cat > "${FISH_CONF_DIR}/inir-env.fish" << FEOF
+# iNiR environment — auto-generated by setup install
+set -gx ILLOGICAL_IMPULSE_VIRTUAL_ENV "${VENV_PATH}"
+FEOF
+log_success "Fish environment configured"
+
+# Zsh: source from .zshrc (if zsh is installed)
 if [[ -f "$HOME/.zshrc" ]]; then
-    if grep -q "iNiR-env.sh" "$HOME/.zshrc"; then
-        sed -i '/iNiR-env.sh/d' "$HOME/.zshrc"
-        log_success "Cleaned up .zshrc"
-    fi
+    sed -i '/iNiR-env.sh/d' "$HOME/.zshrc"
+    sed -i "/${BASH_ENV_MARKER}/,/# end iNiR/d" "$HOME/.zshrc"
+    cat >> "$HOME/.zshrc" << ZEOF
+
+${BASH_ENV_MARKER}
+export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${VENV_PATH}"
+# Apply terminal color sequences (Material You from wallpaper)
+if [ -f ~/.local/state/quickshell/user/generated/terminal/sequences.txt ]; then
+  cat ~/.local/state/quickshell/user/generated/terminal/sequences.txt
+fi
+# end iNiR
+ZEOF
+    log_success "Zsh environment configured"
 fi
 
 # Fix Qt Icons (Apply GTK icon theme to KDE/Qt globals)
@@ -416,7 +543,7 @@ if [[ -f "$GTK_SETTINGS" ]]; then
     ICON_THEME=$(grep "gtk-icon-theme-name" "$GTK_SETTINGS" | cut -d= -f2 | xargs)
     if [[ -n "$ICON_THEME" ]]; then
         if ! ${quiet:-false}; then
-          echo -e "${STY_CYAN}Applying icon theme '$ICON_THEME' to Qt/KDE...${STY_RST}"
+          tui_info "Applying icon theme '$ICON_THEME' to Qt/KDE..."
         fi
 
         # Ensure [Icons] section exists
@@ -439,9 +566,7 @@ fi
 #####################################################################################
 # Set default MIME associations (only if not already set)
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Configuring default applications...${STY_RST}"
-fi
+tui_info "Configuring default applications..."
 
 # Function to set MIME default only if not already configured or set to something broken
 # Note: xdg-mime may fail without a graphical session, so we handle errors gracefully
@@ -490,7 +615,7 @@ set_mime_default_if_missing() {
 
 # Detect available text editor (in order of preference)
 TEXT_EDITOR=""
-for editor in org.kde.kate.desktop org.gnome.gedit.desktop code.desktop vim.desktop; do
+for editor in org.gnome.TextEditor.desktop org.gnome.gedit.desktop org.kde.kate.desktop code.desktop vim.desktop; do
     if [[ -f "/usr/share/applications/${editor}" ]] || [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/${editor}" ]]; then
         TEXT_EDITOR="$editor"
         break
@@ -506,9 +631,9 @@ if [[ -n "$TEXT_EDITOR" ]]; then
     done
 fi
 
-# Detect and set file manager (prefer Dolphin for KDE consistency)
+# Detect and set file manager (prefer Nautilus for GTK consistency with Niri)
 FILE_MANAGER=""
-for fm in org.kde.dolphin.desktop thunar.desktop pcmanfm.desktop org.gnome.Nautilus.desktop; do
+for fm in org.gnome.Nautilus.desktop thunar.desktop pcmanfm.desktop org.kde.dolphin.desktop; do
     if [[ -f "/usr/share/applications/${fm}" ]] || [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/${fm}" ]]; then
         FILE_MANAGER="$fm"
         break
@@ -521,7 +646,7 @@ fi
 
 # Detect and set image viewer
 IMAGE_VIEWER=""
-for viewer in org.kde.gwenview.desktop org.gnome.eog.desktop org.gnome.Loupe.desktop feh.desktop; do
+for viewer in org.gnome.Loupe.desktop org.gnome.eog.desktop org.kde.gwenview.desktop feh.desktop; do
     if [[ -f "/usr/share/applications/${viewer}" ]] || [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/${viewer}" ]]; then
         IMAGE_VIEWER="$viewer"
         break
@@ -537,7 +662,7 @@ fi
 
 # Detect and set PDF viewer
 PDF_VIEWER=""
-for viewer in org.kde.okular.desktop org.gnome.Evince.desktop zathura.desktop; do
+for viewer in org.gnome.Evince.desktop org.kde.okular.desktop zathura.desktop; do
     if [[ -f "/usr/share/applications/${viewer}" ]] || [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/${viewer}" ]]; then
         PDF_VIEWER="$viewer"
         break
@@ -564,9 +689,7 @@ if [[ -n "$WEB_BROWSER" ]]; then
     log_success "Set default web browser: $WEB_BROWSER"
 fi
 
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Copying wallpapers...${STY_RST}"
-fi
+tui_info "Copying wallpapers..."
 
 #####################################################################################
 # Copy bundled wallpapers to user's Pictures/Wallpapers (always, don't overwrite)
@@ -580,8 +703,8 @@ if [[ -d "${II_TARGET}/assets/wallpapers" ]]; then
   for wallpaper in "${II_TARGET}/assets/wallpapers"/*; do
     if [[ -f "$wallpaper" ]]; then
       dest="${USER_WALLPAPERS_DIR}/$(basename "$wallpaper")"
-      if [[ ! -f "$dest" ]]; then
-        cp "$wallpaper" "$dest"
+      if [[ ! -f "$dest" ]] || [[ ! -s "$dest" ]]; then
+        cp -f "$wallpaper" "$dest"
         COPIED_COUNT=$((COPIED_COUNT + 1))
       fi
     fi
@@ -594,11 +717,29 @@ fi
 #####################################################################################
 # Set default wallpaper and generate initial theme (first run only)
 #####################################################################################
-DEFAULT_WALLPAPER="${USER_WALLPAPERS_DIR}/Angel1.png"
-if [[ "${INSTALL_FIRSTRUN}" == true && -f "${DEFAULT_WALLPAPER}" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Setting default wallpaper...${STY_RST}"
+# Pick the first available wallpaper (don't hardcode a filename that may not exist)
+DEFAULT_WALLPAPER=""
+for candidate in \
+  "${USER_WALLPAPERS_DIR}/G5uBmitWkAAyk8s.jpg" \
+  "${USER_WALLPAPERS_DIR}/Angel1.png" \
+  "${USER_WALLPAPERS_DIR}/qs-niri.jpg"
+do
+  if [[ -f "$candidate" && -s "$candidate" ]]; then
+    DEFAULT_WALLPAPER="$candidate"
+    break
   fi
+done
+# Fallback: pick any wallpaper in the directory
+if [[ -z "$DEFAULT_WALLPAPER" ]]; then
+  for f in "${USER_WALLPAPERS_DIR}"/*.{jpg,jpeg,png,webp}; do
+    if [[ -f "$f" && -s "$f" ]]; then
+      DEFAULT_WALLPAPER="$f"
+      break
+    fi
+  done
+fi
+if [[ "${INSTALL_FIRSTRUN}" == true && -n "${DEFAULT_WALLPAPER}" && -f "${DEFAULT_WALLPAPER}" ]]; then
+  tui_info "Setting default wallpaper..."
 
   # Ensure output directories exist for matugen
   mkdir -p "${XDG_STATE_HOME}/quickshell/user/generated"
@@ -620,31 +761,33 @@ if [[ "${INSTALL_FIRSTRUN}" == true && -f "${DEFAULT_WALLPAPER}" ]]; then
   # Generate initial theme colors with matugen
   export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${XDG_STATE_HOME}/quickshell/.venv"
   if command -v matugen >/dev/null 2>&1; then
-    if ! ${quiet:-false}; then
-      echo -e "${STY_CYAN}Generating theme colors from wallpaper...${STY_RST}"
-    fi
+    tui_info "Generating theme colors from wallpaper..."
     # Use --config to ensure correct config file is used
     if matugen image "${DEFAULT_WALLPAPER}" --mode dark --config "${XDG_CONFIG_HOME}/matugen/config.toml" 2>&1; then
-      log_success "Theme colors generated"
+      log_success "Theme colors generated (matugen)"
 
-      # Generate Darkly.colors for Qt file dialogs (Darkly style needs this)
-      if [[ -f "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" ]]; then
-        bash "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" 2>/dev/null || true
-        log_success "Qt Darkly theme colors generated"
+      # Generate material_colors.scss from colors.json (needed by applycolor.sh chain)
+      # NOTE: no `local` here — this block is at top-level (sourced file), not inside a function
+      _init_python_cmd="${ILLOGICAL_IMPULSE_VIRTUAL_ENV}/bin/python3"
+      _init_gen_material="${II_TARGET}/scripts/colors/generate_colors_material.py"
+      _init_colors_json="${XDG_STATE_HOME}/quickshell/user/generated/colors.json"
+      _init_scss_file="${XDG_STATE_HOME}/quickshell/user/generated/material_colors.scss"
+      if [[ -f "$_init_gen_material" && -f "$_init_colors_json" ]]; then
+        _init_py=""
+        [[ -x "$_init_python_cmd" ]] && _init_py="$_init_python_cmd" || { command -v python3 &>/dev/null && _init_py="python3"; }
+        if [[ -n "$_init_py" ]]; then
+          "$_init_py" "$_init_gen_material" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$_init_scss_file" 2>/dev/null || true
+          [[ -s "$_init_scss_file" ]] && log_success "Material colors SCSS generated"
+        fi
       fi
 
-      # Generate terminal color configs (foot, alacritty, kitty, ghostty, etc.)
-      local python_cmd="${ILLOGICAL_IMPULSE_VIRTUAL_ENV}/bin/python"
-      local gen_script="${II_TARGET}/scripts/colors/generate_terminal_configs.py"
-      local scss_file="${XDG_STATE_HOME}/quickshell/user/generated/material_colors.scss"
-      if [[ -f "$gen_script" && -f "$scss_file" ]]; then
-        if [[ -x "$python_cmd" ]]; then
-          "$python_cmd" "$gen_script" --scss "$scss_file" 2>/dev/null || true
-          log_success "Terminal color configs generated"
-        elif command -v python3 &>/dev/null; then
-          python3 "$gen_script" --scss "$scss_file" 2>/dev/null || true
-          log_success "Terminal color configs generated"
-        fi
+      # Run applycolor.sh which handles GTK, KDE, Darkly, and terminal theming
+      if [[ -s "$_init_scss_file" && -f "${II_TARGET}/scripts/colors/applycolor.sh" ]]; then
+        bash "${II_TARGET}/scripts/colors/applycolor.sh" 2>/dev/null || true
+        log_success "GTK/KDE/terminal theme colors applied"
+      elif [[ -f "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" ]]; then
+        bash "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" 2>/dev/null || true
+        log_success "Qt Darkly theme colors generated (fallback)"
       fi
     else
       log_warning "Matugen failed to generate colors. Theme may not work correctly."
@@ -659,9 +802,7 @@ fi
 #####################################################################################
 DARKLY_COLORS_FILE="${HOME}/.local/share/color-schemes/Darkly.colors"
 if [[ ! -f "${DARKLY_COLORS_FILE}" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Generating Darkly color scheme for Qt file dialogs...${STY_RST}"
-  fi
+  tui_info "Generating Darkly color scheme for Qt apps..."
 
   # Ensure directory exists
   mkdir -p "$(dirname "${DARKLY_COLORS_FILE}")"
@@ -688,6 +829,30 @@ if [[ "${INSTALL_FIRSTRUN}" == true ]]; then
 fi
 
 #####################################################################################
+# Create version.json for ShellUpdates service
+#####################################################################################
+if [[ -n "${II_TARGET}" && -d "${II_TARGET}" ]]; then
+  REPO_VERSION=""
+  REPO_COMMIT=""
+  if [[ -f "${REPO_ROOT}/VERSION" ]]; then
+    REPO_VERSION=$(cat "${REPO_ROOT}/VERSION" | tr -d '[:space:]')
+  fi
+  if command -v git &>/dev/null && [[ -d "${REPO_ROOT}/.git" ]]; then
+    REPO_COMMIT=$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null || echo "")
+  fi
+  cat > "${II_TARGET}/version.json" << VEOF
+{
+  "version": "${REPO_VERSION:-0.0.0}",
+  "commit": "${REPO_COMMIT:-unknown}",
+  "repoPath": "${REPO_ROOT}",
+  "installedAt": "$(date -Iseconds)",
+  "method": "setup-install"
+}
+VEOF
+  log_success "Version tracking configured"
+fi
+
+#####################################################################################
 # Final status checks
 #####################################################################################
 WARNINGS=()
@@ -706,6 +871,54 @@ fi
 
 if ! command -v matugen >/dev/null; then
   WARNINGS+=("Matugen not found - theming may not work")
+fi
+
+#####################################################################################
+# File verification
+#####################################################################################
+if ! ${quiet:-false}; then
+  _FILES_ELAPSED=$(( SECONDS - _FILES_STAGE_START ))
+  echo ""
+  tui_section_start "File verification"
+  echo -e "  ${STY_FAINT}Stage completed in ${_FILES_ELAPSED}s${STY_RST}"
+  echo ""
+
+  # Critical QML files
+  _VERIFY_ERRORS=0
+  for _crit_file in "shell.qml" "GlobalStates.qml" "modules/common/Config.qml" \
+                    "modules/common/Appearance.qml" "services/NiriService.qml"; do
+    if [[ -f "${II_TARGET:-${XDG_CONFIG_HOME}/quickshell/ii}/${_crit_file}" ]]; then
+      tui_verify_ok "${_crit_file}"
+    else
+      tui_verify_fail "${_crit_file}" "MISSING"
+      ((_VERIFY_ERRORS++))
+    fi
+  done
+
+  # Config files
+  echo ""
+  for _cfg_path \
+    in "${XDG_CONFIG_HOME}/niri/config.kdl:Niri config" \
+       "${XDG_CONFIG_HOME}/illogical-impulse/config.json:iNiR config" \
+       "${XDG_CONFIG_HOME}/matugen:Matugen config" \
+       "${XDG_CONFIG_HOME}/fuzzel:Fuzzel config" \
+       "${XDG_STATE_HOME}/quickshell/user/generated/colors.json:Theme colors"; do
+    _cfg_file="${_cfg_path%%:*}"
+    _cfg_label="${_cfg_path##*:}"
+    if [[ -e "$_cfg_file" ]]; then
+      tui_verify_ok "$_cfg_label"
+    else
+      tui_verify_skip "$_cfg_label" "not found (may be ok)"
+    fi
+  done
+
+  echo ""
+  if [[ $_VERIFY_ERRORS -gt 0 ]]; then
+    tui_warn "$_VERIFY_ERRORS critical file(s) missing — run './setup doctor' to diagnose"
+  else
+    tui_success "All critical QML files verified"
+  fi
+  tui_section_end
 fi
 
 #####################################################################################

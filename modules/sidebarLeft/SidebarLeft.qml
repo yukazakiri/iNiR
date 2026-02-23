@@ -96,6 +96,7 @@ Scope {
             sourceComponent: SidebarLeftContent {
                 screenWidth: sidebarRoot.screen?.width ?? 1920
                 screenHeight: sidebarRoot.screen?.height ?? 1080
+                panelScreen: sidebarRoot.screen ?? null
             }
         }
     }

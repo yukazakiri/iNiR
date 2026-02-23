@@ -22,7 +22,8 @@ Item {
             topMargin: itemHeight * root.currentIndex + (root.expanded ? 0 : ((itemHeight - baseHighlightHeight) / 2))
         }
         radius: Appearance.rounding.full
-        color: Appearance.inirEverywhere ? Appearance.inir.colSecondaryContainer
+        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+             : Appearance.inirEverywhere ? Appearance.inir.colSecondaryContainer
              : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface 
              : Appearance.colors.colSecondaryContainer
         implicitHeight: root.expanded ? itemHeight : baseHighlightHeight

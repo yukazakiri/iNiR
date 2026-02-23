@@ -10,9 +10,11 @@ import Quickshell
 RippleButton {
     id: root
     required property var element
+    property real tileSize: 70
+    readonly property bool compact: tileSize < 56
     opacity: element.type != "empty" ? 1 : 0
-    implicitHeight: 70
-    implicitWidth: 70
+    implicitHeight: tileSize
+    implicitWidth: tileSize
     buttonRadius: Appearance.rounding.small
 
     // Track if element was just copied
@@ -70,62 +72,20 @@ RippleButton {
         }
     }
 
-    Rectangle {
-        id: numberBadge
+    // Atomic number — top-left
+    StyledText {
+        id: elementNumber
+        visible: !root.compact
         anchors {
             top: parent.top
             left: parent.left
-            topMargin: 4
+            topMargin: 3
             leftMargin: 4
         }
-        color: ColorUtils.transparentize(root.colBackground, 0.3)
-        radius: Appearance.rounding.full
-        implicitWidth: Math.max(20, elementNumber.implicitWidth)
-        implicitHeight: Math.max(20, elementNumber.implicitHeight)
-        width: height
-
-        // Color transition animation for theme changes
-        Behavior on color {
-            enabled: Appearance.animationsEnabled
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-        }
-
-        StyledText {
-            id: elementNumber
-            anchors.left: parent.left
-            color: root.textColor
-            text: root.element.number
-            font.pixelSize: Appearance.font.pixelSize.smallest
-        }
-    }
-
-    Rectangle {
-        id: weightBadge
-        anchors {
-            top: parent.top
-            right: parent.right
-            topMargin: 4
-            rightMargin: 4
-        }
-        color: ColorUtils.transparentize(root.colBackground, 0.3)
-        radius: Appearance.rounding.full
-        implicitWidth: Math.max(20, elementWeight.implicitWidth)
-        implicitHeight: Math.max(20, elementWeight.implicitHeight)
-        width: height
-
-        // Color transition animation for theme changes
-        Behavior on color {
-            enabled: Appearance.animationsEnabled
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-        }
-
-        StyledText {
-            id: elementWeight
-            anchors.right: parent.right
-            color: root.textColor
-            text: root.element.weight
-            font.pixelSize: Appearance.font.pixelSize.smallest
-        }
+        color: root.textColor
+        text: root.element.number
+        font.pixelSize: Math.max(8, root.tileSize * 0.14)
+        opacity: 0.8
     }
 
     // Get appropriate text color based on background - dynamically bound to theme
@@ -144,8 +104,10 @@ RippleButton {
     StyledText {
         id: elementSymbol
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: root.compact ? 0 : -2
         color: root.textColor
-        font.pixelSize: Appearance.font.pixelSize.huge
+        font.pixelSize: Math.max(10, root.tileSize * 0.32)
+        font.weight: Font.DemiBold
         text: root.element.symbol
     }
 
@@ -154,9 +116,9 @@ RippleButton {
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: 4
+            bottomMargin: root.compact ? 2 : 4
         }
-        font.pixelSize: Appearance.font.pixelSize.smallest
+        font.pixelSize: Math.max(7, root.tileSize * 0.13)
         color: root.textColor
         text: root.element.name
         visible: !root.justCopied
@@ -183,13 +145,13 @@ RippleButton {
 
         MaterialSymbol {
             text: "check"
-            iconSize: Appearance.font.pixelSize.smallest
+            iconSize: Math.max(8, root.tileSize * 0.16)
             color: root.textColor
         }
 
         StyledText {
             text: Translation.tr("Copied")
-            font.pixelSize: Appearance.font.pixelSize.smallest
+            font.pixelSize: Math.max(7, root.tileSize * 0.13)
             color: root.textColor
         }
     }

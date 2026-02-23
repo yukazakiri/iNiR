@@ -301,17 +301,17 @@ Item {
                 // Header with app name (expanded)
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.bottomMargin: 4
+                    Layout.bottomMargin: 8
                     spacing: 10
                     visible: root.navExpanded
                     
                     WText {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 4
+                        Layout.leftMargin: 6
                         text: Translation.tr("Settings")
-                        font.pixelSize: Looks.font.pixelSize.normal
-                        font.weight: Looks.font.weight.regular
-                        color: Looks.colors.subfg
+                        font.pixelSize: Looks.font.pixelSize.larger
+                        font.weight: Looks.font.weight.strong
+                        color: Looks.colors.fg
                     }
                     
                     WBorderlessButton {
@@ -328,19 +328,20 @@ Item {
                     }
                 }
                 
-                // Header icon (collapsed)
+                // Header icon (collapsed) — larger, with accent tint
                 Item {
                     visible: !root.navExpanded
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 28
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.bottomMargin: 4
+                    Layout.bottomMargin: 8
                     
                     FluentIcon {
                         anchors.centerIn: parent
                         icon: "settings"
-                        implicitSize: 16
-                        color: Looks.colors.subfg
+                        implicitSize: 22
+                        color: Looks.colors.accent
+                        opacity: 0.8
                     }
                 }
                 
@@ -464,7 +465,7 @@ Item {
                     border.width: 1
                     border.color: Looks.colors.bg2Border
                     
-                    layer.enabled: true
+                    layer.enabled: Appearance.effectsEnabled
                     layer.effect: DropShadow {
                         color: Looks.colors.shadow
                         radius: 8
@@ -636,7 +637,7 @@ Item {
                     ColumnLayout {
                         id: navColumn
                         width: parent.width
-                        spacing: 2
+                        spacing: 4
                         
                         Repeater {
                             model: root.pages

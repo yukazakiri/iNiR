@@ -3,13 +3,13 @@
 
 # shellcheck shell=bash
 
-printf "${STY_CYAN}[$0]: 2. System setup${STY_RST}\n"
+tui_title "System Setup"
 
 #####################################################################################
 # User groups
 #####################################################################################
 function setup_user_groups(){
-  echo -e "${STY_BLUE}Setting up user groups...${STY_RST}"
+  tui_info "Setting up user groups..."
   
   # i2c group for ddcutil (external monitor brightness)
   if [[ -z $(getent group i2c) ]]; then
@@ -20,14 +20,14 @@ function setup_user_groups(){
   x sudo usermod -aG video,i2c,input "$(whoami)"
   
   log_success "User added to video, i2c, input groups"
-  log_warning "You may need to log out and back in for group changes to take effect"
+  log_warning "Group changes require logout/login to take effect"
 }
 
 #####################################################################################
 # Systemd services
 #####################################################################################
 function setup_systemd_services(){
-  echo -e "${STY_BLUE}Setting up systemd services...${STY_RST}"
+  tui_info "Setting up systemd services..."
   
   # Check if systemd is available
   if ! command -v systemctl &>/dev/null || [[ ! -d /run/systemd/system ]]; then
@@ -41,30 +41,39 @@ function setup_systemd_services(){
   
   # ydotool service - create user service symlink if needed
   # Check multiple possible locations (varies by distro)
-  local ydotool_system_service=""
-  for path in /usr/lib/systemd/system/ydotool.service /lib/systemd/system/ydotool.service; do
-    if [[ -f "$path" ]]; then
-      ydotool_system_service="$path"
-      break
-    fi
-  done
-  
-  if [[ -n "$ydotool_system_service" ]]; then
-    if [[ ! -e /usr/lib/systemd/user/ydotool.service ]]; then
+  # Some distros (EndeavourOS) ship ydotool as a user unit directly
+  local ydotool_service_found=false
+
+  # Check if user unit already exists (e.g., EndeavourOS packages it as user unit)
+  if [[ -f /usr/lib/systemd/user/ydotool.service ]]; then
+    ydotool_service_found=true
+  else
+    # Look for system unit to symlink as user unit
+    local ydotool_system_service=""
+    for path in /usr/lib/systemd/system/ydotool.service /lib/systemd/system/ydotool.service; do
+      if [[ -f "$path" ]]; then
+        ydotool_system_service="$path"
+        break
+      fi
+    done
+
+    if [[ -n "$ydotool_system_service" ]]; then
       x sudo mkdir -p /usr/lib/systemd/user
       x sudo ln -sf "$ydotool_system_service" /usr/lib/systemd/user/ydotool.service
+      ydotool_service_found=true
     fi
-  else
-    log_warning "ydotool.service not found - ydotool may need manual configuration"
+  fi
+
+  if ! $ydotool_service_found && command -v ydotool &>/dev/null; then
+    log_warning "ydotool installed but no systemd service found"
   fi
   
   # Enable ydotool only if service exists
-  if [[ -n "$ydotool_system_service" ]] && [[ ! -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+  if $ydotool_service_found && [[ -n "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
     v systemctl --user daemon-reload
     v systemctl --user enable ydotool --now 2>/dev/null || log_warning "Could not enable ydotool service"
-  elif [[ -n "$ydotool_system_service" ]]; then
-    log_warning "Not in a graphical session. Run this after login:"
-    echo "  systemctl --user enable ydotool --now"
+  elif $ydotool_service_found; then
+    log_info "ydotool service found. Enable after login: systemctl --user enable ydotool --now"
   fi
   
   # Bluetooth (optional)
@@ -79,7 +88,7 @@ function setup_systemd_services(){
 # Super-tap daemon (tap Super key to toggle overview)
 #####################################################################################
 function setup_super_daemon(){
-  echo -e "${STY_BLUE}Setting up Super-tap daemon...${STY_RST}"
+  tui_info "Setting up Super-tap daemon..."
   
   local daemon_src="${REPO_ROOT}/scripts/daemon/ii_super_overview_daemon.py"
   local service_src="${REPO_ROOT}/scripts/systemd/ii-super-overview.service"
@@ -101,7 +110,7 @@ function setup_super_daemon(){
   x cp "$service_src" "$service_dst"
   
   # Enable service if in graphical session
-  if [[ ! -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+  if [[ -n "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
     v systemctl --user daemon-reload
     v systemctl --user enable ii-super-overview.service --now
   else
@@ -113,7 +122,7 @@ function setup_super_daemon(){
 }
 
 function disable_super_daemon_if_present(){
-  echo -e "${STY_BLUE}Disabling legacy Super-tap daemon (if present)...${STY_RST}"
+  tui_info "Cleaning up legacy Super-tap daemon..."
 
   local daemon_dst="${HOME}/.local/bin/ii_super_overview_daemon.py"
   local config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}"
@@ -145,7 +154,7 @@ function disable_super_daemon_if_present(){
 # GTK/KDE settings
 #####################################################################################
 function setup_desktop_settings(){
-  echo -e "${STY_BLUE}Applying desktop settings...${STY_RST}"
+  tui_info "Applying desktop settings..."
   
   # gsettings for GNOME/GTK apps (Nautilus, etc.)
   if command -v gsettings &>/dev/null; then
@@ -169,8 +178,40 @@ function setup_desktop_settings(){
   
   # Configure Kvantum theme via config file (avoid GUI)
   # kvantummanager --set can open a GUI window, so we write the config directly
+  # Use MaterialAdw — this is the dynamic theme updated by apply-gtk-theme.sh
   mkdir -p "${XDG_CONFIG_HOME}/Kvantum"
-  echo -e "[General]\ntheme=Colloid-Dark" > "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
+  echo -e "[General]\ntheme=MaterialAdw" > "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
+
+  # Nautilus dconf defaults (sidebar, mounted volumes, tree view, space info)
+  if command -v dconf &>/dev/null; then
+    dconf write /org/gnome/nautilus/preferences/default-folder-viewer "'list-view'" 2>/dev/null || true
+    dconf write /org/gnome/nautilus/list-view/use-tree-view true 2>/dev/null || true
+    dconf write /org/gnome/nautilus/list-view/default-zoom-level "'small'" 2>/dev/null || true
+    dconf write /org/gnome/nautilus/list-view/default-visible-columns "['name', 'size', 'type', 'date_modified']" 2>/dev/null || true
+    dconf write /org/gnome/nautilus/list-view/default-column-order "['name', 'size', 'type', 'owner', 'group', 'permissions', 'date_modified', 'date_accessed', 'date_created', 'recency', 'detailed_type']" 2>/dev/null || true
+    dconf write /org/gnome/nautilus/preferences/show-hidden-files false 2>/dev/null || true
+    dconf write /org/gnome/nautilus/preferences/date-time-format "'simple'" 2>/dev/null || true
+    # Window size
+    dconf write /org/gnome/nautilus/window-state/initial-size "(1100, 700)" 2>/dev/null || true
+    log_success "Nautilus defaults configured"
+  fi
+
+  # xdg-desktop-portal config for Niri (required for dark mode in GTK4/libadwaita apps)
+  mkdir -p "${XDG_CONFIG_HOME}/xdg-desktop-portal"
+  if [[ -f "dots/.config/xdg-desktop-portal/niri-portals.conf" ]]; then
+    cp "dots/.config/xdg-desktop-portal/niri-portals.conf" "${XDG_CONFIG_HOME}/xdg-desktop-portal/niri-portals.conf"
+  else
+    cat > "${XDG_CONFIG_HOME}/xdg-desktop-portal/niri-portals.conf" << 'PORTAL_EOF'
+[preferred]
+default = gnome;gtk
+org.freedesktop.impl.portal.ScreenCast = gnome
+org.freedesktop.impl.portal.Screenshot = gnome
+org.freedesktop.impl.portal.Access = gtk
+org.freedesktop.impl.portal.FileChooser = gtk
+org.freedesktop.impl.portal.Notification = gtk
+PORTAL_EOF
+  fi
+  log_success "xdg-desktop-portal configured for Niri"
   
   log_success "Desktop settings applied"
 }
@@ -194,11 +235,9 @@ if [[ "${II_ENABLE_SUPER_DAEMON:-0}" == "1" ]]; then
   showfun setup_super_daemon
   v setup_super_daemon
 else
-  showfun disable_super_daemon_if_present
   v disable_super_daemon_if_present
-  log_warning "Skipping legacy Super-tap daemon; use Mod+Space for ii overview. Set II_ENABLE_SUPER_DAEMON=1 to install."
 fi
 
-# Python packages (in venv)
-showfun install-python-packages
-v install-python-packages
+# NOTE: SDDM theme setup is in 3.files.sh AFTER matugen config is deployed.
+# NOTE: install-python-packages is called in 3.files.sh after requirements.txt
+# is deployed to the target. No need to call it here.

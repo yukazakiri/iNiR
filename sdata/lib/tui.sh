@@ -340,7 +340,7 @@ tui_banner() {
             "██║██║      ██║ ╚████║██║██║  ██║██║" \
             "╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝" \
             "" \
-            "$(gum style --foreground 245 'illogical-impulse on Niri')"
+            "$(gum style --foreground 245 'iNiR — your niri shell')"
     else
         echo ""
         echo -e "${STY_PURPLE}${STY_BOLD}"
@@ -354,7 +354,7 @@ tui_banner() {
  ║   ██║██║      ██║ ╚████║██║██║  ██║██║                            ║
  ║   ╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝                            ║
  ║                                                                   ║
- ║                  illogical-impulse on Niri                        ║
+ ║                    iNiR — your niri shell                          ║
  ║                                                                   ║
  ╚═══════════════════════════════════════════════════════════════════╝
 EOF
@@ -541,4 +541,69 @@ tui_check_warn() {
 tui_check_skip() {
     local text="$1"
     echo -e "  ${STY_FAINT}${ICON_CIRCLE}${STY_RST} ${STY_FAINT}$text${STY_RST}"
+}
+
+###############################################################################
+# Timer / Elapsed Helpers
+###############################################################################
+tui_elapsed() {
+    local start_s="$1"
+    local elapsed=$(( SECONDS - start_s ))
+    if [[ $elapsed -lt 60 ]]; then
+        echo "${elapsed}s"
+    else
+        echo "$((elapsed/60))m$((elapsed%60))s"
+    fi
+}
+
+###############################################################################
+# Verification Item Display (for post-install/uninstall checks)
+###############################################################################
+tui_verify_ok() {
+    local label="$1"
+    local detail="${2:-}"
+    if [[ -n "$detail" ]]; then
+        echo -e "  ${STY_GREEN}${ICON_CHECK}${STY_RST} $label  ${STY_FAINT}$detail${STY_RST}"
+    else
+        echo -e "  ${STY_GREEN}${ICON_CHECK}${STY_RST} $label"
+    fi
+}
+
+tui_verify_fail() {
+    local label="$1"
+    local detail="${2:-}"
+    if [[ -n "$detail" ]]; then
+        echo -e "  ${STY_RED}${ICON_CROSS}${STY_RST} $label  ${STY_FAINT}$detail${STY_RST}"
+    else
+        echo -e "  ${STY_RED}${ICON_CROSS}${STY_RST} $label"
+    fi
+}
+
+tui_verify_skip() {
+    local label="$1"
+    local detail="${2:-}"
+    if [[ -n "$detail" ]]; then
+        echo -e "  ${STY_FAINT}${ICON_CIRCLE} $label  $detail${STY_RST}"
+    else
+        echo -e "  ${STY_FAINT}${ICON_CIRCLE} $label${STY_RST}"
+    fi
+}
+
+###############################################################################
+# Stage Header with Step Counter and Elapsed Time
+###############################################################################
+tui_stage_header() {
+    local step="$1"
+    local total="$2"
+    local title="$3"
+    local start_s="${4:-}"
+    local elapsed_str=""
+    [[ -n "$start_s" ]] && elapsed_str="  ${STY_FAINT}($(tui_elapsed "$start_s"))${STY_RST}"
+    echo ""
+    if $HAS_GUM; then
+        echo "[$step/$total] $title" | gum style --foreground "$TUI_ACCENT" --bold
+    else
+        echo -e "  ${STY_PURPLE}${STY_BOLD}[$step/$total]${STY_RST} ${STY_BOLD}$title${STY_RST}${elapsed_str}"
+    fi
+    _draw_line "$TUI_DIM" 40
 }

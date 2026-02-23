@@ -62,7 +62,7 @@ ContentPage {
                 materialIcon: "wallpaper"
                 mainText: Translation.tr("Pick main wallpaper")
                 onClicked: {
-                    Config.options.wallpaperSelector.selectionTarget = "main";
+                    Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
                     Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }
@@ -74,7 +74,7 @@ ContentPage {
                 materialIcon: "wallpaper"
                 mainText: Translation.tr("Pick Waffle wallpaper")
                 onClicked: {
-                    Config.options.wallpaperSelector.selectionTarget = "waffle";
+                    Config.setNestedValue("wallpaperSelector.selectionTarget", "waffle")
                     Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }
@@ -218,7 +218,7 @@ ContentPage {
                 materialIcon: "wallpaper"
                 mainText: Translation.tr("Pick backdrop wallpaper")
                 onClicked: {
-                    Config.options.wallpaperSelector.selectionTarget = "waffle-backdrop";
+                    Config.setNestedValue("wallpaperSelector.selectionTarget", "waffle-backdrop")
                     Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }

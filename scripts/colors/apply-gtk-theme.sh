@@ -1,20 +1,19 @@
 #!/bin/bash
-# Apply theme colors to GTK and KDE apps (for manual presets)
-# Respects Advanced settings from config
-# Usage: apply-gtk-theme.sh <bg> <fg> <primary> <on_primary> <surface> <surface_dim>
+# Apply Qt/KDE theme colors from matugen's colors.json
+# GTK CSS is handled by matugen templates — this script only generates:
+#   - kdeglobals (KDE/Qt app colors for Dolphin, etc.)
+#   - Darkly.colors (Qt style color scheme)
+#   - Pywalfox colors (Firefox theming)
+#   - Vesktop/Discord theme (if enabled)
+# Reads from colors.json (matugen's output) for UI consistency.
 
-BG="${1:-#1e1e2e}"
-FG="${2:-#cdd6f4}"
-PRIMARY="${3:-#cba6f7}"
-ON_PRIMARY="${4:-#1e1e2e}"
-SURFACE="${5:-#1e1e2e}"
-SURFACE_DIM="${6:-#11111b}"
-
-GTK4_CSS="$HOME/.config/gtk-4.0/gtk.css"
-GTK3_CSS="$HOME/.config/gtk-3.0/gtk.css"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+COLORS_JSON="$XDG_STATE_HOME/quickshell/user/generated/colors.json"
 KDEGLOBALS="$HOME/.config/kdeglobals"
 DARKLY_COLORS="$HOME/.local/share/color-schemes/Darkly.colors"
-SHELL_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
+SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Read config options
 enable_apps_shell="true"
@@ -27,6 +26,39 @@ fi
 # Exit if shell theming is disabled
 if [[ "$enable_apps_shell" == "false" ]]; then
     exit 0
+fi
+
+# Read colors from matugen's colors.json (UI authority)
+if [[ ! -f "$COLORS_JSON" ]] || ! command -v jq &>/dev/null; then
+    echo "[apply-gtk-theme] colors.json not found or jq missing, skipping"
+    exit 0
+fi
+
+BG=$(jq -r '.background // "#1e1e2e"' "$COLORS_JSON")
+FG=$(jq -r '.on_background // "#cdd6f4"' "$COLORS_JSON")
+PRIMARY=$(jq -r '.primary // "#cba6f7"' "$COLORS_JSON")
+ON_PRIMARY=$(jq -r '.on_primary // "#1e1e2e"' "$COLORS_JSON")
+SURFACE=$(jq -r '.surface // "#1e1e2e"' "$COLORS_JSON")
+SURFACE_DIM=$(jq -r '.surface_dim // "#11111b"' "$COLORS_JSON")
+ON_SURFACE=$(jq -r '.on_surface // "#cdd6f4"' "$COLORS_JSON")
+SURFACE_CONTAINER_LOW=$(jq -r '.surface_container_low // "#181825"' "$COLORS_JSON")
+OUTLINE_VARIANT=$(jq -r '.outline_variant // "#313244"' "$COLORS_JSON")
+SURFACE_CONTAINER_HIGHEST=$(jq -r '.surface_container_highest // "#313244"' "$COLORS_JSON")
+
+# If ThemePresets passes args (bg fg primary on_primary surface surface_dim), use them
+# This avoids the race condition between generateColorsJson() writing to disk and this script reading
+if [[ -n "${1:-}" ]]; then
+    BG="$1"
+    FG="${2:-$FG}"
+    PRIMARY="${3:-$PRIMARY}"
+    ON_PRIMARY="${4:-$ON_PRIMARY}"
+    SURFACE="${5:-$SURFACE}"
+    SURFACE_DIM="${6:-$SURFACE_DIM}"
+    # Derive extra colors from available values when args provided
+    ON_SURFACE="$FG"
+    SURFACE_CONTAINER_LOW="$SURFACE_DIM"
+    OUTLINE_VARIANT="$SURFACE_DIM"
+    SURFACE_CONTAINER_HIGHEST="$SURFACE"
 fi
 
 # Helper
@@ -70,30 +102,22 @@ BG_ALT=$(adjust_color "$BG" $bg_alt_delta)
 BG_DARK=$(adjust_color "$BG" $bg_dark_delta)
 FG_INACTIVE=$(adjust_color "$FG" $fg_inactive_delta)
 
-generate_gtk_css() {
+generate_pywalfox() {
+    # Generate pywalfox-compatible JSON from matugen colors for Firefox theming
+    local wallpaper_path=""
+    local wp_file="$XDG_STATE_HOME/quickshell/user/generated/wallpaper/path.txt"
+    [[ -f "$wp_file" ]] && wallpaper_path=$(cat "$wp_file" | tr -d '\n')
+
     cat << EOF
-@define-color accent_color ${PRIMARY};
-@define-color accent_fg_color ${ON_PRIMARY};
-@define-color accent_bg_color ${PRIMARY};
-@define-color window_bg_color ${BG};
-@define-color window_fg_color ${FG};
-@define-color headerbar_bg_color ${SURFACE_DIM};
-@define-color headerbar_fg_color ${FG};
-@define-color view_bg_color ${SURFACE};
-@define-color view_fg_color ${FG};
-@define-color sidebar_bg_color ${BG};
-@define-color sidebar_fg_color ${FG};
-@define-color sidebar_backdrop_color ${BG};
-
-placessidebar, placessidebar list { background-color: ${BG} !important; color: ${FG} !important; }
-placessidebar row:selected { background-color: ${PRIMARY} !important; color: ${ON_PRIMARY} !important; }
-.nautilus-window headerbar, .nautilus-window .view { background-color: ${BG} !important; color: ${FG} !important; }
-
-/* Backdrop (unfocused) state */
-placessidebar:backdrop, placessidebar list:backdrop { background-color: ${BG} !important; color: ${FG} !important; }
-.nautilus-window:backdrop headerbar, .nautilus-window:backdrop .view { background-color: ${BG} !important; color: ${FG} !important; }
-.nautilus-window:backdrop placessidebar { background-color: ${BG} !important; }
-window:backdrop { background-color: ${BG} !important; }
+{
+  "wallpaper": "$wallpaper_path",
+  "alpha": "100",
+  "special": {
+    "background": "$BG",
+    "foreground": "$FG",
+    "cursor": "$PRIMARY"
+  }
+}
 EOF
 }
 
@@ -268,12 +292,7 @@ inactiveForeground=${FG_INACTIVE}
 EOF
 }
 
-# Apply GTK
-mkdir -p "$(dirname "$GTK4_CSS")" "$(dirname "$GTK3_CSS")"
-[[ -L "$GTK4_CSS" ]] && rm "$GTK4_CSS"
-[[ -L "$GTK3_CSS" ]] && rm "$GTK3_CSS"
-generate_gtk_css > "$GTK4_CSS"
-generate_gtk_css > "$GTK3_CSS"
+# GTK CSS is handled by matugen templates — no bash generation needed
 
 # Helper to convert hex to RGB
 hex_to_rgb() {
@@ -418,7 +437,7 @@ inactiveForeground=${fg_inactive_rgb}
 EOF
 }
 
-# Apply KDE if enabled
+# Apply KDE/Qt theming if enabled
 if [[ "$enable_qt_apps" != "false" ]]; then
     generate_kdeglobals > "$KDEGLOBALS"
     
@@ -427,17 +446,114 @@ if [[ "$enable_qt_apps" != "false" ]]; then
     generate_darkly_colors > "$DARKLY_COLORS"
 fi
 
-# Restart Nautilus
+# Generate Pywalfox colors for Firefox theming
+mkdir -p "$XDG_STATE_HOME/quickshell/user/generated"
+generate_pywalfox > "$XDG_STATE_HOME/quickshell/user/generated/pywalfox-colors.json"
+
+# Generate GTK4/libadwaita CSS (Nautilus, GNOME apps)
+# Only generate when called with explicit color args (manual theme from ThemePresets)
+# or when the file doesn't exist yet. For auto mode, matugen already generates
+# a more complete version (with light/dark variants) — don't overwrite it.
+GTK4_CSS="$HOME/.config/gtk-4.0/gtk.css"
+mkdir -p "$(dirname "$GTK4_CSS")"
+if [[ -n "${1:-}" ]] || [[ ! -f "$GTK4_CSS" ]]; then
+cat > "$GTK4_CSS" << EOF
+/*
+ * GTK4/libadwaita Colors — Generated by iNiR theming
+ * This file is overwritten when you change wallpaper or apply a color theme.
+ * Dark colors applied unconditionally so they work without xdg-desktop-portal.
+ */
+
+@define-color accent_color ${PRIMARY};
+@define-color accent_fg_color ${ON_PRIMARY};
+@define-color accent_bg_color ${PRIMARY};
+
+@define-color window_bg_color ${BG};
+@define-color window_fg_color ${FG};
+
+@define-color headerbar_bg_color ${SURFACE_DIM};
+@define-color headerbar_fg_color ${ON_SURFACE};
+
+@define-color popover_bg_color ${SURFACE_DIM};
+@define-color popover_fg_color ${ON_SURFACE};
+
+@define-color view_bg_color ${SURFACE};
+@define-color view_fg_color ${ON_SURFACE};
+
+@define-color card_bg_color ${SURFACE};
+@define-color card_fg_color ${ON_SURFACE};
+
+@define-color sidebar_bg_color ${SURFACE_CONTAINER_LOW};
+@define-color sidebar_fg_color ${ON_SURFACE};
+@define-color sidebar_border_color ${OUTLINE_VARIANT};
+@define-color sidebar_backdrop_color ${SURFACE_CONTAINER_LOW};
+
+@define-color thumbnail_bg_color ${SURFACE_CONTAINER_HIGHEST};
+@define-color thumbnail_fg_color ${ON_SURFACE};
+
+@define-color shade_color alpha(black, 0.36);
+@define-color scrollbar_outline_color alpha(white, 0.1);
+
+.nautilus-window .sidebar,
+.nautilus-window sidebar,
+.nautilus-window placessidebar,
+.nautilus-window placessidebar list,
+placessidebar,
+placessidebar list {
+    background-color: ${BG} !important;
+    color: ${FG} !important;
+}
+
+placessidebar row {
+    background-color: transparent !important;
+    color: ${FG} !important;
+}
+
+placessidebar row:hover {
+    background-color: alpha(${PRIMARY}, 0.1) !important;
+}
+
+placessidebar row:selected,
+placessidebar row:selected:hover {
+    background-color: ${PRIMARY} !important;
+    color: ${ON_PRIMARY} !important;
+}
+
+.nautilus-window headerbar {
+    background-color: ${BG} !important;
+    color: ${FG} !important;
+}
+
+.nautilus-window .view {
+    background-color: ${BG} !important;
+    color: ${FG} !important;
+}
+
+placessidebar image {
+    color: ${FG} !important;
+}
+
+placessidebar row:selected image {
+    color: ${ON_PRIMARY} !important;
+}
+EOF
+fi
+
+# Configure qt6ct to use the Darkly color scheme (fixes Dolphin and other Qt apps being white)
+# qt6ct is the platform theme (QT_QPA_PLATFORMTHEME=qt6ct) — it needs a color scheme
+QT6CT_CONF="$HOME/.config/qt6ct/qt6ct.conf"
+mkdir -p "$(dirname "$QT6CT_CONF")"
+CURRENT_ICON_THEME=$(grep '^icon_theme=' "$QT6CT_CONF" 2>/dev/null | cut -d= -f2)
+[[ -z "$CURRENT_ICON_THEME" ]] && CURRENT_ICON_THEME="Adwaita"
+CURRENT_QT_STYLE=$(grep '^style=' "$QT6CT_CONF" 2>/dev/null | cut -d= -f2)
+[[ -z "$CURRENT_QT_STYLE" ]] && CURRENT_QT_STYLE="Darkly"
+cat > "$QT6CT_CONF" << EOF
+[Appearance]
+color_scheme_path=${DARKLY_COLORS}
+custom_palette=true
+icon_theme=${CURRENT_ICON_THEME}
+style=${CURRENT_QT_STYLE}
+EOF
+
+# Restart Nautilus so it picks up new GTK CSS
 nautilus -q 2>/dev/null &
-
-# Regenerate Vesktop theme from current colors (if enabled)
-enable_vesktop="true"
-if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq &>/dev/null; then
-    enable_vesktop=$(jq -r '.appearance.wallpaperTheming.enableVesktop // true' "$SHELL_CONFIG_FILE")
-fi
-
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-if [[ "$enable_vesktop" != "false" && -f "$SCRIPT_DIR/system24_palette.py" ]]; then
-    python3 "$SCRIPT_DIR/system24_palette.py"
-    # Note: Vesktop auto-reloads CSS changes, no manual reload needed
-fi

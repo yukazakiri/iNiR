@@ -80,7 +80,7 @@ Change them. Break them. Make them yours. We won't judge.
 | Key | Action |
 |-----|--------|
 | `Super+T` / `Super+Return` | Terminal (foot) |
-| `Super+E` | File manager (dolphin) |
+| `Super+E` | File manager (nautilus) |
 
 ---
 
@@ -101,6 +101,11 @@ Change them. Break them. Make them yours. We won't judge.
 | `XF86AudioRaiseVolume` | Volume up |
 | `XF86AudioLowerVolume` | Volume down |
 | `XF86AudioMute` | Toggle mute |
+| `XF86AudioPlay` | Play/pause (via ii IPC) |
+| `XF86AudioNext` | Next track (via ii IPC) |
+| `XF86AudioPrev` | Previous track (via ii IPC) |
+| `XF86MonBrightnessUp` | Brightness up (via ii IPC) |
+| `XF86MonBrightnessDown` | Brightness down (via ii IPC) |
 
 ---
 

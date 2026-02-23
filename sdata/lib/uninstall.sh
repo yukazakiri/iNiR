@@ -25,6 +25,7 @@ declare -A INIR_ONLY_PATHS=(
     ["${XDG_CONFIG_HOME}/vesktop/themes/ii-colors.css"]="iNiR Vesktop colors"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/system24.theme.css"]="iNiR Vesktop theme (alt)"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/ii-colors.css"]="iNiR Vesktop colors (alt)"
+    ["${HOME}/.local/bin/sync-pixel-sddm.py"]="iNiR SDDM theme sync helper"
 )
 
 # Shared configs - may be used by other apps or user customizations
@@ -276,7 +277,7 @@ uninstall_stop_services() {
 uninstall_create_backup() {
     local backup_dir="${HOME}/.local/share/inir-uninstall-backup-$(date +%Y%m%d-%H%M%S)"
 
-    tui_info "Creating backup before uninstall..."
+    tui_info "Creating backup before uninstall..." >&2
     mkdir -p "$backup_dir"
 
     # Backup iNiR-specific files
@@ -298,29 +299,47 @@ uninstall_create_backup() {
         cp -r "${XDG_STATE_HOME}/quickshell/user" "$backup_dir/quickshell-state"
     fi
 
-    tui_success "Backup created: $backup_dir"
+    tui_success "Backup created: $backup_dir" >&2
     echo "$backup_dir"
 }
 
 uninstall_remove_inir_only() {
     local removed=0
-    
+    local _start=$SECONDS
+
     tui_info "Removing iNiR-exclusive files..."
+    echo ""
 
+    # Pre-count existing items for N/M progress display
+    local total=0
     for path in "${!INIR_ONLY_PATHS[@]}"; do
-        local expanded_path=$(eval echo "$path")
-        local desc="${INIR_ONLY_PATHS[$path]}"
-
-        if [[ -d "$expanded_path" ]]; then
-            rm -rf "$expanded_path"
-            echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc"
-            ((removed++))
-        elif [[ -f "$expanded_path" ]]; then
-            rm -f "$expanded_path"
-            echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc"
-            ((removed++))
-        fi
+        local ep
+        ep=$(eval echo "$path")
+        [[ -e "$ep" ]] && ((total++))
     done
+
+    if [[ $total -eq 0 ]]; then
+        echo -e "  ${STY_FAINT}Nothing to remove — already clean.${STY_RST}"
+    else
+        local idx=0
+        for path in "${!INIR_ONLY_PATHS[@]}"; do
+            local ep
+            ep=$(eval echo "$path")
+            local desc="${INIR_ONLY_PATHS[$path]}"
+
+            if [[ -d "$ep" ]]; then
+                ((idx++))
+                rm -rf "$ep"
+                echo -e "  ${STY_FAINT}[$idx/$total]${STY_RST} ${STY_RED}✗${STY_RST} Removed: $desc"
+                ((removed++))
+            elif [[ -f "$ep" ]]; then
+                ((idx++))
+                rm -f "$ep"
+                echo -e "  ${STY_FAINT}[$idx/$total]${STY_RST} ${STY_RED}✗${STY_RST} Removed: $desc"
+                ((removed++))
+            fi
+        done
+    fi
 
     # Clean up empty quickshell directory only if no other configs exist
     if ! has_other_quickshell_configs; then
@@ -328,166 +347,244 @@ uninstall_remove_inir_only() {
     fi
 
     echo ""
-    tui_success "Removed $removed iNiR-exclusive items"
+    local _elapsed=$(( SECONDS - _start ))
+    tui_success "Removed $removed iNiR-exclusive item(s)  (${_elapsed}s)"
 }
 
 uninstall_handle_shared_configs() {
     local removed=0
     local kept=0
+    local _start=$SECONDS
 
     echo ""
-    tui_subtitle "Shared configurations"
+    tui_section_start "Shared configurations"
     echo ""
-    echo -e "${STY_FAINT}These configs may be used by other applications.${STY_RST}"
+    echo -e "  ${STY_FAINT}These configs may be used by other applications.${STY_RST}"
     echo ""
+
+    # ── Phase 1: pre-scan all existing shared paths ────────────────────────
+    local -a _paths=()
+    local -A _desc=() _rec=() _reason=() _level=()
 
     for path in "${!SHARED_PATHS[@]}"; do
-        local expanded_path=$(eval echo "$path")
-        local meta="${SHARED_PATHS[$path]}"
+        local ep
+        ep=$(eval echo "$path")
+        [[ ! -e "$ep" ]] && continue
 
-        # Skip if doesn't exist
-        [[ ! -e "$expanded_path" ]] && continue
-
-        # Parse metadata
-        parse_shared_path_meta "$meta"
+        parse_shared_path_meta "${SHARED_PATHS[$path]}"
         local desc="$SHARED_DESC"
         local app_cmd="$SHARED_APP"
         local level="$SHARED_LEVEL"
 
-        # Check if the app that uses this config is still installed
         local app_installed=false
         [[ -n "$app_cmd" ]] && command -v "$app_cmd" &>/dev/null && app_installed=true
 
-        # Determine recommendation based on level and app status
-        local recommendation="keep"
+        local rec="keep"
         local reason=""
-        local icon="${STY_YELLOW}⊘${STY_RST}"
 
         case "$level" in
             essential)
-                # Essential configs - always recommend keeping
-                recommendation="keep"
-                if $app_installed; then
-                    reason="${STY_GREEN}(app installed, essential)${STY_RST}"
-                else
-                    reason="${STY_YELLOW}(essential system config)${STY_RST}"
-                fi
+                $app_installed \
+                    && reason="app installed, essential" \
+                    || reason="essential system config"
                 ;;
             optional)
                 if $app_installed; then
-                    recommendation="keep"
-                    reason="${STY_GREEN}(app installed)${STY_RST}"
-                elif config_was_user_modified "$expanded_path"; then
-                    recommendation="keep"
-                    reason="${STY_YELLOW}(has custom changes)${STY_RST}"
+                    reason="app installed"
+                elif config_was_user_modified "$ep"; then
+                    reason="has custom changes"
                 else
-                    recommendation="remove"
-                    reason="${STY_FAINT}(app not found, iNiR default)${STY_RST}"
-                    icon="${STY_RED}✗${STY_RST}"
+                    rec="remove"
+                    reason="app not found, iNiR default"
                 fi
                 ;;
             inir_default)
-                # iNiR created this - safe to remove
-                recommendation="remove"
-                reason="${STY_FAINT}(created by iNiR)${STY_RST}"
-                icon="${STY_RED}✗${STY_RST}"
+                rec="remove"
+                reason="created by iNiR"
                 ;;
         esac
 
-        # Special handling for niri config
+        # Special niri override
         if [[ "$path" == *"niri"* ]]; then
             if is_running_niri_session; then
-                recommendation="keep"
-                reason="${STY_RED}(YOU ARE IN A NIRI SESSION!)${STY_RST}"
-                icon="${STY_YELLOW}⊘${STY_RST}"
+                rec="keep"
+                reason="YOU ARE IN A NIRI SESSION!"
             elif niri_config_has_user_customizations; then
-                recommendation="keep"
-                reason="${STY_YELLOW}(has your customizations)${STY_RST}"
-                icon="${STY_YELLOW}⊘${STY_RST}"
+                rec="keep"
+                reason="has your customizations"
             fi
         fi
 
-        # In interactive mode, ask user
-        if $ask; then
-            local default_choice="yes"
-            [[ "$recommendation" == "remove" ]] && default_choice="no"
+        _paths+=("$ep")
+        _desc["$ep"]="$desc"
+        _rec["$ep"]="$rec"
+        _reason["$ep"]="$reason"
+        _level["$ep"]="$level"
+    done
 
-            echo -e "  ${STY_CYAN}$desc${STY_RST} $reason"
-            if tui_confirm "    Keep this config?" "$default_choice"; then
+    if [[ ${#_paths[@]} -eq 0 ]]; then
+        tui_info "No shared configs found (already clean)"
+        tui_section_end
+        return 0
+    fi
+
+    # ── Phase 2: summary overview ──────────────────────────────────────────
+    local _keep_count=0
+    local _remove_count=0
+    for ep in "${_paths[@]}"; do
+        [[ "${_rec[$ep]}" == "keep" ]] && ((_keep_count++)) || ((_remove_count++))
+    done
+
+    echo -e "  Found ${STY_BOLD}${#_paths[@]}${STY_RST} shared config(s):  ${STY_YELLOW}${_keep_count} keep${STY_RST}  ${STY_RED}${_remove_count} remove${STY_RST}  ${STY_FAINT}(recommended)${STY_RST}"
+    echo ""
+
+    for ep in "${_paths[@]}"; do
+        local rec="${_rec[$ep]}"
+        local reason="${_reason[$ep]}"
+        local desc="${_desc[$ep]}"
+        local reason_color="${STY_FAINT}"
+        [[ "$reason" == *"SESSION"* ]] && reason_color="${STY_RED}"
+        [[ "$reason" == *"custom"* || "$reason" == *"customiz"* ]] && reason_color="${STY_YELLOW}"
+        [[ "$reason" == *"installed"* ]] && reason_color="${STY_GREEN}"
+        if [[ "$rec" == "keep" ]]; then
+            echo -e "  ${STY_YELLOW}⊘${STY_RST} ${STY_BOLD}$desc${STY_RST}  ${reason_color}($reason)${STY_RST}"
+        else
+            echo -e "  ${STY_RED}✗${STY_RST} ${STY_BOLD}$desc${STY_RST}  ${STY_FAINT}($reason)${STY_RST}"
+        fi
+        echo -e "    ${STY_FAINT}$ep${STY_RST}"
+    done
+
+    echo ""
+    tui_divider
+
+    # ── Phase 3: interactive decisions ────────────────────────────────────
+    if $ask; then
+        echo ""
+        echo -e "  ${STY_FAINT}Press Enter to accept the recommendation, or choose the opposite action.${STY_RST}"
+        echo ""
+
+        local idx=0
+        local total=${#_paths[@]}
+
+        for ep in "${_paths[@]}"; do
+            ((idx++))
+            local desc="${_desc[$ep]}"
+            local rec="${_rec[$ep]}"
+            local reason="${_reason[$ep]}"
+            local reason_color="${STY_FAINT}"
+            [[ "$reason" == *"SESSION"* ]] && reason_color="${STY_RED}"
+            [[ "$reason" == *"custom"* || "$reason" == *"customiz"* ]] && reason_color="${STY_YELLOW}"
+            [[ "$reason" == *"installed"* ]] && reason_color="${STY_GREEN}"
+
+            echo -e "  ${STY_FAINT}[$idx/$total]${STY_RST} ${STY_CYAN}${STY_BOLD}${desc}${STY_RST}"
+            echo -e "    ${reason_color}${reason}${STY_RST}"
+            echo -e "    ${STY_FAINT}${ep}${STY_RST}"
+            echo ""
+
+            local user_wants_keep
+            if [[ "$rec" == "keep" ]]; then
+                if tui_confirm "    Keep this config?" "yes"; then
+                    user_wants_keep=true
+                else
+                    user_wants_keep=false
+                fi
+            else
+                if tui_confirm "    Remove this config?" "yes"; then
+                    user_wants_keep=false
+                else
+                    user_wants_keep=true
+                fi
+            fi
+
+            if $user_wants_keep; then
                 echo -e "    ${STY_YELLOW}⊘${STY_RST} Keeping"
                 ((kept++))
             else
-                if [[ -d "$expanded_path" ]]; then
-                    rm -rf "$expanded_path"
+                if [[ -d "$ep" ]]; then
+                    rm -rf "$ep"
                 else
-                    rm -f "$expanded_path"
+                    rm -f "$ep"
                 fi
                 echo -e "    ${STY_RED}✗${STY_RST} Removed"
                 ((removed++))
             fi
-        else
-            # Non-interactive: keep essential, remove inir_default
+            echo ""
+        done
+
+    else
+        # Non-interactive: apply recommendations strictly
+        for ep in "${_paths[@]}"; do
+            local desc="${_desc[$ep]}"
+            local rec="${_rec[$ep]}"
+            local reason="${_reason[$ep]}"
+            local level="${_level[$ep]}"
             if [[ "$level" == "inir_default" ]]; then
-                if [[ -d "$expanded_path" ]]; then
-                    rm -rf "$expanded_path"
-                else
-                    rm -f "$expanded_path"
-                fi
-                echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc $reason"
+                [[ -d "$ep" ]] && rm -rf "$ep" || rm -f "$ep"
+                echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc ($reason)"
                 ((removed++))
             else
-                echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc $reason"
+                echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc ($reason)"
                 ((kept++))
             fi
-        fi
-    done
+        done
+    fi
 
+    local _elapsed=$(( SECONDS - _start ))
     echo ""
-    tui_info "Shared configs: $removed removed, $kept kept"
+    tui_info "Shared configs: ${removed} removed, ${kept} kept  (${_elapsed}s)"
+    tui_section_end
 }
 
 uninstall_handle_quickshell_shared() {
     echo ""
-    tui_subtitle "Quickshell shared resources"
+    tui_section_start "Quickshell shared resources"
     echo ""
 
     # Check if other quickshell configs exist
     if has_other_quickshell_configs; then
-        echo -e "${STY_YELLOW}Other Quickshell configurations detected.${STY_RST}"
-        echo -e "${STY_FAINT}Keeping shared Quickshell resources (venv, themes).${STY_RST}"
-        
+        tui_warn "Other Quickshell configurations detected — keeping shared resources."
+        echo ""
         for path in "${!QUICKSHELL_SHARED[@]}"; do
-            local expanded_path=$(eval echo "$path")
+            local ep
+            ep=$(eval echo "$path")
             local desc="${QUICKSHELL_SHARED[$path]}"
-            [[ -e "$expanded_path" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
+            [[ -e "$ep" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
         done
     else
-        echo -e "${STY_FAINT}No other Quickshell configs found.${STY_RST}"
-        
-        if $ask && tui_confirm "Remove Quickshell shared resources (venv, themes)?" "yes"; then
+        echo -e "  ${STY_FAINT}No other Quickshell configs found.${STY_RST}"
+        echo ""
+
+        if $ask && tui_confirm "  Remove Quickshell shared resources (venv, themes)?" "yes"; then
+            local _removed=0
             for path in "${!QUICKSHELL_SHARED[@]}"; do
-                local expanded_path=$(eval echo "$path")
+                local ep
+                ep=$(eval echo "$path")
                 local desc="${QUICKSHELL_SHARED[$path]}"
-                if [[ -d "$expanded_path" ]]; then
-                    rm -rf "$expanded_path"
+                if [[ -d "$ep" ]]; then
+                    rm -rf "$ep"
                     echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc"
-                elif [[ -f "$expanded_path" ]]; then
-                    rm -f "$expanded_path"
+                    ((_removed++))
+                elif [[ -f "$ep" ]]; then
+                    rm -f "$ep"
                     echo -e "  ${STY_RED}✗${STY_RST} Removed: $desc"
+                    ((_removed++))
                 fi
             done
-            
             # Clean up empty state directory
             rmdir "${XDG_STATE_HOME}/quickshell" 2>/dev/null || true
             rmdir "${XDG_CACHE_HOME}/quickshell" 2>/dev/null || true
+            echo ""
+            tui_success "Removed $_removed shared resource(s)"
         else
             for path in "${!QUICKSHELL_SHARED[@]}"; do
-                local expanded_path=$(eval echo "$path")
+                local ep
+                ep=$(eval echo "$path")
                 local desc="${QUICKSHELL_SHARED[$path]}"
-                [[ -e "$expanded_path" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
+                [[ -e "$ep" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
             done
         fi
     fi
+    tui_section_end
 }
 
 uninstall_show_manual_steps() {
@@ -507,6 +604,12 @@ uninstall_show_manual_steps() {
     echo -e "  ${STY_YELLOW}•${STY_RST} ydotool service"
     echo -e "    ${STY_FAINT}Used by: automation tools, some Wayland apps${STY_RST}"
     echo ""
+    echo -e "  ${STY_YELLOW}•${STY_RST} SDDM theme: /usr/share/sddm/themes/ii-pixel"
+    echo -e "    ${STY_FAINT}Used by: SDDM login screen${STY_RST}"
+    echo ""
+    echo -e "  ${STY_YELLOW}•${STY_RST} SDDM theme drop-in: /etc/sddm.conf.d/inir-theme.conf"
+    echo -e "    ${STY_FAINT}Used by: sets Current=ii-pixel${STY_RST}"
+    echo ""
 
     if $ask && tui_confirm "Show commands to revert these changes?" "no"; then
         echo ""
@@ -520,6 +623,12 @@ uninstall_show_manual_steps() {
             echo -e "  ${STY_CYAN}# Disable ydotool${STY_RST}"
             echo -e "  systemctl --user disable ydotool"
         fi
+        echo ""
+        echo -e "  ${STY_CYAN}# Remove SDDM theme${STY_RST}"
+        echo -e "  sudo rm -rf /usr/share/sddm/themes/ii-pixel"
+        echo ""
+        echo -e "  ${STY_CYAN}# Remove SDDM theme config drop-in${STY_RST}"
+        echo -e "  sudo rm -f /etc/sddm.conf.d/inir-theme.conf"
         echo ""
     fi
 }
@@ -666,9 +775,19 @@ uninstall_show_packages() {
 ###############################################################################
 
 run_uninstall() {
+    local _uninstall_start=$SECONDS
     echo ""
     tui_title "iNiR Uninstaller"
     echo ""
+
+    # Safety: if no TTY available, force non-interactive safe mode
+    # This prevents catastrophic removal when piped or run via SSH
+    if $ask && ! tty -s 2>/dev/null; then
+        echo -e "${STY_YELLOW}No interactive terminal detected — using safe mode${STY_RST}"
+        echo -e "${STY_FAINT}(All shared configs will be preserved. Use -y flag for non-interactive uninstall.)${STY_RST}"
+        echo ""
+        ask=false
+    fi
 
     # Check if installed
     if [[ ! -f "${XDG_CONFIG_HOME}/illogical-impulse/installed_true" ]] && \
@@ -716,10 +835,14 @@ run_uninstall() {
     echo "  • System packages will NOT be removed automatically"
     echo ""
 
-    # Confirm
-    if ! tui_confirm "Continue with uninstall?" "no"; then
-        echo "Cancelled."
-        return 0
+    # Confirm — in non-interactive mode (-y), skip confirmation
+    if $ask; then
+        if ! tui_confirm "Continue with uninstall?" "no"; then
+            echo "Cancelled."
+            return 0
+        fi
+    else
+        echo -e "${STY_CYAN}Non-interactive mode: proceeding with safe uninstall...${STY_RST}"
     fi
 
     echo ""
@@ -742,11 +865,14 @@ run_uninstall() {
     # Handle quickshell shared resources
     uninstall_handle_quickshell_shared
 
-    # Show manual steps
-    uninstall_show_manual_steps
-
-    # Show package info with smart recommendations
-    uninstall_show_packages
+    # Show manual steps (interactive only — don't overwhelm non-interactive output)
+    if $ask; then
+        uninstall_show_manual_steps
+        uninstall_show_packages
+    else
+        echo ""
+        echo -e "${STY_FAINT}Run './setup uninstall' interactively for package removal guidance.${STY_RST}"
+    fi
 
     # Final message
     echo ""
@@ -770,8 +896,11 @@ EOF
     echo -e "${STY_FAINT}To restore from backup:${STY_RST}"
     echo -e "  cp -r $backup_dir/quickshell-ii ${XDG_CONFIG_HOME}/quickshell/ii"
     echo ""
+    local _total_elapsed=$(( SECONDS - _uninstall_start ))
     echo -e "${STY_FAINT}To reinstall iNiR:${STY_RST}"
-    echo -e "  git clone https://github.com/anomalyco/inir && cd inir && ./setup install"
+    echo -e "  git clone https://github.com/snowarch/inir.git && cd inir && ./setup install"
+    echo ""
+    echo -e "${STY_FAINT}Total time: ${_total_elapsed}s${STY_RST}"
     echo ""
 }
 

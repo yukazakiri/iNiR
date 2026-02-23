@@ -28,6 +28,7 @@ ContentPage {
     readonly property bool isInir: currentGlobalStyle === "inir"
     readonly property bool isCards: currentGlobalStyle === "cards"
     readonly property bool isMaterial: currentGlobalStyle === "material"
+    readonly property bool isAngel: currentGlobalStyle === "angel"
 
     // Corner style compatibility per global style
     readonly property bool hugNeedsBackground: isHugStyle && !showBackground
@@ -119,7 +120,12 @@ ContentPage {
                     ConfigSelectionArray {
                         currentValue: Config.options.bar.cornerStyle
                         onSelected: newValue => {
-                            Config.options.bar.cornerStyle = newValue;
+                            // HUG mode (0) is incompatible with Angel style — revert to Float
+                            if (newValue === 0 && root.isAngel) {
+                                Config.setNestedValue("bar.cornerStyle", 1);
+                                return;
+                            }
+                            Config.setNestedValue("bar.cornerStyle", newValue);
                         }
                         options: [
                             { displayName: Translation.tr("Hug"), icon: "line_curve", value: 0 },
@@ -137,6 +143,20 @@ ContentPage {
                 warning: true
                 icon: "warning"
                 text: Translation.tr("Hug style requires background enabled to show the corner decorations.")
+            }
+
+            ConflictNote {
+                visible: root.isAngel && root.isHugStyle
+                warning: true
+                icon: "sync_problem"
+                text: Translation.tr("Hug mode is not compatible with Angel global style. Switch to Float, Rect, or Card.")
+            }
+
+            ConflictNote {
+                visible: root.isAngel
+                warning: false
+                icon: "raven"
+                text: Translation.tr("Hug mode is disabled while Angel global style is active.")
             }
 
             ConflictNote {

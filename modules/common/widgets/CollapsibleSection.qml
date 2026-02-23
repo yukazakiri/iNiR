@@ -77,7 +77,9 @@ ColumnLayout {
         implicitHeight: headerRow.implicitHeight + 12
         radius: Appearance.rounding.normal
         color: headerMouseArea.containsMouse && root.collapsible 
-            ? Appearance.colors.colLayer1Hover 
+            ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+              : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
+              : Appearance.colors.colLayer1Hover)
             : "transparent"
         
         Behavior on color {
@@ -100,7 +102,9 @@ ColumnLayout {
                 text: root.title
                 font.pixelSize: Appearance.font.pixelSize.larger
                 font.weight: Font.Medium
-                color: Appearance.colors.colOnSecondaryContainer
+                color: Appearance.angelEverywhere ? Appearance.angel.colText
+                     : Appearance.inirEverywhere ? Appearance.inir.colText
+                     : Appearance.colors.colOnSecondaryContainer
                 Layout.fillWidth: true
             }
 

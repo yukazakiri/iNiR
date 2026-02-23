@@ -642,7 +642,17 @@ ContentPage {
                     colBackground: Appearance.colors.colSurfaceContainerLow
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colRipple: Appearance.colors.colLayer1Active
-                    onClicked: ShellUpdates.openOverlay()
+                    onClicked: {
+                        if (Config.options?.settingsUi?.overlayMode ?? false) {
+                            // Overlay mode: settings runs inside the main shell process — direct call works
+                            ShellUpdates.openOverlay()
+                        } else {
+                            // Separate window mode (default): settings.qml is a separate qs process.
+                            // Singletons are isolated per-process, so we must use IPC to reach
+                            // the main shell's ShellUpdates.openOverlay() instead.
+                            Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "shellUpdate", "open"])
+                        }
+                    }
 
                     contentItem: RowLayout {
                         anchors.centerIn: parent
@@ -779,7 +789,7 @@ ContentPage {
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
 
-                TextField {
+                MaterialTextField {
                     id: weatherCityInput
                     Layout.fillWidth: true
                     placeholderText: Translation.tr("e.g. Buenos Aires, London, Tokyo")
@@ -812,7 +822,7 @@ ContentPage {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    TextField {
+                    MaterialTextField {
                         id: weatherLatInput
                         Layout.fillWidth: true
                         placeholderText: Translation.tr("Latitude (e.g. -34.6037)")
@@ -835,7 +845,7 @@ ContentPage {
                         }
                     }
 
-                    TextField {
+                    MaterialTextField {
                         id: weatherLonInput
                         Layout.fillWidth: true
                         placeholderText: Translation.tr("Longitude (e.g. -58.3816)")

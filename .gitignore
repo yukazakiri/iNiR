@@ -9,25 +9,29 @@
 .zed/
 
 # AI/Dev agents (personal - not distributed)
+agents/
 .kiro/
 .opencode/
 .claude/
 .cursor/
-.windsurf/
-hooks/
+.qoder/
+.continue/
+.gemini/
+.roo/
+.dory/
+inir-docs/
+context-architect/
 AGENTS.md
 **/AGENTS.md
 CLAUDE.md
 **/CLAUDE.md
-prompts/
-.continue/
-context-architect/
-inir-docs/
-.gemini/
 GEMINI.md
-opencode.json
-.roo/
 Session.md
+opencode.json
+hooks/
+prompts/
+.cursorrules
+.windsurfrules
 
 # WIP documentation (not for distribution)
 docs/*_IMPLEMENTATION.md
@@ -92,3 +96,4 @@ Thumbs.db
 .orchids/
 .aider*
 .kilocode/
+.windsurf/

@@ -47,7 +47,7 @@ case "$OS_GROUP_ID" in
     printf "${STY_YELLOW}NixOS requires declarative configuration${STY_RST}\n"
     echo ""
     echo "For NixOS, add iNiR to your configuration.nix or home-manager."
-    echo "See: https://github.com/anomalyco/inir/wiki/NixOS"
+    echo "See: https://github.com/snowarch/inir/wiki/NixOS"
     echo ""
     echo "Basic steps:"
     echo "  1. Add quickshell and niri to your system packages"

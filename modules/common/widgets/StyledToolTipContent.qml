@@ -22,12 +22,16 @@ Item {
             bottom: root.bottom
             horizontalCenter: root.horizontalCenter
         }
-        color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
+        color: Appearance.angelEverywhere ? Appearance.angel.colGlassTooltip
+             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
              : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipSurface
              : Appearance.colors.colLayer3
-        radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.verysmall
-        border.width: 1
-        border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
+        radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+             : Appearance.rounding.verysmall
+        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
+        border.color: Appearance.angelEverywhere ? Appearance.angel.colBorderSubtle
+                    : Appearance.inirEverywhere ? Appearance.inir.colBorder
                     : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
                     : Appearance.colors.colLayer3Hover
         opacity: shown ? 1 : 0
@@ -39,13 +43,20 @@ Item {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
+        AngelPartialBorder {
+            targetRadius: backgroundRectangle.radius
+            coverage: 0.45
+        }
+
         StyledText {
             id: tooltipTextObject
             anchors.centerIn: parent
             text: root.text
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.hintingPreference: Font.PreferNoHinting // Prevent shaky text
-            color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer3
+            color: Appearance.angelEverywhere ? Appearance.angel.colText
+                : Appearance.inirEverywhere ? Appearance.inir.colText
+                : Appearance.colors.colOnLayer3
             wrapMode: Text.Wrap
         }
     }   

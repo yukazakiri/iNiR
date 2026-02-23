@@ -126,7 +126,7 @@ ContentPage {
                         sourceSize.height: 60
                         source: Quickshell.shellPath("assets/icons/sf.svg")
                         fillMode: Image.PreserveAspectFit
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: MultiEffect {
                             maskEnabled: true
                             maskSource: ShaderEffectSource {

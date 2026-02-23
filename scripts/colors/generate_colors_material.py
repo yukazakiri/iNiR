@@ -56,7 +56,7 @@ parser.add_argument(
     help="JSON file containg the terminal scheme for generating term colors",
 )
 parser.add_argument(
-    "--harmony", type=float, default=0.8, help="(0-1) Color hue shift towards accent"
+    "--harmony", type=float, default=0.4, help="(0-1) Color hue shift towards accent"
 )
 parser.add_argument(
     "--harmonize_threshold",
@@ -73,14 +73,20 @@ parser.add_argument(
 parser.add_argument(
     "--term_saturation",
     type=float,
-    default=0.40,
+    default=0.65,
     help="Terminal color saturation (0.0-1.0)",
 )
 parser.add_argument(
     "--term_brightness",
     type=float,
-    default=0.55,
+    default=0.60,
     help="Terminal color brightness/lightness (0.0-1.0)",
+)
+parser.add_argument(
+    "--term_bg_brightness",
+    type=float,
+    default=0.50,
+    help="Terminal background brightness (0.0-1.0, 0=darkest, 1=lightest)",
 )
 parser.add_argument(
     "--blend_bg_fg",
@@ -236,28 +242,72 @@ if args.termscheme is not None:
         json_termscheme = f.read()
     term_source_colors = json.loads(json_termscheme)["dark" if darkmode else "light"]
 
-    primary_color_argb = hex_to_argb(material_colors["primary_paletteKeyColor"])
+    # Handle both snake_case and camelCase key naming across library versions
+    primary_key = material_colors.get("primary_paletteKeyColor",
+                  material_colors.get("primaryPaletteKeyColor",
+                  material_colors.get("primary", "#6750A4")))
+    primary_color_argb = hex_to_argb(primary_key)
     
     # User-configurable parameters
     user_saturation = args.term_saturation  # 0.0-1.0
     user_brightness = args.term_brightness  # 0.0-1.0
     user_harmony = args.harmony  # 0.0-1.0
+    user_bg_brightness = args.term_bg_brightness  # 0.0-1.0
+    
+    # Define surface colors for interpolation based on bg_brightness
+    # 0.0 = background (darkest), 0.5 = surfaceContainerLow (matches shell), 1.0 = surfaceContainerHighest (lightest)
+    surface_levels = [
+        ("background", 0.0),
+        ("surfaceContainerLowest", 0.2),
+        ("surfaceContainerLow", 0.4),
+        ("surfaceContainer", 0.6),
+        ("surfaceContainerHigh", 0.8),
+        ("surfaceContainerHighest", 1.0),
+    ]
+    
+    def get_interpolated_surface(brightness):
+        """Get a surface color based on brightness (0-1)"""
+        # Find the two surface levels to interpolate between
+        for i, (name, level) in enumerate(surface_levels):
+            if brightness <= level or i == len(surface_levels) - 1:
+                if i == 0:
+                    return material_colors.get(name, "#1a1a1a")
+                # Interpolate between previous and current
+                prev_name, prev_level = surface_levels[i - 1]
+                t = (brightness - prev_level) / (level - prev_level) if level != prev_level else 0
+                c1 = hex_to_argb(material_colors.get(prev_name, "#1a1a1a"))
+                c2 = hex_to_argb(material_colors.get(name, "#2a2a2a"))
+                # Simple RGB interpolation
+                r1, g1, b1 = (c1 >> 16) & 0xFF, (c1 >> 8) & 0xFF, c1 & 0xFF
+                r2, g2, b2 = (c2 >> 16) & 0xFF, (c2 >> 8) & 0xFF, c2 & 0xFF
+                r = int(r1 + (r2 - r1) * t)
+                g = int(g1 + (g2 - g1) * t)
+                b = int(b1 + (b2 - b1) * t)
+                return f"#{r:02X}{g:02X}{b:02X}"
+        return material_colors.get("surfaceContainerLow", "#1a1a1a")
     
     for color, val in term_source_colors.items():
         if args.scheme == "monochrome":
             term_colors[color] = val
             continue
-        if args.blend_bg_fg and color == "term0":
-            # Background: use surface color
-            harmonized = boost_chroma_tone(
-                hex_to_argb(material_colors["surfaceContainerLow"]), 0.7, 0.98
-            )
-        elif args.blend_bg_fg and color == "term15":
-            # Foreground: use onSurface
-            harmonized = boost_chroma_tone(
-                hex_to_argb(material_colors["onSurface"]), 1.5, 1
-            )
-        elif color in ["term7", "term8"]:
+        
+        # Terminal background: Interpolate based on user_bg_brightness
+        # 0.5 = surfaceContainerLow (matches shell surfaces perfectly)
+        if color == "term0":
+            term_colors[color] = get_interpolated_surface(user_bg_brightness)
+            continue
+        
+        # Terminal foreground: Use EXACT Material onSurface color
+        if color == "term15":
+            term_colors[color] = material_colors.get("onSurface", "#e0e0e0")
+            continue
+        
+        # Bright background (term8): Slightly brighter than term0
+        if color == "term8":
+            term_colors[color] = get_interpolated_surface(min(1.0, user_bg_brightness + 0.15))
+            continue
+            
+        if color == "term7":
             # Neutral colors (gray tones) - minimal harmonization
             harmonized = harmonize(
                 hex_to_argb(val),
@@ -289,6 +339,27 @@ if args.termscheme is not None:
             harmonized = boost_chroma_tone(harmonized, 0.55, 1)
 
         term_colors[color] = argb_to_hex(harmonized)
+
+# Fallback: derive term colors from material colors when no termscheme provided
+if not term_colors and material_colors:
+    term_colors = {
+        "term0": material_colors.get("surfaceVariant", "#282828"),
+        "term1": material_colors.get("error", "#CC241D"),
+        "term2": material_colors.get("secondary", "#98971A"),
+        "term3": material_colors.get("tertiary", "#D79921"),
+        "term4": material_colors.get("primary", "#458588"),
+        "term5": material_colors.get("tertiary", "#B16286"),
+        "term6": material_colors.get("secondary", "#689D6A"),
+        "term7": material_colors.get("onSurfaceVariant", "#A89984"),
+        "term8": material_colors.get("outline", "#928374"),
+        "term9": material_colors.get("error", "#FB4934"),
+        "term10": material_colors.get("secondary", "#B8BB26"),
+        "term11": material_colors.get("tertiary", "#FABD2F"),
+        "term12": material_colors.get("primary", "#83A598"),
+        "term13": material_colors.get("tertiary", "#D3869B"),
+        "term14": material_colors.get("secondary", "#8EC07C"),
+        "term15": material_colors.get("onSurface", "#EBDBB2"),
+    }
 
 if args.debug == False:
     print(f"$darkmode: {darkmode};")

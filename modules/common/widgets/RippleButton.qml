@@ -16,7 +16,8 @@ Button {
     property bool buttonHovered: buttonMouseArea.containsMouse
     property string buttonText
     property bool pointingHandCursor: true
-    property real buttonRadius: Appearance?.rounding?.small ?? 4
+    property real buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+        : (Appearance?.rounding?.small ?? 4)
     property real buttonRadiusPressed: buttonRadius
     property real buttonEffectiveRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
     property int rippleDuration: 1200
@@ -27,8 +28,12 @@ Button {
     property var altAction // When right clicking
     property var middleClickAction // When middle clicking
 
-    property color colBackground: ColorUtils.transparentize(Appearance?.colors.colLayer1Hover, 1) || "transparent"
-    property color colBackgroundHover: Appearance?.colors.colLayer1Hover ?? "#E5DFED"
+    property color colBackground: Appearance.angelEverywhere
+        ? Appearance.angel.colGlassCard
+        : (ColorUtils.transparentize(Appearance?.colors.colLayer1Hover, 1) || "transparent")
+    property color colBackgroundHover: Appearance.angelEverywhere
+        ? Appearance.angel.colGlassCardHover
+        : (Appearance?.colors.colLayer1Hover ?? "#E5DFED")
     property color colBackgroundToggled: Appearance?.colors.colPrimary ?? "#65558F"
     property color colBackgroundToggledHover: Appearance?.colors.colPrimaryHover ?? "#77699C"
     property color colRipple: Appearance?.colors.colLayer1Active ?? "#D6CEE2"
@@ -147,6 +152,14 @@ Button {
         implicitHeight: 30
 
         color: root.buttonColor
+        border.width: Appearance.angelEverywhere ? 1 : 0
+        border.color: Appearance.angelEverywhere
+            ? (root.buttonHovered ? Appearance.angel.colBorderHover : "transparent")
+            : "transparent"
+        Behavior on border.color {
+            enabled: Appearance.animationsEnabled
+            ColorAnimation { duration: 150 }
+        }
         Behavior on color {
             animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
         }

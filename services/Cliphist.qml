@@ -140,11 +140,15 @@ Singleton {
                 root._selfCopy = false;
                 return;
             }
+            // Skip refresh while window previews are being captured
+            // (screenshots pollute clipboard temporarily, script cleans them up)
+            if (root.suppressRefresh) return;
             delayedUpdateTimer.restart()
         }
     }
 
     property bool _selfCopy: false
+    property bool suppressRefresh: false
 
     Timer {
         id: delayedUpdateTimer

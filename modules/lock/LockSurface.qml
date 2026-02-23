@@ -27,6 +27,29 @@ MouseArea {
     readonly property real blurRadius: Config.options?.lock?.blur?.radius ?? 64
     readonly property real blurZoom: Config.options?.lock?.blur?.extraZoom ?? 1.1
     
+    // Resolve wallpaper path: detect video/gif and use thumbnail
+    readonly property string _wallpaperSource: Config.options?.background?.wallpaperPath ?? ""
+    readonly property string _wallpaperPath: {
+        const path = _wallpaperSource;
+        if (!path) return "";
+        
+        const lowerPath = path.toLowerCase();
+        const isVideo = lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm") || lowerPath.endsWith(".mkv") || lowerPath.endsWith(".avi") || lowerPath.endsWith(".mov");
+        const isGif = lowerPath.endsWith(".gif");
+        
+        if (isVideo || isGif) {
+            // Use thumbnail (frozen first frame) for video/gif wallpapers
+            const thumbnail = Config.options?.background?.thumbnailPath ?? "";
+            return thumbnail || path;
+        }
+        return path;
+    }
+    readonly property bool wallpaperIsAnimated: {
+        const lowerPath = _wallpaperSource.toLowerCase();
+        return lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm") || lowerPath.endsWith(".mkv") || 
+               lowerPath.endsWith(".avi") || lowerPath.endsWith(".mov") || lowerPath.endsWith(".gif");
+    }
+    
     // Emergency fallback - triple click anywhere to force unlock (safety net)
     property int emergencyClickCount: 0
     Timer {
@@ -42,11 +65,11 @@ MouseArea {
         z: -1
     }
     
-    // Background wallpaper with blur
+    // Background wallpaper with blur (uses thumbnail for video/gif)
     Image {
         id: backgroundWallpaper
         anchors.fill: parent
-        source: Config.options?.background?.wallpaperPath ?? ""
+        source: root._wallpaperPath
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         
@@ -150,7 +173,7 @@ MouseArea {
                 font.family: Appearance.font.family.title
                 color: Appearance.colors.colOnSurface
                 
-                layer.enabled: true
+                layer.enabled: Appearance.effectsEnabled
                 layer.effect: DropShadow {
                     horizontalOffset: 0
                     verticalOffset: 3
@@ -177,7 +200,7 @@ MouseArea {
                 font.family: Appearance.font.family.main
                 color: Appearance.colors.colOnSurface
                 
-                layer.enabled: true
+                layer.enabled: Appearance.effectsEnabled
                 layer.effect: DropShadow {
                     horizontalOffset: 0
                     verticalOffset: 1
@@ -264,7 +287,7 @@ MouseArea {
                     fill: 0
                     color: Appearance.colors.colOnSurface
                     
-                    layer.enabled: true
+                    layer.enabled: Appearance.effectsEnabled
                     layer.effect: DropShadow {
                         horizontalOffset: 0
                         verticalOffset: 2
@@ -285,7 +308,7 @@ MouseArea {
                         font.family: Appearance.font.family.main
                         color: Appearance.colors.colOnSurface
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1
@@ -301,7 +324,7 @@ MouseArea {
                         font.family: Appearance.font.family.main
                         color: Appearance.colors.colOnSurfaceVariant
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1
@@ -328,7 +351,7 @@ MouseArea {
             
             property real hintOpacity: 0.7
             
-            layer.enabled: true
+            layer.enabled: Appearance.effectsEnabled
             layer.effect: DropShadow {
                 horizontalOffset: 0
                 verticalOffset: 1
@@ -451,7 +474,7 @@ MouseArea {
                         sourceSize.height: avatarCircle.height * 2
                         visible: status === Image.Ready
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: OpacityMask {
                             maskSource: Rectangle {
                                 width: avatarCircle.width
@@ -476,7 +499,7 @@ MouseArea {
                         sourceSize.height: avatarCircle.height * 2
                         visible: status === Image.Ready && avatarImage.status !== Image.Ready
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: OpacityMask {
                             maskSource: Rectangle {
                                 width: avatarCircle.width
@@ -512,7 +535,7 @@ MouseArea {
                 opacity: Math.min(1, Math.max(0, loginContent.animProgress * 3 - 0.3))
                 transform: Translate { y: (1 - Math.min(1, Math.max(0, loginContent.animProgress * 3 - 0.3))) * 15 }
                 
-                layer.enabled: true
+                layer.enabled: Appearance.effectsEnabled
                 layer.effect: DropShadow {
                     horizontalOffset: 0
                     verticalOffset: 1
@@ -731,7 +754,7 @@ MouseArea {
                     font.family: Appearance.font.family.main
                     color: Appearance.colors.colOnSurfaceVariant
                     
-                    layer.enabled: true
+                    layer.enabled: Appearance.effectsEnabled
                     layer.effect: DropShadow {
                         horizontalOffset: 0
                         verticalOffset: 1
@@ -820,7 +843,7 @@ MouseArea {
                             ? Appearance.colors.colError 
                             : Appearance.colors.colOnSurfaceVariant
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1
@@ -839,7 +862,7 @@ MouseArea {
                             ? Appearance.colors.colError 
                             : Appearance.colors.colOnSurfaceVariant
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1
@@ -867,7 +890,7 @@ MouseArea {
                         fill: 1
                         color: Appearance.colors.colOnSurfaceVariant
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1
@@ -884,7 +907,7 @@ MouseArea {
                         font.family: Appearance.font.family.main
                         color: Appearance.colors.colOnSurfaceVariant
                         
-                        layer.enabled: true
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             horizontalOffset: 0
                             verticalOffset: 1

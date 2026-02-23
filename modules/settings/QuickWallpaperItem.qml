@@ -87,7 +87,7 @@ MouseArea {
                         }
                     }
 
-                    layer.enabled: true
+                    layer.enabled: Appearance.effectsEnabled
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
                             width: imageContainer.width

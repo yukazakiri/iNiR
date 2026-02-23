@@ -4,7 +4,7 @@
 # shellcheck shell=bash
 
 showhelp_install(){
-printf "[$0]: Install illogical-impulse on Niri.
+printf "[$0]: Install iNiR — Quickshell config for Niri.
 
 Syntax:
   $0 install [OPTIONS]...

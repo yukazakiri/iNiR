@@ -1,5 +1,6 @@
 pragma Singleton
 
+import qs
 import qs.modules.common
 import qs.modules.common.functions
 import QtQuick
@@ -63,6 +64,7 @@ Singleton {
     property string installedCommit: ""   // Commit hash from manifest
     property string installedDate: ""     // Install/update date from manifest
     property string recentLocalLog: ""    // Recent local commit history
+    property int _openOverlayDelayMs: 0
 
     // Derived
     readonly property bool enabled: Config.options?.shellUpdates?.enabled ?? true
@@ -135,8 +137,28 @@ Singleton {
     }
 
     function openOverlay(): void {
-        root.overlayOpen = true
-        if (hasUpdate) fetchDetails()
+        const panels = Config.options?.enabledPanels ?? []
+        if (!panels.includes("iiShellUpdate")) {
+            Config.setNestedValue("enabledPanels", [...panels, "iiShellUpdate"])
+        }
+        const panelWasOpen = GlobalStates.controlPanelOpen
+        const settingsWasOpen = GlobalStates.settingsOverlayOpen ?? false
+        GlobalStates.controlPanelOpen = false
+        GlobalStates.settingsOverlayOpen = false
+        // Always use a minimum delay to ensure other overlays fully close
+        // and release keyboard focus before we open
+        root._openOverlayDelayMs = (panelWasOpen || settingsWasOpen) ? 600 : 150
+        openOverlayTimer.restart()
+    }
+
+    Timer {
+        id: openOverlayTimer
+        interval: root._openOverlayDelayMs
+        repeat: false
+        onTriggered: {
+            root.overlayOpen = true
+            root.fetchDetails()
+        }
     }
 
     function closeOverlay(): void {
@@ -188,7 +210,9 @@ Singleton {
             remoteCommit: root.remoteCommit,
             currentBranch: root.currentBranch,
             localVersion: root.localVersion,
-            remoteVersion: root.remoteVersion
+            remoteVersion: root.remoteVersion,
+            overlayOpen: root.overlayOpen,
+            isFetchingDetails: root.isFetchingDetails
         }
         return JSON.stringify(diag, null, 2)
     }

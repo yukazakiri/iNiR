@@ -14,17 +14,21 @@ RippleButton {
     property real elementSpacing: 5
     implicitWidth: expanded ? (Math.max(contentRowLayout.implicitWidth + 10 * 2, baseSize)) : baseSize
     implicitHeight: baseSize
-    buttonRadius: baseSize / 14 * 4
-    colBackground: Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainer
+    buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : (baseSize / 14 * 4)
+    colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                 : Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainer
                  : Appearance.auroraEverywhere ? Appearance.m3colors.m3primaryContainer
                  : Appearance.colors.colPrimaryContainer
-    colBackgroundHover: Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainerHover
+    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                      : Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainerHover
                       : Appearance.auroraEverywhere ? Appearance.m3colors.m3primaryContainer
                       : Appearance.colors.colPrimaryContainerHover
-    colRipple: Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainerActive
+    colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+             : Appearance.inirEverywhere ? Appearance.inir.colPrimaryContainerActive
              : Appearance.auroraEverywhere ? Appearance.m3colors.m3primaryContainer
              : Appearance.colors.colPrimaryContainerActive
-    property color colOnBackground: Appearance.inirEverywhere ? Appearance.inir.colOnPrimaryContainer
+    property color colOnBackground: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                                  : Appearance.inirEverywhere ? Appearance.inir.colOnPrimaryContainer
                                   : Appearance.auroraEverywhere ? Appearance.m3colors.m3onPrimaryContainer
                                   : Appearance.colors.colOnPrimaryContainer
     contentItem: Row {

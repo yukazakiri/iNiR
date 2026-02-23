@@ -215,7 +215,7 @@ echo "  polkit, networkmanager, gnome-keyring, blueman"
 echo ""
 
 echo -e "${STY_BLUE}Optional but recommended:${STY_RST}"
-echo "  foot (terminal), dolphin (file manager), fuzzel (launcher)"
+echo "  foot (terminal), nautilus (file manager), fuzzel (launcher)"
 echo "  easyeffects, mpv, yt-dlp, tesseract-ocr"
 echo ""
 
@@ -361,7 +361,7 @@ fi
 
 echo ""
 echo -e "${STY_CYAN}For more help, see:${STY_RST}"
-echo "  - https://github.com/anomalyco/inir/wiki/Manual-Installation"
+echo "  - https://github.com/snowarch/inir/wiki/Manual-Installation"
 echo "  - https://quickshell.outfoxxed.me/docs"
 echo "  - https://github.com/YaLTeR/niri/wiki"
 echo ""

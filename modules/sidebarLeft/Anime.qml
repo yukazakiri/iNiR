@@ -111,7 +111,7 @@ Item {
                     break;
                 }
             }
-            Booru.makeRequest(tagList, Persistent.states.booru.allowNsfw, Config.options.sidebar.booru.limit, pageIndex);
+            Booru.makeRequest(tagList, Persistent.states.booru.allowNsfw, Config.options?.sidebar?.booru?.limit ?? 24, pageIndex);
         }
     }
 
@@ -174,8 +174,8 @@ Item {
                 anchors.fill: parent
                 spacing: 10
                 
-                touchpadScrollFactor: Config.options.interactions.scrolling.touchpadScrollFactor * 1.4
-                mouseScrollFactor: Config.options.interactions.scrolling.mouseScrollFactor * 1.4
+                touchpadScrollFactor: (Config.options?.interactions?.scrolling?.touchpadScrollFactor ?? 0.5) * 1.4
+                mouseScrollFactor: (Config.options?.interactions?.scrolling?.mouseScrollFactor ?? 1.0) * 1.4
 
                 property int lastResponseLength: 0
                 property bool userIsScrolling: false
@@ -281,7 +281,9 @@ Item {
                 }
                 delegate: ApiCommandButton {
                     id: tagButton
-                    colBackground: Appearance.auroraEverywhere 
+                    colBackground: Appearance.angelEverywhere
+                        ? (tagSuggestions.selectedIndex === index ? Appearance.angel.colGlassCardHover : Appearance.angel.colGlassCard)
+                        : Appearance.auroraEverywhere 
                         ? (tagSuggestions.selectedIndex === index ? Appearance.aurora.colSubSurface : "transparent")
                         : (tagSuggestions.selectedIndex === index ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer)
                     bounce: false
@@ -342,7 +344,8 @@ Item {
             property real columnSpacing: 5
             Layout.fillWidth: true
             radius: Appearance.rounding.normal - root.padding
-            color: Appearance.inirEverywhere ? Appearance.inir.colLayer2 : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
+            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                : Appearance.inirEverywhere ? Appearance.inir.colLayer2 : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
             implicitWidth: tagInputField.implicitWidth
             implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + inputFieldRowLayout.anchors.topMargin 
                 + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + columnSpacing, 45)
@@ -569,7 +572,8 @@ Item {
                         delegate: ApiCommandButton {
                             property string commandRepresentation: `${root.commandPrefix}${modelData.name}`
                             buttonText: commandRepresentation
-                            colBackground: Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
+                            colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
 
                             downAction: () => {
                                 if (modelData.sendDirectly) {

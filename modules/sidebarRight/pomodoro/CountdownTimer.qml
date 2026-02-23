@@ -43,12 +43,119 @@ Item {
 
             ColumnLayout {
                 anchors.centerIn: parent
-                spacing: 0
+                spacing: 4
 
+                // Editable time display with separate minutes and seconds
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 0
+                    visible: root.editMode
+
+                    // Minutes input
+                    Rectangle {
+                        id: minutesBox
+                        width: 54
+                        height: 54
+                        color: minutesInput.activeFocus 
+                            ? Appearance.colors.colPrimaryContainer 
+                            : "transparent"
+                        radius: Appearance.rounding.small
+                        border.width: minutesInput.activeFocus ? 2 : 0
+                        border.color: Appearance.colors.colPrimary
+
+                        TextInput {
+                            id: minutesInput
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            text: Math.floor(TimerService.countdownDuration / 60).toString().padStart(2, '0')
+                            font.pixelSize: Math.round(38 * Appearance.fontSizeScale)
+                            font.family: Appearance.font.family.main
+                            color: Appearance.m3colors.m3onSurface
+                            horizontalAlignment: Text.AlignHCenter
+                            validator: IntValidator { bottom: 0; top: 99 }
+                            selectByMouse: true
+                            onEditingFinished: {
+                                const mins = parseInt(text) || 0;
+                                const secs = parseInt(secondsInput.text) || 0;
+                                TimerService.setCountdownDuration(mins * 60 + secs);
+                            }
+                            onActiveFocusChanged: {
+                                if (activeFocus) selectAll();
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: (wheel) => {
+                                const delta = wheel.angleDelta.y > 0 ? 1 : -1;
+                                const currentMins = parseInt(minutesInput.text) || 0;
+                                const newMins = Math.max(0, Math.min(99, currentMins + delta));
+                                const secs = parseInt(secondsInput.text) || 0;
+                                TimerService.setCountdownDuration(newMins * 60 + secs);
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: ":"
+                        font.pixelSize: Math.round(38 * Appearance.fontSizeScale)
+                        color: Appearance.m3colors.m3onSurface
+                    }
+
+                    // Seconds input
+                    Rectangle {
+                        id: secondsBox
+                        width: 54
+                        height: 54
+                        color: secondsInput.activeFocus 
+                            ? Appearance.colors.colPrimaryContainer 
+                            : "transparent"
+                        radius: Appearance.rounding.small
+                        border.width: secondsInput.activeFocus ? 2 : 0
+                        border.color: Appearance.colors.colPrimary
+
+                        TextInput {
+                            id: secondsInput
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            text: Math.floor(TimerService.countdownDuration % 60).toString().padStart(2, '0')
+                            font.pixelSize: Math.round(38 * Appearance.fontSizeScale)
+                            font.family: Appearance.font.family.main
+                            color: Appearance.m3colors.m3onSurface
+                            horizontalAlignment: Text.AlignHCenter
+                            validator: IntValidator { bottom: 0; top: 59 }
+                            selectByMouse: true
+                            onEditingFinished: {
+                                const mins = parseInt(minutesInput.text) || 0;
+                                const secs = Math.min(59, parseInt(text) || 0);
+                                TimerService.setCountdownDuration(mins * 60 + secs);
+                            }
+                            onActiveFocusChanged: {
+                                if (activeFocus) selectAll();
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: (wheel) => {
+                                const delta = wheel.angleDelta.y > 0 ? 1 : -1;
+                                const mins = parseInt(minutesInput.text) || 0;
+                                const currentSecs = parseInt(secondsInput.text) || 0;
+                                const newSecs = Math.max(0, Math.min(59, currentSecs + delta));
+                                TimerService.setCountdownDuration(mins * 60 + newSecs);
+                            }
+                        }
+                    }
+                }
+
+                // Static time display when running/paused
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
+                    visible: !root.editMode
                     text: {
-                        const totalSeconds = root.editMode ? TimerService.countdownDuration : TimerService.countdownSecondsLeft;
+                        const totalSeconds = TimerService.countdownSecondsLeft;
                         const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
                         const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
                         return `${minutes}:${seconds}`;
@@ -59,7 +166,7 @@ Item {
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: root.editMode ? Translation.tr("Scroll to adjust") : TimerService.countdownRunning ? Translation.tr("Running") : Translation.tr("Paused")
+                    text: root.editMode ? Translation.tr("Tap to edit") : TimerService.countdownRunning ? Translation.tr("Running") : Translation.tr("Paused")
                     font.pixelSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
                 }
@@ -86,9 +193,12 @@ Item {
                     implicitHeight: 30
                     implicitWidth: 45
                     buttonRadius: Appearance.rounding.small
-                    colBackground: Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
-                    colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer2Hover
-                    colRipple: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colLayer2Active
+                    colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                        : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
+                    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer2Hover
+                    colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colLayer2Active
                     onClicked: TimerService.setCountdownDuration(modelData.seconds)
 
                     contentItem: StyledText {
@@ -113,22 +223,26 @@ Item {
                 onClicked: TimerService.toggleCountdown()
                 enabled: TimerService.countdownDuration > 0
                 colBackground: TimerService.countdownRunning 
-                    ? (Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                        : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colSecondaryContainer)
                     : Appearance.colors.colPrimary
                 colBackgroundHover: TimerService.countdownRunning 
-                    ? (Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
+                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                        : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
                         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover : Appearance.colors.colSecondaryContainerHover)
                     : Appearance.colors.colPrimaryHover
                 colRipple: TimerService.countdownRunning 
-                    ? (Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
+                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                        : Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colSecondaryContainerActive)
                     : Appearance.colors.colPrimaryActive
 
                 contentItem: StyledText {
                     horizontalAlignment: Text.AlignHCenter
                     color: TimerService.countdownRunning 
-                        ? (Appearance.inirEverywhere ? Appearance.inir.colText
+                        ? (Appearance.angelEverywhere ? Appearance.angel.colText
+                            : Appearance.inirEverywhere ? Appearance.inir.colText
                             : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer2 : Appearance.colors.colOnSecondaryContainer)
                         : Appearance.colors.colOnPrimary
                     text: TimerService.countdownRunning ? Translation.tr("Pause") : TimerService.countdownSecondsLeft === TimerService.countdownDuration ? Translation.tr("Start") : Translation.tr("Resume")
@@ -140,20 +254,24 @@ Item {
                 Layout.preferredWidth: 90
                 onClicked: TimerService.resetCountdown()
                 enabled: TimerService.countdownSecondsLeft < TimerService.countdownDuration || TimerService.countdownRunning
-                colBackground: Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                     : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
                     : Appearance.colors.colErrorContainer
-                colBackgroundHover: Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
+                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
                     : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover
                     : Appearance.colors.colErrorContainerHover
-                colRipple: Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
+                colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
                     : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
                     : Appearance.colors.colErrorContainerActive
 
                 contentItem: StyledText {
                     horizontalAlignment: Text.AlignHCenter
                     text: Translation.tr("Reset")
-                    color: Appearance.inirEverywhere ? Appearance.inir.colText
+                    color: Appearance.angelEverywhere ? Appearance.angel.colText
+                        : Appearance.inirEverywhere ? Appearance.inir.colText
                         : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer2
                         : Appearance.colors.colOnErrorContainer
                 }

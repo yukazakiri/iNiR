@@ -6,13 +6,16 @@ ToolbarButton {
     id: iconBtn
     implicitWidth: height
 
-    colBackgroundToggled: Appearance.inirEverywhere ? Appearance.inir.colSelection 
+    colBackgroundToggled: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+        : Appearance.inirEverywhere ? Appearance.inir.colSelection 
         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface 
         : Appearance.colors.colSecondaryContainer
-    colBackgroundToggledHover: Appearance.inirEverywhere ? Appearance.inir.colSelectionHover 
+    colBackgroundToggledHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+        : Appearance.inirEverywhere ? Appearance.inir.colSelectionHover 
         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover 
         : Appearance.colors.colSecondaryContainerHover
-    colRippleToggled: Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive 
+    colRippleToggled: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+        : Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive 
         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive 
         : Appearance.colors.colSecondaryContainerActive
     property color colText: toggled ? (Appearance.inirEverywhere ? Appearance.inir.colOnSelection : Appearance.colors.colOnSecondaryContainer) : (Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSurfaceVariant)

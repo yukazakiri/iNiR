@@ -11,7 +11,8 @@ Canvas { // Visualizer
     property real maxVisualizerValue: 1000
     property int smoothing: 2
     property bool live: true
-    property color color: Appearance.inirEverywhere ? Appearance.inir.colPrimary
+    property color color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                        : Appearance.inirEverywhere ? Appearance.inir.colPrimary
                         : Appearance.auroraEverywhere ? Appearance.m3colors.m3primary
                         : Appearance.colors.colPrimary
 

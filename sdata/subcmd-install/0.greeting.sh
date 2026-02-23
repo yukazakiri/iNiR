@@ -48,6 +48,14 @@ detect_system() {
 
 detect_system
 
+# Read version from VERSION file
+DETECTED_VERSION="unknown"
+if [[ -f "${REPO_ROOT}/VERSION" ]]; then
+    DETECTED_VERSION="v$(cat "${REPO_ROOT}/VERSION" | tr -d '[:space:]')"
+elif [[ -f "VERSION" ]]; then
+    DETECTED_VERSION="v$(cat VERSION | tr -d '[:space:]')"
+fi
+
 #####################################################################################
 # Banner
 #####################################################################################
@@ -70,7 +78,7 @@ if $HAS_GUM; then
         "██║██║      ██║ ╚████║██║██║  ██║██║" \
         "╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝" \
         "" \
-        "$(gum style --foreground 245 'illogical-impulse on Niri')"
+        "$(gum style --foreground 245 'iNiR — your niri shell')"
 else
     echo ""
     echo -e "${STY_PURPLE}${STY_BOLD}"
@@ -84,7 +92,7 @@ else
  ║   ██║██║      ██║ ╚████║██║██║  ██║██║                            ║
  ║   ╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝                            ║
  ║                                                                   ║
- ║                  illogical-impulse on Niri                        ║
+ ║                    iNiR — your niri shell                          ║
  ║                                                                   ║
  ╚═══════════════════════════════════════════════════════════════════╝
 EOF
@@ -97,6 +105,7 @@ fi
 tui_title "System Information"
 
 tui_table_header "Property" "Value" 14 36
+tui_table_row "Version" "$DETECTED_VERSION" 14 36
 tui_table_row "Distro" "$DETECTED_DISTRO" 14 36
 tui_table_row "Shell" "$DETECTED_SHELL" 14 36
 tui_table_row "Session" "$DETECTED_SESSION" 14 36
