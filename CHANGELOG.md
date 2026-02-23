@@ -5,6 +5,19 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-02-22
+
+### Changed
+- **Cheatsheet keybinds grouped by category**: Keybinds now display in separate cards per category (System, ii Shell, Window Management, etc.) with icon headers and count badges. Search still shows flat filtered results.
+- **Periodic table responsive sizing**: Element tiles dynamically scale to fit the cheatsheet panel width (36–70px) instead of hardcoded 70px. No more horizontal scrolling required.
+- **Quick Launch editor redesign**: Replaced bulky outlined text fields with compact pill-shaped inline fields. Single-row layout per shortcut with icon preview, hover effects, and animated delete button.
+- **Displays settings moved to General**: Per-monitor bar/dock visibility controls moved from Interface to General settings page, always visible regardless of monitor count. Shows monitor name and resolution.
+
+### Fixed
+- **SDDM password characters blinking**: Password shape indicators no longer re-animate when typing new characters. Replaced integer Repeater model (which recreates all delegates) with ListModel (preserves existing delegates). Matches lockscreen behavior.
+- **Cheatsheet style consistency**: Added angel and aurora style branches to keybind rows and periodic table cards for proper 5-style support.
+- **SongRec music recognition**: Updated command from deprecated `audio-file-to-recognized-song` to `recognize -j` for compatibility with newer songrec versions.
+
 ## [2.11.0] - 2026-02-21
 
 ### Added
