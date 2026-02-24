@@ -907,6 +907,8 @@ Singleton {
                 }
                 property JsonObject imageSearch: JsonObject {
                     property string imageSearchEngineBaseUrl: "https://lens.google.com/uploadbyurl?url="
+                    property string fileUploadApiEndpoint: "https://0x0.st"
+                    property string fileUploadApiFallback: "https://litterbox.catbox.moe/resources/internals/api.php"
                     property bool useCircleSelection: false
                 }
             }

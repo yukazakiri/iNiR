@@ -575,6 +575,8 @@
         ],
         "imageSearch": {
             "imageSearchEngineBaseUrl": "https://lens.google.com/uploadbyurl?url=",
+            "fileUploadApiEndpoint": "https://0x0.st",
+            "fileUploadApiFallback": "https://litterbox.catbox.moe/resources/internals/api.php",
             "useCircleSelection": false
         },
         "nonAppResultDelay": 30,

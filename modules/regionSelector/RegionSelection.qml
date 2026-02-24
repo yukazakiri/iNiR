@@ -36,6 +36,7 @@ PanelWindow {
     property string screenshotDir: Directories.screenshotTemp
     property string imageSearchEngineBaseUrl: Config.options?.search?.imageSearch?.imageSearchEngineBaseUrl ?? "https://lens.google.com/uploadbyurl?url="
     property string fileUploadApiEndpoint: Config.options?.search?.imageSearch?.fileUploadApiEndpoint ?? "https://0x0.st"
+    property string fileUploadApiFallback: Config.options?.search?.imageSearch?.fileUploadApiFallback ?? "https://litterbox.catbox.moe/resources/internals/api.php"
 
     // Tri-style color support
     property color overlayColor: Appearance.angelEverywhere ? "#55000000"
@@ -338,7 +339,11 @@ PanelWindow {
         const cleanup = `/usr/bin/rm '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}'`
         const slurpRegion = `${rx},${ry} ${rw}x${rh}`
         const uploadAndGetUrl = (filePath) => {
-            return `/usr/bin/curl -sF file=@'${StringUtils.shellSingleQuoteEscape(filePath)}' ${root.fileUploadApiEndpoint}`
+            const escaped = StringUtils.shellSingleQuoteEscape(filePath)
+            const primary = `/usr/bin/curl -sf --max-time 10 -F file=@'${escaped}' ${root.fileUploadApiEndpoint}`
+            const fallback = `/usr/bin/curl -s --max-time 15 -F reqtype=fileupload -F time=1h -F "fileToUpload=@'${escaped}'" ${root.fileUploadApiFallback}`
+            // Try primary, fallback if fails OR returns empty/non-URL response
+            return `url=$(${primary} 2>/dev/null); if [[ -z "$url" || "$url" != http* ]]; then url=$(${fallback}); fi; echo "$url"`
         }
         const annotationCommand = `${(Config.options?.regionSelector?.annotation?.useSatty ?? false) ? "satty" : "swappy"} -f -`;
         switch (root.action) {
