@@ -237,15 +237,21 @@ apply_chromium() {
   fi
   
   local enabled_browsers=()
-  local all_supported=(chromium brave)
+  local all_supported=(chromium brave google-chrome-stable google-chrome-beta)
   
   for browser in "${all_supported[@]}"; do
     if ! command -v "$browser" &>/dev/null; then
       continue
     fi
+    # Map hyphenated browser names to camelCase config keys (QML can't have hyphens)
+    local config_key="$browser"
+    case "$browser" in
+      google-chrome-stable) config_key="googleChromeStable" ;;
+      google-chrome-beta) config_key="googleChromeBeta" ;;
+    esac
     local browser_enabled="true"
     if [ -f "$CONFIG_FILE" ]; then
-      browser_enabled=$(jq -r ".appearance.wallpaperTheming.browsers.${browser} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
+      browser_enabled=$(jq -r ".appearance.wallpaperTheming.browsers.${config_key} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
     fi
     if [[ "$browser_enabled" == "true" ]]; then
       enabled_browsers+=("$browser")

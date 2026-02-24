@@ -571,9 +571,9 @@ WSettingsPage {
         }
 
         WSettingsSwitch {
-            label: Translation.tr("Browser theming (Chromium/Brave)")
+            label: Translation.tr("Browser theming (Chromium/Chrome/Brave)")
             icon: "globe"
-            description: Translation.tr("Apply GM3 theme colors to Chromium-based browsers from wallpaper")
+            description: Translation.tr("Apply wallpaper theme colors to Chromium-based browsers")
             checked: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
             onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.enableBrowsers", checked)
         }

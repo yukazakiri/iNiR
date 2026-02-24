@@ -67,13 +67,13 @@ ContentPage {
             }
             SettingsSwitch {
                 buttonIcon: "globe"
-                text: Translation.tr("Browsers (Chromium/Brave)")
+                text: Translation.tr("Browsers (Chromium/Chrome/Brave)")
                 checked: Config.options.appearance.wallpaperTheming.enableBrowsers
                 onCheckedChanged: {
                     Config.options.appearance.wallpaperTheming.enableBrowsers = checked;
                 }
                 StyledToolTip {
-                    text: Translation.tr("Apply GM3 theme colors to Chromium-based browsers from wallpaper")
+                    text: Translation.tr("Apply wallpaper theme colors to Chromium-based browsers")
                 }
             }
             ConfigRow {

@@ -298,6 +298,8 @@ Singleton {
                     property JsonObject browsers: JsonObject {
                         property bool chromium: true
                         property bool brave: true
+                        property bool googleChromeStable: true
+                        property bool googleChromeBeta: true
                     }
                     property JsonObject terminals: JsonObject {
                         property bool kitty: true

@@ -37,6 +37,18 @@ BROWSER_REGISTRY = {
         "policy_dir": "/etc/brave/policies/managed",
         "policy_file": "theme.json",
     },
+    "google-chrome-stable": {
+        "binary": "google-chrome-stable",
+        "type": "policy",
+        "policy_dir": "/etc/opt/chrome/policies/managed",
+        "policy_file": "theme.json",
+    },
+    "google-chrome-beta": {
+        "binary": "google-chrome-beta",
+        "type": "policy",
+        "policy_dir": "/etc/opt/chrome/policies/managed",
+        "policy_file": "theme.json",
+    },
 }
 
 

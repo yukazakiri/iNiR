@@ -1248,7 +1248,7 @@ ContentPage {
         SettingsGroup {
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Chromium-based browsers are themed via GM3 CLI switches — colors update without opening new windows. Firefox-based browsers use Pywalfox and are themed automatically through the GTK/Shell pipeline.")
+                text: Translation.tr("Chromium-based browsers are themed using wallpaper colors — Chromium uses GM3 switches, while Chrome and Brave use managed policies. Firefox-based browsers use Pywalfox and are themed automatically through the GTK/Shell pipeline.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 wrapMode: Text.WordWrap
@@ -1269,7 +1269,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Chromium-based (GM3 theme switches):")
+                    text: Translation.tr("Chromium-based browsers:")
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     wrapMode: Text.WordWrap
@@ -1305,6 +1305,27 @@ ContentPage {
                     checked: Config.options?.appearance?.wallpaperTheming?.browsers?.brave ?? true
                     onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.browsers.brave", checked)
                     opacity: browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["brave"] ?? false) ? 0.5 : 1
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                visible: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+
+                ConfigSwitch {
+                    buttonIcon: "globe"
+                    text: "Chrome" + (browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["google-chrome-stable"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.browsers?.googleChromeStable ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.browsers.googleChromeStable", checked)
+                    opacity: browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["google-chrome-stable"] ?? false) ? 0.5 : 1
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "globe"
+                    text: "Chrome Beta" + (browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["google-chrome-beta"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.browsers?.googleChromeBeta ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.browsers.googleChromeBeta", checked)
+                    opacity: browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["google-chrome-beta"] ?? false) ? 0.5 : 1
                 }
             }
 
@@ -1366,7 +1387,7 @@ ContentPage {
                     command: [
                         "/usr/bin/bash",
                         "-c",
-                        "for browser in chromium brave; do " +
+                        "for browser in chromium brave google-chrome-stable google-chrome-beta; do " +
                         "if command -v $browser &>/dev/null; then echo \"$browser:true\"; " +
                         "else echo \"$browser:false\"; fi; done"
                     ]
@@ -1380,7 +1401,14 @@ ContentPage {
                                 current[browser] = installed
                                 browserColorsSection.installedBrowsers = current
                                 if (!browserColorsSection.detectionDone && !installed) {
-                                    Config.setNestedValue(`appearance.wallpaperTheming.browsers.${browser}`, false)
+                                    const keyMap = {
+                                        "chromium": "chromium",
+                                        "brave": "brave",
+                                        "google-chrome-stable": "googleChromeStable",
+                                        "google-chrome-beta": "googleChromeBeta",
+                                    }
+                                    const configKey = keyMap[browser] ?? browser
+                                    Config.setNestedValue(`appearance.wallpaperTheming.browsers.${configKey}`, false)
                                 }
                             }
                         }
