@@ -175,6 +175,41 @@ def write_preferences(prefs_path: Path, prefs: Dict) -> bool:
         return False
 
 
+def set_system_color_scheme(darkmode: bool) -> bool:
+    """Set system color-scheme via gsettings (affects Chrome's theme detection)."""
+    scheme = "prefer-dark" if darkmode else "prefer-light"
+
+    try:
+        result = subprocess.run(
+            ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", scheme],
+            capture_output=True,
+            timeout=2,
+        )
+        if result.returncode == 0:
+            print(f"[chromium-theme] Set system color-scheme to {scheme}")
+            return True
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    try:
+        result = subprocess.run(
+            [
+                "dbus-send",
+                "--session",
+                "--dest=org.freedesktop.impl.portal.desktop.gtk",
+                "/org/freedesktop/impl/portal/desktop/gtk",
+                "org.freedesktop.impl.portal.Settings.Set",
+                f"string:org.freedesktop.appearance string:color-scheme int32:{1 if darkmode else 2}",
+            ],
+            capture_output=True,
+            timeout=2,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    return True
+
+
 def apply_preferences_theme(
     browser_name: str, colors: Dict[str, str], darkmode: bool
 ) -> bool:
@@ -361,18 +396,14 @@ def apply_gm3_theme(browser_name: str, colors: Dict[str, str], darkmode: bool) -
     return success
 
 
-def apply_browser_theme(browser_name: str, scss_path: str) -> bool:
+def apply_browser_theme(
+    browser_name: str, colors: Dict[str, str], darkmode: bool
+) -> bool:
     """Apply theme to a specific browser."""
     config = BROWSER_REGISTRY.get(browser_name)
     if not config:
         print(f"[chromium-theme] Unknown browser: {browser_name}", file=sys.stderr)
         return False
-
-    colors = parse_scss_colors(scss_path)
-    if not colors:
-        return False
-
-    darkmode = get_darkmode(scss_path)
 
     browser_type = config["type"]
 
@@ -395,12 +426,20 @@ def apply_all_browsers(
     """Apply theme to all or specified browsers."""
     results = {}
 
+    colors = parse_scss_colors(scss_path)
+    if not colors:
+        return results
+
+    darkmode = get_darkmode(scss_path)
+
+    set_system_color_scheme(darkmode)
+
     if enabled_browsers is None:
         enabled_browsers = get_installed_browsers()
 
     for browser in enabled_browsers:
         if is_browser_installed(browser):
-            results[browser] = apply_browser_theme(browser, scss_path)
+            results[browser] = apply_browser_theme(browser, colors, darkmode)
         else:
             print(f"[chromium-theme] Skipping {browser} (not installed)")
             results[browser] = False
