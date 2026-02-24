@@ -86,7 +86,6 @@ def get_installed_browsers() -> List[str]:
 
 
 def apply_gm3_theme(browser_name: str, colors: Dict[str, str], darkmode: bool) -> bool:
-    """Apply theme via GM3 CLI switches."""
     config = BROWSER_REGISTRY.get(browser_name)
     if not config:
         print(f"[chromium-theme] Unknown browser: {browser_name}", file=sys.stderr)
@@ -98,36 +97,34 @@ def apply_gm3_theme(browser_name: str, colors: Dict[str, str], darkmode: bool) -
     r, g, b = hex_to_rgb(primary)
     color_scheme = "dark" if darkmode else "light"
 
-    commands = [
-        [binary, "--no-startup-window", f"{GM3_FLAGS['user_color']}={r},{g},{b}"],
-        [binary, "--no-startup-window", f"{GM3_FLAGS['color_scheme']}={color_scheme}"],
+    # Single invocation with all flags to avoid race conditions
+    cmd = [
+        binary,
+        "--no-startup-window",
+        f"{GM3_FLAGS['user_color']}={r},{g},{b}",
+        f"{GM3_FLAGS['color_scheme']}={color_scheme}",
     ]
 
-    success = True
-    for cmd in commands:
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=3)
-            if result.returncode != 0:
-                print(
-                    f"[chromium-theme] GM3 command returned {result.returncode}: {' '.join(cmd)}",
-                    file=sys.stderr,
-                )
-        except FileNotFoundError:
-            print(f"[chromium-theme] Binary not found: {binary}", file=sys.stderr)
-            success = False
-        except subprocess.TimeoutExpired:
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=5)
+        if result.returncode != 0:
             print(
-                f"[chromium-theme] Command timed out: {' '.join(cmd)}",
+                f"[chromium-theme] GM3 command returned {result.returncode}: {' '.join(cmd)}",
                 file=sys.stderr,
             )
-            success = False
-        except Exception as e:
-            print(f"[chromium-theme] Command failed: {e}", file=sys.stderr)
-            success = False
+            return False
+    except FileNotFoundError:
+        print(f"[chromium-theme] Binary not found: {binary}", file=sys.stderr)
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"[chromium-theme] Command timed out: {' '.join(cmd)}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"[chromium-theme] Command failed: {e}", file=sys.stderr)
+        return False
 
-    if success:
-        print(f"[chromium-theme] GM3 theme applied to {browser_name}")
-    return success
+    print(f"[chromium-theme] GM3 theme applied to {browser_name}")
+    return True
 
 
 def apply_all_browsers(

@@ -770,29 +770,6 @@ MATUGEN_SDDM_EOF
         tui_success "Python packages (skipped - uv not available)"
     fi
     
-    # Setup Chrome/Chromium theme policies (optional, requires sudo)
-    local chromium_theme_script="${II_TARGET}/scripts/colors/chromium_theme.py"
-    if [[ -f "$chromium_theme_script" ]] && command -v python3 &>/dev/null; then
-        local installed_browsers
-        installed_browsers=$(python3 "$chromium_theme_script" --list 2>/dev/null | grep -c "^  -" || echo "0")
-        if [[ "$installed_browsers" -gt 0 ]]; then
-            echo ""
-            tui_title "Browser theme integration"
-            echo ""
-            local scss_file="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/material_colors.scss"
-            if [[ -f "$scss_file" ]]; then
-                tui_info "Setting up Chrome/Chromium theme policies..."
-                if sudo -n true 2>/dev/null; then
-                    python3 "$chromium_theme_script" --setup-policies --scss "$scss_file" 2>/dev/null
-                elif $ask && tui_confirm "Setup Chrome theme policies (requires sudo)?"; then
-                    python3 "$chromium_theme_script" --setup-policies --scss "$scss_file"
-                else
-                    tui_info "Skipped - policies optional for browser theming"
-                fi
-            fi
-        fi
-    fi
-    
     echo ""
     tui_subtitle "Tip: Run './setup rollback' if something breaks"
 }
