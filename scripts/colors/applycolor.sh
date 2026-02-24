@@ -211,6 +211,55 @@ apply_gtk_kde() {
   "$SCRIPT_DIR/apply-gtk-theme.sh"
 }
 
+apply_chromium() {
+  local log_file="$STATE_DIR/user/generated/chromium_theme.log"
+  
+  if [ ! -f "$STATE_DIR/user/generated/material_colors.scss" ]; then
+    echo "[chromium-theme] material_colors.scss not found. Skipping." >> "$log_file" 2>/dev/null
+    return
+  fi
+  
+  local python_cmd="python3"
+  local _ac_venv
+  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+  else
+    _ac_venv="$HOME/.local/state/quickshell/.venv"
+  fi
+  local venv_python="$_ac_venv/bin/python3"
+  if [[ -x "$venv_python" ]]; then
+    python_cmd="$venv_python"
+  fi
+  
+  if ! command -v "$python_cmd" &>/dev/null && [[ ! -x "$python_cmd" ]]; then
+    echo "[chromium-theme] ERROR: Python not found ($python_cmd). Skipping." >> "$log_file" 2>/dev/null
+    return
+  fi
+  
+  local enabled_browsers=()
+  local all_supported=(chromium google-chrome-stable google-chrome-beta google-chrome-unstable omarchy-chromium-bin)
+  
+  for browser in "${all_supported[@]}"; do
+    local browser_enabled="true"
+    if [ -f "$CONFIG_FILE" ]; then
+      browser_enabled=$(jq -r ".appearance.wallpaperTheming.browsers.${browser} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
+    fi
+    if [[ "$browser_enabled" == "true" ]] && command -v "$browser" &>/dev/null; then
+      enabled_browsers+=("$browser")
+    fi
+  done
+  
+  if [ ${#enabled_browsers[@]} -eq 0 ]; then
+    echo "[chromium-theme] No enabled browsers found installed. Skipping." >> "$log_file" 2>/dev/null
+    return
+  fi
+  
+  echo "[chromium-theme] Applying theme to: ${enabled_browsers[*]}" >> "$log_file" 2>/dev/null
+  "$python_cmd" "$SCRIPT_DIR/chromium_theme.py" \
+    --scss "$STATE_DIR/user/generated/material_colors.scss" \
+    --browsers "${enabled_browsers[@]}" >> "$log_file" 2>&1
+}
+
 # Check if terminal theming is enabled in config
 CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
@@ -231,11 +280,16 @@ fi
 if [ -f "$CONFIG_FILE" ]; then
   enable_apps_shell=$(jq -r '.appearance.wallpaperTheming.enableAppsAndShell // true' "$CONFIG_FILE")
   enable_qt_apps=$(jq -r '.appearance.wallpaperTheming.enableQtApps // true' "$CONFIG_FILE")
+  enable_browsers=$(jq -r '.appearance.wallpaperTheming.enableBrowsers // true' "$CONFIG_FILE")
   if [ "$enable_apps_shell" != "false" ] || [ "$enable_qt_apps" != "false" ]; then
     apply_gtk_kde &
   fi
+  if [ "$enable_browsers" != "false" ]; then
+    apply_chromium &
+  fi
 else
   apply_gtk_kde &
+  apply_chromium &
 fi
 
 # Sync ii-pixel SDDM theme colors (if installed)
