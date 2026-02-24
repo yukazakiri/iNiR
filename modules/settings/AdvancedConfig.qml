@@ -65,6 +65,17 @@ ContentPage {
                     text: Translation.tr("Generate Discord theme from wallpaper colors (requires Vesktop with system24 theme)")
                 }
             }
+            SettingsSwitch {
+                buttonIcon: "globe"
+                text: Translation.tr("Browsers (Chromium/Brave)")
+                checked: Config.options.appearance.wallpaperTheming.enableBrowsers
+                onCheckedChanged: {
+                    Config.options.appearance.wallpaperTheming.enableBrowsers = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Apply GM3 theme colors to Chromium-based browsers from wallpaper")
+                }
+            }
             ConfigRow {
                 uniform: true
                 SettingsSwitch {
