@@ -294,6 +294,11 @@ Singleton {
                     property bool enableTerminal: true
                     property bool enableVesktop: true
                     property bool useBackdropForColors: false
+                    property bool enableBrowsers: true
+                    property JsonObject browsers: JsonObject {
+                        property bool chromium: true
+                        property bool brave: true
+                    }
                     property JsonObject terminals: JsonObject {
                         property bool kitty: true
                         property bool alacritty: true

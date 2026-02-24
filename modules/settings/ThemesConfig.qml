@@ -1227,6 +1227,173 @@ ContentPage {
     }
 
     SettingsCardSection {
+        id: browserColorsSection
+        expanded: false
+        icon: "globe"
+        title: Translation.tr("Browser Colors")
+
+        property var installedBrowsers: ({})
+        property bool detectionDone: false
+
+        function runDetection() {
+            browserDetector.running = true
+        }
+
+        onExpandedChanged: {
+            if (expanded && !detectionDone) {
+                runDetection()
+            }
+        }
+
+        SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Chromium-based browsers are themed via GM3 CLI switches — colors update without opening new windows. Firefox-based browsers use Pywalfox and are themed automatically through the GTK/Shell pipeline.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+            }
+
+            ConfigSwitch {
+                buttonIcon: "globe"
+                text: Translation.tr("Enable browser theming")
+                checked: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+                onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.enableBrowsers", checked)
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 12
+                spacing: 6
+                visible: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Chromium-based (GM3 theme switches):")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    visible: browserColorsSection.detectionDone
+                    text: {
+                        const installed = browserColorsSection.installedBrowsers
+                        const count = Object.values(installed).filter(v => v).length
+                        return Translation.tr("%1 installed").arg(count)
+                    }
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colSubtext
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                visible: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+
+                ConfigSwitch {
+                    buttonIcon: "globe"
+                    text: "Chromium" + (browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["chromium"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.browsers?.chromium ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.browsers.chromium", checked)
+                    opacity: browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["chromium"] ?? false) ? 0.5 : 1
+                }
+
+                ConfigSwitch {
+                    buttonIcon: "globe"
+                    text: "Brave" + (browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["brave"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.browsers?.brave ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.browsers.brave", checked)
+                    opacity: browserColorsSection.detectionDone && !(browserColorsSection.installedBrowsers["brave"] ?? false) ? 0.5 : 1
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 12
+                spacing: 6
+                visible: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+
+                MaterialSymbol {
+                    text: "info"
+                    iconSize: 14
+                    color: Appearance.m3colors.m3tertiary
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Firefox-based browsers are themed automatically via Pywalfox when GTK/Shell theming is enabled.")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.8
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignRight
+                Layout.topMargin: 4
+                visible: Config.options?.appearance?.wallpaperTheming?.enableBrowsers ?? true
+                implicitWidth: browserDetectRow.implicitWidth + 16
+                implicitHeight: 28
+                buttonRadius: Appearance.rounding.small
+                colBackground: Appearance.colors.colLayer1
+                colBackgroundHover: Appearance.colors.colLayer1Hover
+
+                contentItem: RowLayout {
+                    id: browserDetectRow
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    MaterialSymbol {
+                        text: "search"
+                        iconSize: 14
+                        color: Appearance.colors.colOnLayer1
+                    }
+
+                    StyledText {
+                        text: browserColorsSection.detectionDone
+                            ? Translation.tr("Re-detect installed")
+                            : Translation.tr("Auto-detect installed")
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                    }
+                }
+
+                onClicked: browserColorsSection.runDetection()
+
+                Process {
+                    id: browserDetector
+                    command: [
+                        "/usr/bin/bash",
+                        "-c",
+                        "for browser in chromium brave; do " +
+                        "if command -v $browser &>/dev/null; then echo \"$browser:true\"; " +
+                        "else echo \"$browser:false\"; fi; done"
+                    ]
+                    stdout: SplitParser {
+                        onRead: (line) => {
+                            const parts = line.split(':')
+                            if (parts.length === 2) {
+                                const browser = parts[0].trim()
+                                const installed = parts[1].trim() === 'true'
+                                const current = Object.assign({}, browserColorsSection.installedBrowsers)
+                                current[browser] = installed
+                                browserColorsSection.installedBrowsers = current
+                                if (!browserColorsSection.detectionDone && !installed) {
+                                    Config.setNestedValue(`appearance.wallpaperTheming.browsers.${browser}`, false)
+                                }
+                            }
+                        }
+                    }
+                    onExited: (exitCode, exitStatus) => {
+                        browserColorsSection.detectionDone = true
+                    }
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
         expanded: true
         icon: "style"
         title: Translation.tr("Global Style")

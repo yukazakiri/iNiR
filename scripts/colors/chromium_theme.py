@@ -31,6 +31,9 @@ BROWSER_REGISTRY = {
     "chromium": {
         "binary": "chromium",
     },
+    "brave": {
+        "binary": "brave",
+    },
 }
 
 

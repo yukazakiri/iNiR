@@ -236,25 +236,31 @@ apply_chromium() {
     return
   fi
   
-  if ! command -v chromium &>/dev/null; then
-    echo "[chromium-theme] chromium not found. Skipping." >> "$log_file" 2>/dev/null
+  local enabled_browsers=()
+  local all_supported=(chromium brave)
+  
+  for browser in "${all_supported[@]}"; do
+    if ! command -v "$browser" &>/dev/null; then
+      continue
+    fi
+    local browser_enabled="true"
+    if [ -f "$CONFIG_FILE" ]; then
+      browser_enabled=$(jq -r ".appearance.wallpaperTheming.browsers.${browser} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
+    fi
+    if [[ "$browser_enabled" == "true" ]]; then
+      enabled_browsers+=("$browser")
+    fi
+  done
+  
+  if [ ${#enabled_browsers[@]} -eq 0 ]; then
+    echo "[chromium-theme] No enabled browsers found installed. Skipping." >> "$log_file" 2>/dev/null
     return
   fi
   
-  local browser_enabled="true"
-  if [ -f "$CONFIG_FILE" ]; then
-    browser_enabled=$(jq -r '.appearance.wallpaperTheming.browsers.chromium // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
-  fi
-  
-  if [[ "$browser_enabled" != "true" ]]; then
-    echo "[chromium-theme] chromium theming disabled in config. Skipping." >> "$log_file" 2>/dev/null
-    return
-  fi
-  
-  echo "[chromium-theme] Applying theme to: chromium" >> "$log_file" 2>/dev/null
+  echo "[chromium-theme] Applying theme to: ${enabled_browsers[*]}" >> "$log_file" 2>/dev/null
   "$python_cmd" "$SCRIPT_DIR/chromium_theme.py" \
     --scss "$STATE_DIR/user/generated/material_colors.scss" \
-    --browsers chromium >> "$log_file" 2>&1
+    --browsers "${enabled_browsers[@]}" >> "$log_file" 2>&1
 }
 
 # Check if terminal theming is enabled in config
