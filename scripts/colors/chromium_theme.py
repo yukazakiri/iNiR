@@ -93,8 +93,8 @@ def apply_gm3_theme(browser_name: str, colors: Dict[str, str], darkmode: bool) -
 
     binary = config["binary"]
 
-    primary = colors.get("primary", "#458588")
-    r, g, b = hex_to_rgb(primary)
+    seed_color = colors.get("primary_paletteKeyColor", colors.get("primary", "#458588"))
+    r, g, b = hex_to_rgb(seed_color)
     color_scheme = "dark" if darkmode else "light"
 
     # Single invocation with all flags to avoid race conditions
