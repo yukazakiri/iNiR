@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """
 Chromium/Chrome theme manager with support for:
-- Preferences-based theming (chromium, google-chrome-stable, google-chrome-beta)
-- GM3 CLI switches (omarchy-chromium-bin)
+- Preferences-based theming (google-chrome-stable, google-chrome-beta)
+- GM3 CLI switches (omarchy-chromium-bin, which installs as 'chromium')
 
-For regular Chromium/Chrome:
-- Modifies Preferences file to set user color and color scheme
-- Uses --force-dark-mode flag approach via preferences
-
-For omarchy-chromium-bin:
-- Uses GM3 CLI switches for runtime theme updates
+No sudo required for normal operation. Policy files are optional and only
+written during setup if sudo access is available.
 """
 
 import sys
@@ -18,11 +14,17 @@ import re
 import json
 import subprocess
 import shutil
-import time
-import struct
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any
 from copy import deepcopy
+
+GM3_FLAGS = {
+    "user_color": "--set-user-color",
+    "color_scheme": "--set-color-scheme",
+    "color_variant": "--set-color-variant",
+    "grayscale": "--set-grayscale-theme",
+    "default": "--set-default-theme",
+}
 
 BROWSER_REGISTRY = {
     "chromium": {
@@ -31,7 +33,7 @@ BROWSER_REGISTRY = {
         "profile": "Default",
         "policy_dir": "/etc/chromium/policies/managed",
         "policy_file": "theme.json",
-        "type": "preferences",
+        "type": "auto",
     },
     "google-chrome-stable": {
         "binary": "google-chrome-stable",
@@ -57,19 +59,58 @@ BROWSER_REGISTRY = {
         "policy_file": "theme.json",
         "type": "preferences",
     },
-    "omarchy-chromium-bin": {
-        "binary": "omarchy-chromium-bin",
-        "type": "gm3",
-        "gm3_flags": {
-            "user_color": "--set-user-color",
-            "color_scheme": "--set-color-scheme",
-            "color_variant": "--set-color-variant",
-            "grayscale": "--set-grayscale-theme",
-            "default": "--set-default-theme",
-        },
-        "no_window_flag": "--no-startup-window",
-    },
 }
+
+
+def detect_browser_type(binary: str) -> str:
+    """Detect if a browser supports GM3 CLI switches or uses preferences."""
+    if binary == "chromium":
+        try:
+            result = subprocess.run(
+                ["pacman", "-Qi", "chromium"], capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0 and "omarchy-chromium" in result.stdout:
+                return "gm3"
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        try:
+            result = subprocess.run(
+                ["dpkg", "-s", "chromium"], capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0 and "omarchy" in result.stdout.lower():
+                return "gm3"
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+    try:
+        result = subprocess.run(
+            ["rpm", "-qi", binary], capture_output=True, text=True, timeout=2
+        )
+        if result.returncode == 0 and "omarchy" in result.stdout.lower():
+            return "gm3"
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    return "preferences"
+
+
+def get_browser_config(browser_name: str) -> Optional[Dict[str, Any]]:
+    """Get browser config with auto-detected type."""
+    base_config = BROWSER_REGISTRY.get(browser_name)
+    if not base_config:
+        return None
+
+    config: Dict[str, Any] = {}
+    config.update(base_config)
+
+    if config["type"] == "auto":
+        config["type"] = detect_browser_type(config["binary"])
+        if config["type"] == "gm3":
+            config["gm3_flags"] = GM3_FLAGS
+            config["no_window_flag"] = "--no-startup-window"
+
+    return config
 
 
 def parse_scss_colors(scss_path: str) -> Dict[str, str]:
@@ -134,8 +175,8 @@ def get_installed_browsers() -> List[str]:
 
 def get_browser_profile_path(browser_name: str) -> Optional[Path]:
     """Get the path to the browser's profile directory."""
-    config = BROWSER_REGISTRY.get(browser_name)
-    if not config or config["type"] != "preferences":
+    config = get_browser_config(browser_name)
+    if not config or config.get("type") != "preferences":
         return None
 
     config_dir = Path.home() / config["config_dir"]
@@ -165,10 +206,8 @@ def write_preferences(prefs_path: Path, prefs: Dict) -> bool:
     """Write Chrome's Preferences file."""
     try:
         prefs_path.parent.mkdir(parents=True, exist_ok=True)
-
         with open(prefs_path, "w") as f:
             json.dump(prefs, f, indent=2)
-
         return True
     except IOError as e:
         print(f"[chromium-theme] Error writing preferences: {e}", file=sys.stderr)
@@ -191,31 +230,15 @@ def set_system_color_scheme(darkmode: bool) -> bool:
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
-    try:
-        result = subprocess.run(
-            [
-                "dbus-send",
-                "--session",
-                "--dest=org.freedesktop.impl.portal.desktop.gtk",
-                "/org/freedesktop/impl/portal/desktop/gtk",
-                "org.freedesktop.impl.portal.Settings.Set",
-                f"string:org.freedesktop.appearance string:color-scheme int32:{1 if darkmode else 2}",
-            ],
-            capture_output=True,
-            timeout=2,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
-    return True
+    return False
 
 
 def apply_preferences_theme(
     browser_name: str, colors: Dict[str, str], darkmode: bool
 ) -> bool:
     """Apply theme by modifying Chrome's Preferences file."""
-    config = BROWSER_REGISTRY.get(browser_name)
-    if not config or config["type"] != "preferences":
+    config = get_browser_config(browser_name)
+    if not config or config.get("type") != "preferences":
         return False
 
     profile_path = get_browser_profile_path(browser_name)
@@ -280,115 +303,45 @@ def apply_preferences_theme(
     return True
 
 
-def signal_browser_reload(browser_name: str, profile_path: Path) -> bool:
-    """Signal browser to reload preferences."""
-    prefs_path = profile_path / "Preferences"
-
-    try:
-        prefs_path.touch()
-    except OSError:
-        pass
-
-    config = BROWSER_REGISTRY.get(browser_name)
-    if not config:
-        return False
-
-    binary = config["binary"]
-
-    try:
-        result = subprocess.run(
-            [binary, "--refresh-platform-policy", "--no-startup-window"],
-            capture_output=True,
-            timeout=3,
-        )
-        print(f"[chromium-theme] Signaled refresh for {browser_name}")
-        return True
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-
-    return True
-
-
-def apply_policy_theme(
-    browser_name: str, colors: Dict[str, str], darkmode: bool
-) -> bool:
-    """Apply theme via managed policy (enterprise policy, requires sudo)."""
-    config = BROWSER_REGISTRY.get(browser_name)
-    if not config:
-        return False
-
-    policy_dir = Path(config.get("policy_dir", ""))
-    policy_file = policy_dir / config.get("policy_file", "theme.json")
-
-    primary = colors.get("primary", "#458588")
-
-    policy_data = {
-        "BrowserThemeColor": primary,
-    }
-    policy_json = json.dumps(policy_data, indent=2)
-
-    def try_write(path: Path, data: str) -> bool:
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w") as f:
-                f.write(data)
-            return True
-        except (PermissionError, OSError):
-            return False
-
-    if try_write(policy_file, policy_json):
-        print(f"[chromium-theme] Policy written to {policy_file}")
-        return True
-
-    for tool in ["sudo", "pkexec"]:
-        result = subprocess.run(
-            [
-                "sh",
-                "-c",
-                f"mkdir -p '{policy_dir}' 2>/dev/null; {tool} tee '{policy_file}'",
-            ],
-            input=policy_json,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            print(f"[chromium-theme] Policy written to {policy_file} (via {tool})")
-            return True
-
-    print(
-        f"[chromium-theme] Skipped policy for {browser_name} (no sudo access)",
-        file=sys.stderr,
-    )
-    return True
-
-
 def apply_gm3_theme(browser_name: str, colors: Dict[str, str], darkmode: bool) -> bool:
     """Apply theme via GM3 CLI switches (omarchy-chromium-bin)."""
-    config = BROWSER_REGISTRY.get(browser_name)
-    if not config or config["type"] != "gm3":
+    config = get_browser_config(browser_name)
+    if not config or config.get("type") != "gm3":
         return False
 
     binary = config["binary"]
-    flags = config["gm3_flags"]
-    no_window = config["no_window_flag"]
+    flags: Dict[str, str] = config.get("gm3_flags", GM3_FLAGS)
+    no_window = config.get("no_window_flag", "--no-startup-window")
 
     primary = colors.get("primary", "#458588")
     r, g, b = hex_to_rgb(primary)
     color_scheme = "dark" if darkmode else "light"
 
     commands = [
-        [binary, no_window, f'{flags["user_color"]}="{r},{g},{b}"'],
-        [binary, no_window, f'{flags["color_scheme"]}="{color_scheme}"'],
+        [binary, no_window, f"{flags['user_color']}={r},{g},{b}"],
+        [binary, no_window, f"{flags['color_scheme']}={color_scheme}"],
     ]
 
     success = True
     for cmd in commands:
         try:
-            subprocess.run(cmd, capture_output=True, timeout=3)
-        except Exception as e:
+            result = subprocess.run(cmd, capture_output=True, timeout=3)
+            if result.returncode != 0:
+                print(
+                    f"[chromium-theme] GM3 command returned {result.returncode}: {' '.join(cmd)}",
+                    file=sys.stderr,
+                )
+        except FileNotFoundError:
+            print(f"[chromium-theme] GM3 binary not found: {binary}", file=sys.stderr)
+            success = False
+        except subprocess.TimeoutExpired:
             print(
-                f"[chromium-theme] GM3 command failed: {' '.join(cmd)}", file=sys.stderr
+                f"[chromium-theme] GM3 command timed out: {' '.join(cmd)}",
+                file=sys.stderr,
             )
+            success = False
+        except Exception as e:
+            print(f"[chromium-theme] GM3 command failed: {e}", file=sys.stderr)
             success = False
 
     if success:
@@ -400,20 +353,15 @@ def apply_browser_theme(
     browser_name: str, colors: Dict[str, str], darkmode: bool
 ) -> bool:
     """Apply theme to a specific browser."""
-    config = BROWSER_REGISTRY.get(browser_name)
+    config = get_browser_config(browser_name)
     if not config:
         print(f"[chromium-theme] Unknown browser: {browser_name}", file=sys.stderr)
         return False
 
-    browser_type = config["type"]
+    browser_type = config.get("type", "preferences")
 
     if browser_type == "preferences":
-        prefs_success = apply_preferences_theme(browser_name, colors, darkmode)
-        policy_success = apply_policy_theme(browser_name, colors, darkmode)
-        profile_path = get_browser_profile_path(browser_name)
-        if policy_success and profile_path:
-            signal_browser_reload(browser_name, profile_path)
-        return prefs_success
+        return apply_preferences_theme(browser_name, colors, darkmode)
     elif browser_type == "gm3":
         return apply_gm3_theme(browser_name, colors, darkmode)
 
@@ -447,6 +395,68 @@ def apply_all_browsers(
     return results
 
 
+def setup_policies(scss_path: Optional[str] = None) -> bool:
+    """Setup policy files for all installed browsers (requires sudo)."""
+    if scss_path:
+        colors = parse_scss_colors(scss_path)
+        darkmode = get_darkmode(scss_path)
+    else:
+        colors = {}
+        darkmode = True
+
+    primary = colors.get("primary", "#458588")
+    policy_data = {"BrowserThemeColor": primary}
+    policy_json = json.dumps(policy_data, indent=2)
+
+    success = False
+    for browser_name, config in BROWSER_REGISTRY.items():
+        if config["type"] != "preferences":
+            continue
+
+        if not is_browser_installed(browser_name):
+            continue
+
+        policy_dir = Path(config["policy_dir"])
+        policy_file = policy_dir / config["policy_file"]
+
+        def try_write(path: Path, data: str) -> bool:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w") as f:
+                    f.write(data)
+                return True
+            except (PermissionError, OSError):
+                return False
+
+        if try_write(policy_file, policy_json):
+            print(f"[chromium-theme] Policy written to {policy_file}")
+            success = True
+            continue
+
+        if shutil.which("sudo"):
+            result = subprocess.run(
+                ["sudo", "mkdir", "-p", str(policy_dir)],
+                capture_output=True,
+            )
+            if result.returncode == 0:
+                result = subprocess.run(
+                    ["sudo", "tee", str(policy_file)],
+                    input=policy_json,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    print(
+                        f"[chromium-theme] Policy written to {policy_file} (via sudo)"
+                    )
+                    success = True
+                    continue
+
+        print(f"[chromium-theme] Skipped policy for {browser_name} (no write access)")
+
+    return success
+
+
 def main():
     import argparse
 
@@ -459,7 +469,9 @@ def main():
     )
     parser.add_argument("--list", action="store_true", help="List installed browsers")
     parser.add_argument(
-        "--check-prefs", action="store_true", help="Check browser preferences status"
+        "--setup-policies",
+        action="store_true",
+        help="Setup policy files (requires sudo)",
     )
 
     args = parser.parse_args()
@@ -467,22 +479,15 @@ def main():
     if args.list:
         print("Installed browsers:")
         for browser in get_installed_browsers():
-            config = BROWSER_REGISTRY[browser]
-            print(f"  - {browser} ({config['type']})")
+            config = get_browser_config(browser)
+            if config:
+                print(f"  - {browser} ({config.get('type', 'unknown')})")
         return
 
-    if args.check_prefs:
-        for browser, config in BROWSER_REGISTRY.items():
-            if config["type"] == "preferences":
-                profile_path = get_browser_profile_path(browser)
-                if profile_path:
-                    prefs_path = profile_path / "Preferences"
-                    exists = prefs_path.exists()
-                    print(
-                        f"  {browser}: {prefs_path} {'exists' if exists else 'missing'}"
-                    )
-                else:
-                    print(f"  {browser}: no profile found")
+    if args.setup_policies:
+        if not args.scss:
+            print("[chromium-theme] Setting up policies without theme colors")
+        setup_policies(args.scss)
         return
 
     if not args.scss:
