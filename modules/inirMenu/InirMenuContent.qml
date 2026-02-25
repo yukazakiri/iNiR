@@ -6,339 +6,254 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.inirMenu
+import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Widgets
 
 // ============================================================================
-// InirMenuContent — the actual UI card rendered inside InirMenu.qml
+// InirMenuContent
 //
-// Layout:
-//   ┌─────────────────────────────────────┐
-//   │  [🔍 search bar]                    │
-//   ├──────────────────────────────────────┤
-//   │ [Apps] [Setup] [Install] [Remove]…  │  ← category tab row
-//   ├──────────────────────────────────────┤
-//   │  result list / empty state          │
-//   └─────────────────────────────────────┘
+// Identical chrome to the app launcher (GlassBackground + search bar +
+// separator + ListView).  Categories are themselves result rows — clicking one
+// drills into that category's items.  A back-arrow row at the top of the
+// drilled list returns to the category menu.
 // ============================================================================
 
-FocusScope {
+Item {
     id: root
-    focus: true
 
-    implicitWidth:  560
-    implicitHeight: Math.min(580, columnLayout.implicitHeight)
+    // ── sizing — same as SearchWidget ──────────────────────────────────────
+    implicitWidth:  searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
+    implicitHeight: searchBar.implicitHeight + searchBarPad * 2 + Appearance.sizes.elevationMargin * 2
 
-    // resolved results reactively from the service
-    property var currentResults: []
+    property real searchBarPad: 4
 
-    // Re-compute whenever category or debounced query changes
+    // ── view state ─────────────────────────────────────────────────────────
+    // null  → showing category menu
+    // obj   → showing results for that category
+    property var activeCat: null
+    property bool inCategory: activeCat !== null
+
+    // search text (only active when inCategory)
+    property string searchText: ""
+    property string debouncedSearch: ""
+
+    Timer {
+        id: debounce
+        interval: 80
+        onTriggered: root.debouncedSearch = root.searchText
+    }
+    onSearchTextChanged: {
+        if (searchText === "") { debouncedSearch = ""; debounce.stop() }
+        else debounce.restart()
+    }
+
+    // current result list
+    property var displayList: {
+        if (!root.inCategory) {
+            // category menu — one row per category
+            return InirMenuService.categories.map(function(cat) {
+                return {
+                    key:             cat.id,
+                    name:            cat.label,
+                    clickActionName: "Open",
+                    materialSymbol:  cat.icon,
+                    type:            cat.description,
+                    _isCategoryRow:  true,
+                    _cat:            cat,
+                    execute:         function() { root._openCat(cat) }
+                }
+            })
+        }
+        // drilled — prepend a ‹ Back row then the category results
+        const results = root.activeCat.buildResults(root.debouncedSearch)
+        const backRow = {
+            key:             "__back__",
+            name:            root.activeCat.label,
+            clickActionName: "Back",
+            materialSymbol:  "arrow_back",
+            type:            "",
+            _isBackRow:      true,
+            execute:         function() { root._goBack() }
+        }
+        return [backRow].concat(results.map(function(r, i) {
+            return {
+                key:             r.id ?? ("r" + i),
+                name:            r.name,
+                clickActionName: r.verb ?? "Open",
+                materialSymbol:  (r.iconType === 2) ? "" : (r.icon ?? ""),
+                icon:            (r.iconType === 2) ? (r.icon ?? "") : "",
+                type:            r.description ?? "",
+                execute:         r.execute
+            }
+        }))
+    }
+
+    function _openCat(cat) {
+        root.activeCat = cat
+        root.searchText = ""
+        searchBar.searchInput.text = ""
+        resultList.currentIndex = 0
+        Qt.callLater(function() { searchBar.forceFocus() })
+    }
+
+    function _goBack() {
+        root.activeCat = null
+        root.searchText = ""
+        searchBar.searchInput.text = ""
+        resultList.currentIndex = 0
+        Qt.callLater(function() { searchBar.forceFocus() })
+    }
+
+    // reset when menu closes
     Connections {
         target: InirMenuService
-        function onActiveCategoryIdChanged() { root._refresh() }
-        function on_DebouncedQueryChanged()  { root._refresh() }
         function onOpenChanged() {
-            if (InirMenuService.open) {
-                root._refresh()
-                Qt.callLater(() => searchInput.forceActiveFocus())
+            if (!InirMenuService.open) {
+                root.activeCat = null
+                root.searchText = ""
+                searchBar.searchInput.text = ""
+            } else {
+                resultList.currentIndex = 0
+                Qt.callLater(function() { searchBar.forceFocus() })
             }
         }
     }
-    Component.onCompleted: root._refresh()
 
-    function _refresh() {
-        currentResults = InirMenuService.results()
-        resultList.currentIndex = 0
+    // ── shadow + glass card — exactly as SearchWidget ──────────────────────
+    StyledRectangularShadow {
+        target: searchWidgetContent
     }
 
-    // ── background card ───────────────────────────────────────────────────────
-    StyledRectangularShadow { target: card }
-
-    Rectangle {
-        id: card
-        anchors.fill: parent
-        radius: Appearance.inirEverywhere ? Appearance.inir.roundingLarge : Appearance.rounding.large
-        color:  Appearance.inirEverywhere ? Appearance.inir.colLayer0 : Appearance.colors.colLayer0
-        border.width: 1
-        border.color: Appearance.inirEverywhere
-            ? Appearance.inir.colBorder
-            : Appearance.colors.colLayer0Border
+    GlassBackground {
+        id: searchWidgetContent
+        anchors {
+            top:              parent.top
+            horizontalCenter: parent.horizontalCenter
+            topMargin:        Appearance.sizes.elevationMargin
+        }
         clip: true
+        implicitWidth:  columnLayout.implicitWidth
+        implicitHeight: columnLayout.implicitHeight
+        radius: searchBar.searchInput.implicitHeight / 2 + root.searchBarPad
+        fallbackColor: Appearance.colors.colBackgroundSurfaceContainer
+        inirColor:     Appearance.inir.colLayer1
+        auroraTransparency: Appearance.aurora.popupTransparentize
+        border.width: Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
+        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+            : Appearance.inirEverywhere ? Appearance.inir.colBorder
+            : Appearance.colors.colLayer0Border
+
+        Behavior on implicitHeight {
+            enabled: InirMenuService.open
+            NumberAnimation { duration: 200; easing.type: Easing.OutQuart }
+        }
 
         ColumnLayout {
             id: columnLayout
-            anchors.fill: parent
+            anchors {
+                top:              parent.top
+                horizontalCenter: parent.horizontalCenter
+            }
             spacing: 0
 
-            // ── Search bar ──────────────────────────────────────────────────
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.margins: 12
-                spacing: 8
+            layer.enabled: true
+            layer.effect: OpacityMask {
+                maskSource: Rectangle {
+                    width:  searchWidgetContent.width
+                    height: searchWidgetContent.width
+                    radius: searchWidgetContent.radius
+                }
+            }
 
-                MaterialSymbol {
-                    text: "search"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.inirEverywhere
-                        ? Appearance.inir.colSubtext
-                        : Appearance.colors.colSubtext
+            // ── Search bar row — identical to SearchBar.qml ────────────────
+            InirMenuSearchBar {
+                id: searchBar
+                property real verticalPadding: root.searchBarPad
+                Layout.fillWidth:   true
+                Layout.leftMargin:  10
+                Layout.rightMargin: 4
+                Layout.topMargin:   verticalPadding
+                Layout.bottomMargin: verticalPadding
+
+                searchingText:   root.searchText
+                inCategory:      root.inCategory
+                categoryIcon:    root.activeCat?.icon ?? "apps"
+                categoryLabel:   root.activeCat?.label ?? ""
+
+                onSearchingTextChanged: {
+                    if (searchingText !== root.searchText)
+                        root.searchText = searchingText
                 }
 
-                ToolbarTextField {
-                    id: searchInput
-                    Layout.fillWidth: true
-                    implicitHeight: 40
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    placeholderText: {
-                        const cat = InirMenuService.activeCategory()
-                        return cat ? "Search " + cat.label.toLowerCase() + "…" : "Search…"
-                    }
+                onBackRequested: root._goBack()
 
-                    focus: true
-                    KeyNavigation.down: resultList
-
-                    onTextChanged: InirMenuService.query = text
-
-                    onAccepted: {
-                        if (root.currentResults.length > 0) {
-                            const item = root.currentResults[resultList.currentIndex]
-                            if (item && item.execute) item.execute()
+                searchInput.Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Down) {
+                        resultList.forceActiveFocus()
+                        resultList.currentIndex = 0
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Escape) {
+                        if (root.inCategory) root._goBack()
+                        else InirMenuService.open = false
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (root.displayList.length > 0) {
+                            const entry = root.displayList[0]
+                            if (entry && entry.execute) entry.execute()
                         }
-                    }
-
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Down) {
-                            resultList.forceActiveFocus()
-                            resultList.currentIndex = 0
-                            event.accepted = true
-                        } else if (event.key === Qt.Key_Escape) {
-                            InirMenuService.open = false
-                            event.accepted = true
-                        }
-                    }
-                }
-
-                // Clear button
-                IconToolbarButton {
-                    visible: InirMenuService.query !== ""
-                    text: "close"
-                    onClicked: {
-                        InirMenuService.query = ""
-                        searchInput.text = ""
-                        searchInput.forceActiveFocus()
+                        event.accepted = true
                     }
                 }
             }
 
-            // ── Divider ─────────────────────────────────────────────────────
+            // ── Separator ──────────────────────────────────────────────────
             Rectangle {
+                visible:        root.displayList.length > 0
                 Layout.fillWidth: true
                 height: 1
-                color: Appearance.inirEverywhere
-                    ? Appearance.inir.colBorder
-                    : Appearance.colors.colOutlineVariant
+                color:  Appearance.colors.colOutlineVariant
             }
 
-            // ── Category tab row ────────────────────────────────────────────
-            ScrollView {
+            // ── Result list ────────────────────────────────────────────────
+            ListView {
+                id: resultList
+                visible:        root.displayList.length > 0
                 Layout.fillWidth: true
-                implicitHeight: categoryRow.implicitHeight + 8
-                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                clip: true
+                implicitWidth:  Appearance.sizes.searchWidth + 80
+                implicitHeight: Math.min(600, contentHeight + topMargin + bottomMargin)
+                clip:    true
+                topMargin:    10
+                bottomMargin: 10
+                spacing: 2
+                KeyNavigation.up: searchBar
+                highlightMoveDuration: 100
 
-                RowLayout {
-                    id: categoryRow
-                    anchors {
-                        left: parent.left; leftMargin: 8
-                        right: parent.right; rightMargin: 8
-                        verticalCenter: parent.verticalCenter
-                    }
-                    spacing: 4
-
-                    Repeater {
-                        model: InirMenuService.categories
-
-                        InirMenuCategoryButton {
-                            required property var modelData
-                            required property int index
-
-                            categoryId:    modelData.id
-                            categoryLabel: modelData.label
-                            categoryIcon:  modelData.icon
-                            active:        InirMenuService.activeCategoryId === modelData.id
-
-                            onClicked: {
-                                InirMenuService.activeCategoryId = modelData.id
-                                InirMenuService.query = ""
-                                searchInput.text = ""
-                                searchInput.forceActiveFocus()
-                            }
-
-                            StyledToolTip { text: modelData.description }
-                        }
-                    }
+                onFocusChanged: {
+                    if (focus) currentIndex = 1
                 }
-            }
 
-            // ── Divider ─────────────────────────────────────────────────────
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.inirEverywhere
-                    ? Appearance.inir.colBorder
-                    : Appearance.colors.colOutlineVariant
-            }
-
-            // ── Result list / empty state ────────────────────────────────────
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                implicitHeight: 380
-                clip: true
-
-                // Empty state
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    visible: root.currentResults.length === 0
-                    spacing: 8
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: {
-                            const cat = InirMenuService.activeCategory()
-                            return cat ? cat.icon : "apps"
-                        }
-                        iconSize: 48
-                        color: Appearance.inirEverywhere
-                            ? Appearance.inir.colSubtext
-                            : Appearance.colors.colSubtext
-                        opacity: 0.4
-                    }
-
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: InirMenuService.query === ""
-                            ? (InirMenuService.activeCategory()?.description ?? "")
-                            : "No results"
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.inirEverywhere
-                            ? Appearance.inir.colSubtext
-                            : Appearance.colors.colSubtext
-                        opacity: 0.6
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        Layout.maximumWidth: 320
+                Connections {
+                    target: root
+                    function onDisplayListChanged() {
+                        if (resultList.count > 0) resultList.currentIndex = 0
                     }
                 }
 
-                // Results
-                StyledListView {
-                    id: resultList
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 2
-                    clip: true
+                model: root.displayList
 
-                    KeyNavigation.up: searchInput
-                    highlight: null   // we colour items ourselves
-
-                    model: root.currentResults
-
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape) {
-                            InirMenuService.open = false
-                            event.accepted = true
-                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            const item = root.currentResults[currentIndex]
-                            if (item && item.execute) item.execute()
-                            event.accepted = true
-                        }
-                    }
-
-                    delegate: InirMenuResultItem {
-                        required property var modelData
-                        required property int index
-
-                        width: ListView.view?.width ?? 0
-                        entry: modelData
-
-                        // keyboard highlight via currentIndex
-                        ListView.onIsCurrentItemChanged: {
-                            if (ListView.isCurrentItem) forceActiveFocus()
-                        }
-                    }
-                }
-            }
-
-            // ── Footer hint ──────────────────────────────────────────────────
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: footerRow.implicitHeight + 8
-                color: Appearance.inirEverywhere
-                    ? Appearance.inir.colLayer1
-                    : Appearance.colors.colSurfaceContainerLow
-
-                RowLayout {
-                    id: footerRow
-                    anchors {
-                        left: parent.left; leftMargin: 12
-                        right: parent.right; rightMargin: 12
-                        verticalCenter: parent.verticalCenter
-                    }
-                    spacing: 16
-
-                    // keyboard shortcut hints
-                    Repeater {
-                        model: [
-                            { key: "↑↓",    hint: "Navigate" },
-                            { key: "Enter", hint: "Execute"  },
-                            { key: "Esc",   hint: "Close"    },
-                        ]
-                        RowLayout {
-                            required property var modelData
-                            spacing: 4
-
-                            Rectangle {
-                                radius: 3
-                                color: Appearance.inirEverywhere
-                                    ? Appearance.inir.colLayer2
-                                    : Appearance.colors.colSurfaceContainerHigh
-                                implicitWidth:  kbLabel.implicitWidth + 8
-                                implicitHeight: kbLabel.implicitHeight + 4
-                                StyledText {
-                                    id: kbLabel
-                                    anchors.centerIn: parent
-                                    text: modelData.key
-                                    font.pixelSize: Appearance.font.pixelSize.tiny ?? 10
-                                    color: Appearance.inirEverywhere
-                                        ? Appearance.inir.colText
-                                        : Appearance.m3colors.m3onSurface
-                                }
-                            }
-
-                            StyledText {
-                                text: modelData.hint
-                                font.pixelSize: Appearance.font.pixelSize.tiny ?? 10
-                                color: Appearance.inirEverywhere
-                                    ? Appearance.inir.colSubtext
-                                    : Appearance.colors.colSubtext
-                            }
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    StyledText {
-                        text: "Inir Menu"
-                        font.pixelSize: Appearance.font.pixelSize.tiny ?? 10
-                        color: Appearance.inirEverywhere
-                            ? Appearance.inir.colSubtext
-                            : Appearance.colors.colSubtext
-                        opacity: 0.5
-                    }
+                delegate: InirMenuResultItem {
+                    required property var  modelData
+                    required property int  index
+                    anchors.left:  parent?.left
+                    anchors.right: parent?.right
+                    entry:         modelData
+                    query:         root.inCategory ? root.debouncedSearch : ""
+                    isBackRow:     modelData._isBackRow   ?? false
+                    isCategoryRow: modelData._isCategoryRow ?? false
                 }
             }
         }
