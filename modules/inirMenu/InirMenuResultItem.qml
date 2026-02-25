@@ -4,6 +4,7 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Widgets
 
 // A single clickable result row in the Inir Menu result list
 RippleButton {
