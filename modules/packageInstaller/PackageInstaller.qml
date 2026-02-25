@@ -128,8 +128,7 @@ Scope {
             : [installScript, "-S", "--noconfirm", packageName];
 
         console.log("[PackageInstaller] Install command:", installCmd.join(" "));
-        Quickshell.execDetached(["/usr/bin/notify-send", "Package Installer",
-            `Installing ${packageName}...`, "-a", "Quick Action"]);
+        Quickshell.execDetached(["/usr/bin/notify-send", "Package Installer", `Installing ${packageName}...`, "-a", "Quick Action"]);
 
         const proc = Process {
             command: installCmd
