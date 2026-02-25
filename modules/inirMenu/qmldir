@@ -1,6 +1,7 @@
 module qs.modules.inirMenu
 
 InirMenu 1.0 InirMenu.qml
+InirMenuWidget 1.0 InirMenuContent.qml
 InirMenuContent 1.0 InirMenuContent.qml
 InirMenuSearchBar 1.0 InirMenuSearchBar.qml
 InirMenuResultItem 1.0 InirMenuResultItem.qml

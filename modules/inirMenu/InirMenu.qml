@@ -2,57 +2,58 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.inirMenu
+import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
-// ============================================================================
-// InirMenu — Global launcher panel
-// Triggered by Ctrl+Super+Space via IPC target "inirMenu"
-// ============================================================================
-
 Scope {
     id: inirMenuScope
 
     Variants {
+        id: inirMenuVariants
         model: Quickshell.screens
+
         PanelWindow {
-            id: panelRoot
+            id: root
             required property var modelData
 
             screen: modelData
             visible: InirMenuService.open
 
-            exclusiveZone: 0
-            implicitWidth:  screen?.width  ?? 1920
-            implicitHeight: screen?.height ?? 1080
+            exclusionMode: ExclusionMode.Ignore
 
-            WlrLayershell.namespace:     "quickshell:inirMenu"
-            WlrLayershell.layer:         WlrLayer.Overlay
+            WlrLayershell.namespace: "quickshell:inirMenu"
+            WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: InirMenuService.open
-                                            ? WlrKeyboardFocus.Exclusive
-                                            : WlrKeyboardFocus.None
+                ? WlrKeyboardFocus.Exclusive
+                : WlrKeyboardFocus.None
+
+            // MUST be transparent — same as Overview
             color: "transparent"
 
-            anchors { top: true; bottom: true; left: true; right: true }
-
-            // ── Hyprland focus grab ─────────────────────────────────────────
-            CompositorFocusGrab {
-                id: grab
-                windows: [panelRoot]
-                active: CompositorService.isHyprland && panelRoot.visible
-                onCleared: { if (!active) InirMenuService.open = false }
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
             }
 
-            // ── Scrim ───────────────────────────────────────────────────────
+            // Scrim — same pattern as Overview.qml
             Rectangle {
                 anchors.fill: parent
-                z: 0
-                color: ColorUtils.transparentize(Appearance.m3colors.m3background, 0.6)
+                z: -1
+                color: {
+                    const v = 35
+                    const a = v / 100
+                    return ColorUtils.transparentize(Appearance.m3colors.m3background, 1 - a)
+                }
                 opacity: InirMenuService.open ? 1 : 0
                 visible: opacity > 0.001
                 Behavior on opacity {
@@ -60,73 +61,93 @@ Scope {
                 }
             }
 
-            // ── Backdrop click to dismiss ───────────────────────────────────
+            // Backdrop click to close — same pattern as Overview.qml
             MouseArea {
                 anchors.fill: parent
-                z: 1
                 onClicked: mouse => {
-                    const local = mapToItem(contentLoader, mouse.x, mouse.y)
-                    const inside = local.x >= 0 && local.x <= contentLoader.width
-                                && local.y >= 0 && local.y <= contentLoader.height
+                    const pos = mapToItem(menuWidget, mouse.x, mouse.y)
+                    const inside = pos.x >= 0 && pos.x <= menuWidget.width
+                                && pos.y >= 0 && pos.y <= menuWidget.height
                     if (!inside) InirMenuService.open = false
                 }
             }
 
-            // ── Content panel ───────────────────────────────────────────────
-            Loader {
-                id: contentLoader
-                z: 2
-                active: InirMenuService.open
-
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                    verticalCenter:   parent.verticalCenter
-                    verticalCenterOffset: Config.options?.bar?.bottom
-                        ? -(Appearance.sizes.baseBarHeight / 2)
-                        :  (Appearance.sizes.baseBarHeight / 2)
-                }
-
-                // Animate open/close
-                opacity: InirMenuService.open ? 1 : 0
-                scale:   InirMenuService.open ? 1 : 0.94
-                transform: Translate {
-                    y: InirMenuService.open ? 0 : -24
-                    Behavior on y {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: 250; easing.type: Easing.OutQuart }
-                    }
-                }
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: 180; easing.type: Easing.OutQuart }
-                }
-                Behavior on scale {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: 250; easing.type: Easing.OutQuart }
-                }
-
-                sourceComponent: InirMenuContent {
-                    // Close on Escape
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape) InirMenuService.open = false
-                    }
+            // Focus grab for Hyprland
+            CompositorFocusGrab {
+                id: grab
+                windows: [root]
+                property bool canBeActive: CompositorService.isHyprland
+                active: false
+                onCleared: {
+                    if (!active) InirMenuService.open = false
                 }
             }
 
-            // ── Global Escape key ───────────────────────────────────────────
-            Keys.onPressed: event => {
-                if (event.key === Qt.Key_Escape) InirMenuService.open = false
+            Timer {
+                id: delayedGrabTimer
+                interval: Config.options?.hacks?.arbitraryRaceConditionDelay ?? 150
+                repeat: false
+                onTriggered: {
+                    if (!grab.canBeActive) return
+                    grab.active = InirMenuService.open
+                }
+            }
+
+            // Column — same anchor pattern as Overview.qml
+            Column {
+                id: columnLayout
+                visible: InirMenuService.open
+                transformOrigin: Item.Top
+                scale: InirMenuService.open ? 1.0 : 0.97
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                    bottom: parent.bottom
+                    topMargin: {
+                        const base = 0
+                        const respectBar = true
+                        if (respectBar && !(Config.options?.bar?.bottom ?? false)) {
+                            return Appearance.sizes.barHeight + Appearance.rounding.screenRounding + base
+                        }
+                        return base
+                    }
+                }
+
+                Behavior on scale {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
+
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Escape) {
+                        InirMenuService.open = false
+                    }
+                }
+
+                InirMenuWidget {
+                    id: menuWidget
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+            }
+
+            Connections {
+                target: InirMenuService
+                function onOpenChanged() {
+                    if (InirMenuService.open) {
+                        Qt.callLater(() => menuWidget.focusSearchInput())
+                        delayedGrabTimer.start()
+                    } else {
+                        menuWidget.cancelSearch()
+                        grab.active = false
+                    }
+                }
             }
         }
     }
 
-    // Reset query when menu closes
-    Connections {
-        target: InirMenuService
-        function onOpenChanged() {
-            if (!InirMenuService.open) {
-                InirMenuService.query = ""
-            }
-        }
+    IpcHandler {
+        target: "inirMenu"
+        function toggle(): void { InirMenuService.open = !InirMenuService.open }
+        function open(): void   { InirMenuService.open = true }
+        function close(): void  { InirMenuService.open = false }
     }
 }

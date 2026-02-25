@@ -1,5 +1,3 @@
-pragma ComponentBehavior: Bound
-
 import qs
 import qs.services
 import qs.modules.common
@@ -8,85 +6,95 @@ import qs.modules.common.functions
 import qs.modules.inirMenu
 import Qt5Compat.GraphicalEffects
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
-import Quickshell.Widgets
+import Quickshell.Io
 
-// ============================================================================
-// InirMenuContent
-//
-// Identical chrome to the app launcher (GlassBackground + search bar +
-// separator + ListView).  Categories are themselves result rows — clicking one
-// drills into that category's items.  A back-arrow row at the top of the
-// drilled list returns to the category menu.
-// ============================================================================
-
+// Mirrors SearchWidget.qml exactly — same chrome, same focus model.
+// Categories shown as result rows. Click one → drills in. Esc/back → returns.
 Item {
     id: root
 
-    // ── sizing — same as SearchWidget ──────────────────────────────────────
+    // ── public interface (mirrors SearchWidget) ───────────────────────────
+    property string searchingText: ""
+    property bool showResults: activeCat !== null || searchingText !== ""
+
+    // same sizing formula as SearchWidget
     implicitWidth:  searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: searchBar.implicitHeight + searchBarPad * 2 + Appearance.sizes.elevationMargin * 2
+    implicitHeight: searchBar.implicitHeight + searchBar.verticalPadding * 2
+                    + Appearance.sizes.elevationMargin * 2
 
-    property real searchBarPad: 4
-
-    // ── view state ─────────────────────────────────────────────────────────
-    // null  → showing category menu
-    // obj   → showing results for that category
-    property var activeCat: null
+    // ── nav state ─────────────────────────────────────────────────────────
+    property var  activeCat: null          // null = category menu
     property bool inCategory: activeCat !== null
+    property var  cachedResults: []        // populated by _refresh()
 
-    // search text (only active when inCategory)
-    property string searchText: ""
-    property string debouncedSearch: ""
-
+    // debounce — same as SearchWidget
+    property string debouncedSearchText: ""
     Timer {
-        id: debounce
-        interval: 80
-        onTriggered: root.debouncedSearch = root.searchText
+        id: searchDebounceTimer
+        interval: 100
+        onTriggered: {
+            root.debouncedSearchText = root.searchingText
+            root._refresh()
+        }
     }
-    onSearchTextChanged: {
-        if (searchText === "") { debouncedSearch = ""; debounce.stop() }
-        else debounce.restart()
+    onSearchingTextChanged: searchDebounceTimer.restart()
+
+    // ── public functions (mirrors SearchWidget) ───────────────────────────
+    function focusFirstItem()  { appResults.currentIndex = 0 }
+    function focusSearchInput() { searchBar.forceFocus() }
+    function cancelSearch() {
+        searchBar.searchInput.text = ""
+        root.searchingText = ""
+        root.activeCat = null
     }
 
-    // current result list
-    property var displayList: {
+    // ── result builder ────────────────────────────────────────────────────
+    function _refresh() {
         if (!root.inCategory) {
-            // category menu — one row per category
-            return InirMenuService.categories.map(function(cat) {
+            // category menu: always show all 6 categories (no search on this level)
+            root.cachedResults = InirMenuService.categories.map(function(cat) {
                 return {
-                    key:             cat.id,
+                    key:             "cat_" + cat.id,
                     name:            cat.label,
                     clickActionName: "Open",
                     materialSymbol:  cat.icon,
                     type:            cat.description,
                     _isCategoryRow:  true,
-                    _cat:            cat,
-                    execute:         function() { root._openCat(cat) }
+                    execute:         (function(c) {
+                        return function() { root._openCat(c) }
+                    })(cat)
                 }
             })
+            return
         }
-        // drilled — prepend a ‹ Back row then the category results
-        const results = root.activeCat.buildResults(root.debouncedSearch)
+
+        // drilled: filter category items by searchingText
+        const q = root.debouncedSearchText
+        const items = root.activeCat.buildResults(q)
+
+        // back row always first
         const backRow = {
             key:             "__back__",
-            name:            root.activeCat.label,
+            name:            "Back",
             clickActionName: "Back",
             materialSymbol:  "arrow_back",
-            type:            "",
+            type:            root.activeCat.label,
             _isBackRow:      true,
             execute:         function() { root._goBack() }
         }
-        return [backRow].concat(results.map(function(r, i) {
+
+        root.cachedResults = [backRow].concat(items.map(function(r, i) {
             return {
-                key:             r.id ?? ("r" + i),
-                name:            r.name,
-                clickActionName: r.verb ?? "Open",
-                materialSymbol:  (r.iconType === 2) ? "" : (r.icon ?? ""),
+                key:             r.id ? ("r_" + r.id) : ("r_" + i),
+                name:            r.name  ?? "",
+                clickActionName: r.verb  ?? "Open",
+                materialSymbol:  (r.iconType !== 2) ? (r.icon ?? "") : "",
                 icon:            (r.iconType === 2) ? (r.icon ?? "") : "",
                 type:            r.description ?? "",
+                _isResultRow:    true,
                 execute:         r.execute
             }
         }))
@@ -94,36 +102,71 @@ Item {
 
     function _openCat(cat) {
         root.activeCat = cat
-        root.searchText = ""
+        root.searchingText = ""
         searchBar.searchInput.text = ""
-        resultList.currentIndex = 0
-        Qt.callLater(function() { searchBar.forceFocus() })
+        root._refresh()
+        appResults.currentIndex = 0
+        Qt.callLater(root.focusSearchInput)
     }
 
     function _goBack() {
         root.activeCat = null
-        root.searchText = ""
+        root.searchingText = ""
         searchBar.searchInput.text = ""
-        resultList.currentIndex = 0
-        Qt.callLater(function() { searchBar.forceFocus() })
+        root._refresh()
+        appResults.currentIndex = 0
+        Qt.callLater(root.focusSearchInput)
     }
 
-    // reset when menu closes
-    Connections {
-        target: InirMenuService
-        function onOpenChanged() {
-            if (!InirMenuService.open) {
-                root.activeCat = null
-                root.searchText = ""
-                searchBar.searchInput.text = ""
-            } else {
-                resultList.currentIndex = 0
-                Qt.callLater(function() { searchBar.forceFocus() })
+    Component.onCompleted: _refresh()
+
+    // same key handling as SearchWidget — type anywhere, redirects to input
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) return
+
+        if (event.key === Qt.Key_Backspace) {
+            if (!searchBar.searchInput.activeFocus) {
+                root.focusSearchInput()
+                if (event.modifiers & Qt.ControlModifier) {
+                    let text = searchBar.searchInput.text
+                    let pos  = searchBar.searchInput.cursorPosition
+                    if (pos > 0) {
+                        let left  = text.slice(0, pos)
+                        let match = left.match(/(\s*\S+)\s*$/)
+                        let del   = match ? match[0].length : 1
+                        searchBar.searchInput.text = text.slice(0, pos - del) + text.slice(pos)
+                        searchBar.searchInput.cursorPosition = pos - del
+                    }
+                } else {
+                    if (searchBar.searchInput.cursorPosition > 0) {
+                        let t = searchBar.searchInput.text
+                        let p = searchBar.searchInput.cursorPosition
+                        searchBar.searchInput.text = t.slice(0, p - 1) + t.slice(p)
+                        searchBar.searchInput.cursorPosition = p - 1
+                    }
+                }
+                searchBar.searchInput.cursorPosition = searchBar.searchInput.text.length
+                event.accepted = true
+            }
+            return
+        }
+
+        if (event.text && event.text.length === 1
+                && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Return
+                && event.key !== Qt.Key_Delete && event.text.charCodeAt(0) >= 0x20) {
+            if (!searchBar.searchInput.activeFocus) {
+                root.focusSearchInput()
+                let t = searchBar.searchInput.text
+                let p = searchBar.searchInput.cursorPosition
+                searchBar.searchInput.text = t.slice(0, p) + event.text + t.slice(p)
+                searchBar.searchInput.cursorPosition = p + 1
+                event.accepted = true
+                root.focusFirstItem()
             }
         }
     }
 
-    // ── shadow + glass card — exactly as SearchWidget ──────────────────────
+    // ── shadow + glass card — exact copy of SearchWidget ─────────────────
     StyledRectangularShadow {
         target: searchWidgetContent
     }
@@ -131,14 +174,14 @@ Item {
     GlassBackground {
         id: searchWidgetContent
         anchors {
-            top:              parent.top
+            top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin:        Appearance.sizes.elevationMargin
+            topMargin: Appearance.sizes.elevationMargin
         }
         clip: true
         implicitWidth:  columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight
-        radius: searchBar.searchInput.implicitHeight / 2 + root.searchBarPad
+        radius: searchBar.height / 2 + searchBar.verticalPadding
         fallbackColor: Appearance.colors.colBackgroundSurfaceContainer
         inirColor:     Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
@@ -148,14 +191,14 @@ Item {
             : Appearance.colors.colLayer0Border
 
         Behavior on implicitHeight {
-            enabled: InirMenuService.open
+            enabled: InirMenuService.open && root.showResults
             NumberAnimation { duration: 200; easing.type: Easing.OutQuart }
         }
 
         ColumnLayout {
             id: columnLayout
             anchors {
-                top:              parent.top
+                top: parent.top
                 horizontalCenter: parent.horizontalCenter
             }
             spacing: 0
@@ -169,64 +212,45 @@ Item {
                 }
             }
 
-            // ── Search bar row — identical to SearchBar.qml ────────────────
+            // ── search bar — same as SearchWidget uses SearchBar ──────────
             InirMenuSearchBar {
                 id: searchBar
-                property real verticalPadding: root.searchBarPad
-                Layout.fillWidth:   true
-                Layout.leftMargin:  10
-                Layout.rightMargin: 4
-                Layout.topMargin:   verticalPadding
+                property real verticalPadding: 4
+                Layout.fillWidth:    true
+                Layout.leftMargin:   10
+                Layout.rightMargin:  4
+                Layout.topMargin:    verticalPadding
                 Layout.bottomMargin: verticalPadding
 
-                searchingText:   root.searchText
-                inCategory:      root.inCategory
-                categoryIcon:    root.activeCat?.icon ?? "apps"
-                categoryLabel:   root.activeCat?.label ?? ""
+                searchingText: root.searchingText
+                inCategory:    root.inCategory
+                categoryIcon:  root.activeCat?.icon  ?? "apps"
+                categoryLabel: root.activeCat?.label ?? ""
 
                 onSearchingTextChanged: {
-                    if (searchingText !== root.searchText)
-                        root.searchText = searchingText
+                    if (searchingText !== root.searchingText)
+                        root.searchingText = searchingText
                 }
-
                 onBackRequested: root._goBack()
-
-                searchInput.Keys.onPressed: function(event) {
-                    if (event.key === Qt.Key_Down) {
-                        resultList.forceActiveFocus()
-                        resultList.currentIndex = 0
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Escape) {
-                        if (root.inCategory) root._goBack()
-                        else InirMenuService.open = false
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        if (root.displayList.length > 0) {
-                            const entry = root.displayList[0]
-                            if (entry && entry.execute) entry.execute()
-                        }
-                        event.accepted = true
-                    }
-                }
             }
 
-            // ── Separator ──────────────────────────────────────────────────
+            // ── separator ─────────────────────────────────────────────────
             Rectangle {
-                visible:        root.displayList.length > 0
+                visible: root.showResults
                 Layout.fillWidth: true
                 height: 1
-                color:  Appearance.colors.colOutlineVariant
+                color: Appearance.colors.colOutlineVariant
             }
 
-            // ── Result list ────────────────────────────────────────────────
+            // ── result list — same as SearchWidget ────────────────────────
             ListView {
-                id: resultList
-                visible:        root.displayList.length > 0
+                id: appResults
+                visible: root.showResults
                 Layout.fillWidth: true
-                implicitWidth:  Appearance.sizes.searchWidth + 80
-                implicitHeight: Math.min(600, contentHeight + topMargin + bottomMargin)
-                clip:    true
-                topMargin:    10
+                implicitWidth: Appearance.sizes.searchWidth + 80
+                implicitHeight: Math.min(600, appResults.contentHeight + topMargin + bottomMargin)
+                clip:        true
+                topMargin:   10
                 bottomMargin: 10
                 spacing: 2
                 KeyNavigation.up: searchBar
@@ -238,22 +262,25 @@ Item {
 
                 Connections {
                     target: root
-                    function onDisplayListChanged() {
-                        if (resultList.count > 0) resultList.currentIndex = 0
+                    function onSearchingTextChanged() {
+                        if (appResults.count > 0) appResults.currentIndex = 0
+                    }
+                    function onActiveCatChanged() {
+                        appResults.currentIndex = 0
                     }
                 }
 
-                model: root.displayList
+                model: root.cachedResults
 
                 delegate: InirMenuResultItem {
-                    required property var  modelData
-                    required property int  index
+                    required property var modelData
+                    required property int index
                     anchors.left:  parent?.left
                     anchors.right: parent?.right
                     entry:         modelData
-                    query:         root.inCategory ? root.debouncedSearch : ""
-                    isBackRow:     modelData._isBackRow   ?? false
+                    query:         root.inCategory ? root.debouncedSearchText : ""
                     isCategoryRow: modelData._isCategoryRow ?? false
+                    isBackRow:     modelData._isBackRow     ?? false
                 }
             }
         }

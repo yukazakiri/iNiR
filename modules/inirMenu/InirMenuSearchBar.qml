@@ -9,12 +9,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
-// ============================================================================
-// InirMenuSearchBar
-// Clones the look of SearchBar.qml:
-//   MaterialShapeWrappedMaterialSymbol | ToolbarTextField | optional buttons
-// ============================================================================
-
+// Mirrors SearchBar.qml — MaterialShapeWrappedMaterialSymbol + ToolbarTextField
 RowLayout {
     id: root
     spacing: 6
@@ -29,7 +24,7 @@ RowLayout {
 
     function forceFocus() { searchInput.forceActiveFocus() }
 
-    // icon shape & symbol mirrors SearchBar logic
+    // Dynamic icon — same pattern as SearchBar.qml
     MaterialShapeWrappedMaterialSymbol {
         id: searchIcon
         Layout.alignment: Qt.AlignVCenter
@@ -44,29 +39,34 @@ RowLayout {
         id: searchInput
         Layout.topMargin:    4
         Layout.bottomMargin: 4
-        implicitHeight:      40
-        font.pixelSize:      Appearance.font.pixelSize.small
-        placeholderText:     root.inCategory
+        implicitHeight: 40
+        font.pixelSize: Appearance.font.pixelSize.small
+        placeholderText: root.inCategory
             ? "Search " + root.categoryLabel + "…"
-            : "Inir Menu"
-        implicitWidth: Appearance.sizes.searchWidth
+            : "Search, calculate or run"
+        implicitWidth: root.searchingText === ""
+            ? Appearance.sizes.searchWidthCollapsed
+            : Appearance.sizes.searchWidth
+
+        Behavior on implicitWidth {
+            NumberAnimation { duration: 250; easing.type: Easing.OutQuart }
+        }
 
         onTextChanged: root.searchingText = text
 
         onAccepted: {
-            // handled by parent via Keys.onPressed
+            // Enter key — handled at parent level via Keys
         }
     }
 
-    // Back button when drilled into a category
-    Loader {
-        active: root.inCategory
-        sourceComponent: IconToolbarButton {
-            Layout.topMargin:    4
-            Layout.bottomMargin: 4
-            text: "arrow_back"
-            onClicked: root.backRequested()
-            StyledToolTip { text: "Back to menu" }
-        }
+    // Back button — visible only when drilled into a category
+    IconToolbarButton {
+        Layout.topMargin:    4
+        Layout.bottomMargin: 4
+        Layout.rightMargin:  4
+        visible: root.inCategory
+        text: "arrow_back"
+        onClicked: root.backRequested()
+        StyledToolTip { text: "Back" }
     }
 }
