@@ -173,21 +173,29 @@ Singleton {
 
     property list<var> results: {
         console.log(`[LauncherSearch] ========== RESULTS PROPERTY EVALUATED ==========`);
-        const q = root._debouncedQuery
+        const q = root._debouncedQuery;
         console.log(`[LauncherSearch] Debounced query:`, q);
         console.log(`[LauncherSearch] Raw query:`, root.query);
         if (q === "")
             return [];
         console.log(`[LauncherSearch] Query not empty, processing...`);
 
-        const clipboardPrefix = Config.options?.search?.prefix?.clipboard ?? ";"
-        const emojisPrefix = Config.options?.search?.prefix?.emojis ?? ":"
-        const mathPrefix = Config.options?.search?.prefix?.math ?? "="
-        const shellPrefix = Config.options?.search?.prefix?.shellCommand ?? "$"
-        const webPrefix = Config.options?.search?.prefix?.webSearch ?? "?"
-        const actionPrefix = Config.options?.search?.prefix?.action ?? ">"
-        const appPrefix = Config.options?.search?.prefix?.app ?? "/"
-        console.log(`[LauncherSearch] Prefixes:`, { clipboard: clipboardPrefix, emojis: emojisPrefix, math: mathPrefix, shell: shellPrefix, web: webPrefix, action: actionPrefix, app: appPrefix });
+        const clipboardPrefix = Config.options?.search?.prefix?.clipboard ?? ";";
+        const emojisPrefix = Config.options?.search?.prefix?.emojis ?? ":";
+        const mathPrefix = Config.options?.search?.prefix?.math ?? "=";
+        const shellPrefix = Config.options?.search?.prefix?.shellCommand ?? "$";
+        const webPrefix = Config.options?.search?.prefix?.webSearch ?? "?";
+        const actionPrefix = Config.options?.search?.prefix?.action ?? ">";
+        const appPrefix = Config.options?.search?.prefix?.app ?? "/";
+        console.log(`[LauncherSearch] Prefixes:`, {
+            clipboard: clipboardPrefix,
+            emojis: emojisPrefix,
+            math: mathPrefix,
+            shell: shellPrefix,
+            web: webPrefix,
+            action: actionPrefix,
+            app: appPrefix
+        });
 
         // Clipboard search
         if (q.startsWith(clipboardPrefix)) {
@@ -337,30 +345,31 @@ Singleton {
         console.log(`[LauncherSearch] allActions count:`, root.allActions.length);
         console.log(`[LauncherSearch] allActions array:`, root.allActions.map(a => a.action));
         const actionResults = root.allActions.map(action => {
-            const actionStr = `${actionPrefix}${action.action}`
+            const actionStr = `${actionPrefix}${action.action}`;
             console.log(`[LauncherSearch] Checking action: ${actionStr} against query: ${q}`);
-            const result = resultComp.createObject(null, {
-                name: q.startsWith(actionStr) ? q : actionStr,
-                verb: Translation.tr("Run"),
-                type: Translation.tr("Action"),
-                iconName: "settings_suggest",
-                iconType: LauncherSearchResult.IconType.Material,
-                execute: () => action.execute(q.split(" ").slice(1).join(" "))
-            });
-            console.log(`[LauncherSearch] ✓ Created action result for: ${actionStr}`);
-            return result;
-        });
-        console.log(`[LauncherSearch] ✗ Action ${actionStr} didn't match query ${q}`);
-        return null;
-    }).filter(Boolean);
-    console.log(`[LauncherSearch] Action results count:`, actionResults.length);
-    console.log(`[LauncherSearch] Final total results count:`, result.length + actionResults.length);
-    result = result.concat(actionResults)
-    console.log(`[LauncherSearch] After adding action results, total count:`, result.length);
+            if (actionStr.startsWith(q) || q.startsWith(actionStr)) {
+                const result = resultComp.createObject(null, {
+                    name: q.startsWith(actionStr) ? q : actionStr,
+                    verb: Translation.tr("Run"),
+                    type: Translation.tr("Action"),
+                    iconName: "settings_suggest",
+                    iconType: LauncherSearchResult.IconType.Material,
+                    execute: () => action.execute(q.split(" ").slice(1).join(" "))
+                });
+                console.log(`[LauncherSearch] ✓ Created action result for: ${actionStr}`);
+                return result;
+            }
+            console.log(`[LauncherSearch] ✗ Action ${actionStr} didn't match query ${q}`);
+            return null;
+        }).filter(Boolean);
+        console.log(`[LauncherSearch] Action results count:`, actionResults.length);
+        console.log(`[LauncherSearch] Final total results count:`, result.length + actionResults.length);
+        result = result.concat(actionResults);
+        console.log(`[LauncherSearch] After adding action results, total count:`, result.length);
 
-    // Add fallbacks if not prefix-specific
-    const showDefaults = Config.options?.search?.prefix?.showDefaultActionsWithoutPrefix ?? true
-    console.log(`[LauncherSearch] Show defaults:`, showDefaults);
+        // Add fallbacks if not prefix-specific
+        const showDefaults = Config.options?.search?.prefix?.showDefaultActionsWithoutPrefix ?? true;
+        console.log(`[LauncherSearch] Show defaults:`, showDefaults);
         if (showDefaults) {
             if (!startsWithShell)
                 result.push(cmdObj);
