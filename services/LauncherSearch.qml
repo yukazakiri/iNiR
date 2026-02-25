@@ -15,38 +15,30 @@ Singleton {
 
     property string query: ""
     property string _debouncedQuery: ""
-    
+
     // Debounce timer for search - prevents lag while typing
     Timer {
         id: debounceTimer
         interval: 80  // 80ms debounce - fast enough to feel responsive
         onTriggered: root._debouncedQuery = root.query
     }
-    
+
     onQueryChanged: {
         // Immediate update for empty query (instant clear)
         if (query === "") {
-            _debouncedQuery = ""
-            debounceTimer.stop()
+            _debouncedQuery = "";
+            debounceTimer.stop();
         } else {
-            debounceTimer.restart()
+            debounceTimer.restart();
         }
     }
 
     function ensurePrefix(prefix: string): void {
-        const prefixes = [
-            Config.options?.search?.prefix?.action ?? ">",
-            Config.options?.search?.prefix?.app ?? "/",
-            Config.options?.search?.prefix?.clipboard ?? ";",
-            Config.options?.search?.prefix?.emojis ?? ":",
-            Config.options?.search?.prefix?.math ?? "=",
-            Config.options?.search?.prefix?.shellCommand ?? "$",
-            Config.options?.search?.prefix?.webSearch ?? "?",
-        ]
+        const prefixes = [Config.options?.search?.prefix?.action ?? ">", Config.options?.search?.prefix?.app ?? "/", Config.options?.search?.prefix?.clipboard ?? ";", Config.options?.search?.prefix?.emojis ?? ":", Config.options?.search?.prefix?.math ?? "=", Config.options?.search?.prefix?.shellCommand ?? "$", Config.options?.search?.prefix?.webSearch ?? "?",];
         if (prefixes.some(p => root.query.startsWith(p))) {
-            root.query = prefix + root.query.slice(1)
+            root.query = prefix + root.query.slice(1);
         } else {
-            root.query = prefix + root.query
+            root.query = prefix + root.query;
         }
     }
 
@@ -54,58 +46,67 @@ Singleton {
         {
             action: "accentcolor",
             execute: args => {
-                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch", "--color", ...(args !== '' ? [`${args}`] : [])])
+                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch", "--color", ...(args !== '' ? [`${args}`] : [])]);
             }
         },
         {
             action: "dark",
             execute: () => {
-                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "dark", "--noswitch"])
+                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "dark", "--noswitch"]);
             }
         },
         {
             action: "konachanwallpaper",
             execute: () => {
-                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random/random_konachan_wall.sh")])
+                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random/random_konachan_wall.sh")]);
             }
         },
         {
-            action: "light", 
+            action: "light",
             execute: () => {
-                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "light", "--noswitch"])
+                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "light", "--noswitch"]);
             }
         },
         {
             action: "superpaste",
             execute: args => {
                 if (!/^(\d+)/.test(args.trim())) {
-                    Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Superpaste"), 
-                        Translation.tr("Usage: >superpaste NUM[i]\nExamples: >superpaste 4i (last 4 images), >superpaste 7 (last 7 entries)"), 
-                        "-a", "Shell"])
-                    return
+                    Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Superpaste"), Translation.tr("Usage: >superpaste NUM[i]\nExamples: >superpaste 4i (last 4 images), >superpaste 7 (last 7 entries)"), "-a", "Shell"]);
+                    return;
                 }
-                const match = /^(?:(\d+)(i)?)/.exec(args.trim())
-                const count = match[1] ? parseInt(match[1]) : 1
-                const isImage = !!match[2]
-                Cliphist.superpaste(count, isImage)
+                const match = /^(?:(\d+)(i)?)/.exec(args.trim());
+                const count = match[1] ? parseInt(match[1]) : 1;
+                const isImage = !!match[2];
+                Cliphist.superpaste(count, isImage);
             }
         },
         {
             action: "todo",
             execute: args => {
-                Todo.addTask(args)
+                Todo.addTask(args);
             }
         },
         {
             action: "wallpaper",
             execute: () => {
-                GlobalStates.wallpaperSelectorOpen = true
+                GlobalStates.wallpaperSelectorOpen = true;
+            }
+        },
+        {
+            action: "install",
+            execute: args => {
+                console.log(`[LauncherSearch] ========== INSTALL ACTION TRIGGERED ==========`);
+                console.log(`[LauncherSearch] Install action executed with args:`, args);
+                console.log(`[LauncherSearch] GlobalStates.packageInstallerOpen before:`, GlobalStates.packageInstallerOpen);
+                console.log(`[LauncherSearch] Setting GlobalStates.packageInstallerOpen to true`);
+                GlobalStates.packageInstallerOpen = true;
+                console.log(`[LauncherSearch] GlobalStates.packageInstallerOpen after:`, GlobalStates.packageInstallerOpen);
             }
         },
         {
             action: "wipeclipboard",
             execute: () => {
-                Cliphist.wipe()
+                Cliphist.wipe();
             }
         },
     ]
@@ -120,9 +121,9 @@ Singleton {
                 const actionName = fileName.replace(/\.[^/.]+$/, ""); // strip extension
                 actions.push({
                     action: actionName,
-                    execute: ((path) => (args) => {
-                        Quickshell.execDetached([path, ...(args ? args.split(" ") : [])]);
-                    })(FileUtils.trimFileProtocol(filePath.toString()))
+                    execute: (path => args => {
+                                Quickshell.execDetached([path, ...(args ? args.split(" ") : [])]);
+                            })(FileUtils.trimFileProtocol(filePath.toString()))
                 });
             }
         }
@@ -146,12 +147,12 @@ Singleton {
         id: mathTimer
         interval: Config.options?.search?.nonAppResultDelay ?? 150
         onTriggered: {
-            let expr = root._debouncedQuery
-            const mathPrefix = Config.options?.search?.prefix?.math ?? "="
+            let expr = root._debouncedQuery;
+            const mathPrefix = Config.options?.search?.prefix?.math ?? "=";
             if (expr.startsWith(mathPrefix)) {
-                expr = expr.slice(mathPrefix.length)
+                expr = expr.slice(mathPrefix.length);
             }
-            mathProc.calculateExpression(expr)
+            mathProc.calculateExpression(expr);
         }
     }
 
@@ -159,20 +160,25 @@ Singleton {
         id: mathProc
         property list<string> baseCommand: ["qalc", "-t"]
         function calculateExpression(expression: string): void {
-            mathProc.running = false
-            mathProc.command = baseCommand.concat(expression)
-            mathProc.running = true
+            mathProc.running = false;
+            mathProc.command = baseCommand.concat(expression);
+            mathProc.running = true;
         }
         stdout: SplitParser {
             onRead: data => {
-                root.mathResult = data
+                root.mathResult = data;
             }
         }
     }
 
     property list<var> results: {
+        console.log(`[LauncherSearch] ========== RESULTS PROPERTY EVALUATED ==========`);
         const q = root._debouncedQuery
-        if (q === "") return []
+        console.log(`[LauncherSearch] Debounced query:`, q);
+        console.log(`[LauncherSearch] Raw query:`, root.query);
+        if (q === "")
+            return [];
+        console.log(`[LauncherSearch] Query not empty, processing...`);
 
         const clipboardPrefix = Config.options?.search?.prefix?.clipboard ?? ";"
         const emojisPrefix = Config.options?.search?.prefix?.emojis ?? ":"
@@ -181,10 +187,11 @@ Singleton {
         const webPrefix = Config.options?.search?.prefix?.webSearch ?? "?"
         const actionPrefix = Config.options?.search?.prefix?.action ?? ">"
         const appPrefix = Config.options?.search?.prefix?.app ?? "/"
+        console.log(`[LauncherSearch] Prefixes:`, { clipboard: clipboardPrefix, emojis: emojisPrefix, math: mathPrefix, shell: shellPrefix, web: webPrefix, action: actionPrefix, app: appPrefix });
 
         // Clipboard search
         if (q.startsWith(clipboardPrefix)) {
-            const searchStr = StringUtils.cleanPrefix(q, clipboardPrefix)
+            const searchStr = StringUtils.cleanPrefix(q, clipboardPrefix);
             return Cliphist.fuzzyQuery(searchStr).map(entry => {
                 return resultComp.createObject(null, {
                     rawValue: entry,
@@ -194,15 +201,15 @@ Singleton {
                     iconName: "content_copy",
                     iconType: LauncherSearchResult.IconType.Material,
                     execute: () => Cliphist.copy(entry)
-                })
-            }).filter(Boolean)
+                });
+            }).filter(Boolean);
         }
 
         // Emoji search
         if (q.startsWith(emojisPrefix)) {
-            const searchStr = StringUtils.cleanPrefix(q, emojisPrefix)
+            const searchStr = StringUtils.cleanPrefix(q, emojisPrefix);
             return Emojis.fuzzyQuery(searchStr).map(entry => {
-                const emoji = entry.match(/^\s*(\S+)/)?.[1] ?? ""
+                const emoji = entry.match(/^\s*(\S+)/)?.[1] ?? "";
                 return resultComp.createObject(null, {
                     rawValue: entry,
                     name: entry.replace(/^\s*\S+\s+/, ""),
@@ -210,20 +217,22 @@ Singleton {
                     iconType: LauncherSearchResult.IconType.Text,
                     verb: Translation.tr("Copy"),
                     type: Translation.tr("Emoji"),
-                    execute: () => { Quickshell.clipboardText = emoji }
-                })
-            }).filter(Boolean)
+                    execute: () => {
+                        Quickshell.clipboardText = emoji;
+                    }
+                });
+            }).filter(Boolean);
         }
 
         // Start math calculation
-        mathTimer.restart()
+        mathTimer.restart();
 
         // Build results
-        let result = []
-        const startsWithNumber = /^\d/.test(q)
-        const startsWithMath = q.startsWith(mathPrefix)
-        const startsWithShell = q.startsWith(shellPrefix)
-        const startsWithWeb = q.startsWith(webPrefix)
+        let result = [];
+        const startsWithNumber = /^\d/.test(q);
+        const startsWithMath = q.startsWith(mathPrefix);
+        const startsWithShell = q.startsWith(shellPrefix);
+        const startsWithWeb = q.startsWith(webPrefix);
 
         // Math result (priority if starts with number or =)
         const mathObj = resultComp.createObject(null, {
@@ -233,11 +242,13 @@ Singleton {
             fontType: LauncherSearchResult.FontType.Monospace,
             iconName: "calculate",
             iconType: LauncherSearchResult.IconType.Material,
-            execute: () => { Quickshell.clipboardText = root.mathResult }
-        })
+            execute: () => {
+                Quickshell.clipboardText = root.mathResult;
+            }
+        });
 
         if (startsWithNumber || startsWithMath) {
-            result.push(mathObj)
+            result.push(mathObj);
         }
 
         // Shell command
@@ -249,14 +260,14 @@ Singleton {
             iconName: "terminal",
             iconType: LauncherSearchResult.IconType.Material,
             execute: () => {
-                let cmd = q.replace("file://", "")
-                cmd = StringUtils.cleanPrefix(cmd, shellPrefix)
-                Quickshell.execDetached(["/usr/bin/bash", "-c", cmd])
+                let cmd = q.replace("file://", "");
+                cmd = StringUtils.cleanPrefix(cmd, shellPrefix);
+                Quickshell.execDetached(["/usr/bin/bash", "-c", cmd]);
             }
-        })
+        });
 
         if (startsWithShell) {
-            result.push(cmdObj)
+            result.push(cmdObj);
         }
 
         // Web search
@@ -267,35 +278,36 @@ Singleton {
             iconName: "travel_explore",
             iconType: LauncherSearchResult.IconType.Material,
             execute: () => {
-                const searchQuery = StringUtils.cleanPrefix(q, webPrefix)
-                const baseUrl = Config.options?.search?.engineBaseUrl ?? "https://www.google.com/search?q="
-                Qt.openUrlExternally(baseUrl + encodeURIComponent(searchQuery))
+                const searchQuery = StringUtils.cleanPrefix(q, webPrefix);
+                const baseUrl = Config.options?.search?.engineBaseUrl ?? "https://www.google.com/search?q=";
+                Qt.openUrlExternally(baseUrl + encodeURIComponent(searchQuery));
             }
-        })
+        });
 
         if (startsWithWeb) {
-            result.push(webObj)
+            result.push(webObj);
         }
 
         // Apps
-        const appQuery = StringUtils.cleanPrefix(q, appPrefix)
-        const appEntries = AppSearch.fuzzyQuery(appQuery)
+        const appQuery = StringUtils.cleanPrefix(q, appPrefix);
+        const appEntries = AppSearch.fuzzyQuery(appQuery);
 
         // Dedupe by display name. Some systems have multiple desktop entries for the same app
         // (e.g. Flatpak + system), which otherwise shows up as duplicated results.
         const seenAppNames = new Set();
-        const appResults = []
+        const appResults = [];
         for (let i = 0; i < appEntries.length; i++) {
-            const entry = appEntries[i]
-            const nameKey = (entry?.name ?? "").trim().toLowerCase()
-            if (nameKey.length === 0) continue
+            const entry = appEntries[i];
+            const nameKey = (entry?.name ?? "").trim().toLowerCase();
+            if (nameKey.length === 0)
+                continue;
             if (seenAppNames.has(nameKey)) {
                 if (root._debugDedupe) {
-                    console.log(`[LauncherSearch] dedupe: skipping duplicate app name='${entry?.name ?? ""}' id='${entry?.id ?? ""}' query='${appQuery}'`)
+                    console.log(`[LauncherSearch] dedupe: skipping duplicate app name='${entry?.name ?? ""}' id='${entry?.id ?? ""}' query='${appQuery}'`);
                 }
-                continue
+                continue;
             }
-            seenAppNames.add(nameKey)
+            seenAppNames.add(nameKey);
 
             appResults.push(resultComp.createObject(null, {
                 type: Translation.tr("App"),
@@ -309,42 +321,58 @@ Singleton {
                 genericName: entry.genericName ?? "",
                 execute: () => {
                     if (!entry.runInTerminal) {
-                        entry.execute()
+                        entry.execute();
                     } else {
-                        const terminal = Config.options?.apps?.terminal ?? "/usr/bin/kitty"
-                        Quickshell.execDetached(["/usr/bin/bash", "-c", `${terminal} -e '${entry.command?.join(" ") ?? ""}'`])
+                        const terminal = Config.options?.apps?.terminal ?? "/usr/bin/kitty";
+                        Quickshell.execDetached(["/usr/bin/bash", "-c", `${terminal} -e '${entry.command?.join(" ") ?? ""}'`]);
                     }
                 }
-            }))
+            }));
         }
-        result = result.concat(appResults)
+        result = result.concat(appResults);
 
         // Actions (built-in + user scripts)
+        console.log(`[LauncherSearch] ========== Processing actions ==========`);
+        console.log(`[LauncherSearch] Query: "${q}"`);
+        console.log(`[LauncherSearch] allActions count:`, root.allActions.length);
+        console.log(`[LauncherSearch] allActions array:`, root.allActions.map(a => a.action));
         const actionResults = root.allActions.map(action => {
             const actionStr = `${actionPrefix}${action.action}`
-            if (actionStr.startsWith(q) || q.startsWith(actionStr)) {
-                return resultComp.createObject(null, {
-                    name: q.startsWith(actionStr) ? q : actionStr,
-                    verb: Translation.tr("Run"),
-                    type: Translation.tr("Action"),
-                    iconName: "settings_suggest",
-                    iconType: LauncherSearchResult.IconType.Material,
-                    execute: () => action.execute(q.split(" ").slice(1).join(" "))
-                })
-            }
-            return null
-        }).filter(Boolean)
-        result = result.concat(actionResults)
+            console.log(`[LauncherSearch] Checking action: ${actionStr} against query: ${q}`);
+            const result = resultComp.createObject(null, {
+                name: q.startsWith(actionStr) ? q : actionStr,
+                verb: Translation.tr("Run"),
+                type: Translation.tr("Action"),
+                iconName: "settings_suggest",
+                iconType: LauncherSearchResult.IconType.Material,
+                execute: () => action.execute(q.split(" ").slice(1).join(" "))
+            });
+            console.log(`[LauncherSearch] ✓ Created action result for: ${actionStr}`);
+            return result;
+        });
+        console.log(`[LauncherSearch] ✗ Action ${actionStr} didn't match query ${q}`);
+        return null;
+    }).filter(Boolean);
+    console.log(`[LauncherSearch] Action results count:`, actionResults.length);
+    console.log(`[LauncherSearch] Final total results count:`, result.length + actionResults.length);
+    result = result.concat(actionResults)
+    console.log(`[LauncherSearch] After adding action results, total count:`, result.length);
 
-        // Add fallbacks if not prefix-specific
-        const showDefaults = Config.options?.search?.prefix?.showDefaultActionsWithoutPrefix ?? true
+    // Add fallbacks if not prefix-specific
+    const showDefaults = Config.options?.search?.prefix?.showDefaultActionsWithoutPrefix ?? true
+    console.log(`[LauncherSearch] Show defaults:`, showDefaults);
         if (showDefaults) {
-            if (!startsWithShell) result.push(cmdObj)
-            if (!startsWithNumber && !startsWithMath) result.push(mathObj)
-            if (!startsWithWeb) result.push(webObj)
+            if (!startsWithShell)
+                result.push(cmdObj);
+            if (!startsWithNumber && !startsWithMath)
+                result.push(mathObj);
+            if (!startsWithWeb)
+                result.push(webObj);
         }
 
-        return result
+        console.log(`[LauncherSearch] ========== RETURNING RESULTS ==========`);
+        console.log(`[LauncherSearch] Total results count:`, result.length);
+        return result;
     }
 
     Component {

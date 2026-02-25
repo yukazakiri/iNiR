@@ -7,6 +7,7 @@ import qs.modules.regionSelector
 import qs.modules.screenCorners
 import qs.modules.sessionScreen
 import qs.modules.wallpaperSelector
+import qs.modules.packageInstaller
 import qs.modules.ii.overlay
 import "modules/clipboard" as ClipboardModule
 
@@ -35,37 +36,118 @@ Item {
     }
 
     // Waffle style (Windows 11)
-    PanelLoader { identifier: "wBar"; component: WaffleBarModule.WaffleBar {} }
-    PanelLoader { identifier: "wBackground"; component: WaffleBackgroundModule.WaffleBackground {} }
-    PanelLoader { identifier: "wStartMenu"; component: WaffleStartMenu {} }
-    PanelLoader { identifier: "wActionCenter"; component: WaffleActionCenter {} }
-    PanelLoader { identifier: "wNotificationCenter"; component: WaffleNotificationCenter {} }
-    PanelLoader { identifier: "wOnScreenDisplay"; component: WaffleOSDModule.WaffleOSD {} }
-    PanelLoader { identifier: "wLock"; component: Lock {} }
-    PanelLoader { identifier: "wWidgets"; extraCondition: Config.options?.waffles?.modules?.widgets ?? true; component: WaffleWidgets {} }
-    PanelLoader { identifier: "wBackdrop"; extraCondition: Config.options?.waffles?.background?.backdrop?.enable ?? true; component: WaffleBackdropModule.WaffleBackdrop {} }
-    PanelLoader { identifier: "wNotificationPopup"; component: WaffleNotificationPopupModule.WaffleNotificationPopup {} }
-    PanelLoader { identifier: "wPolkit"; component: Polkit {} }
-    PanelLoader { identifier: "wSessionScreen"; component: SessionScreen {} }
+    PanelLoader {
+        identifier: "wBar"
+        component: WaffleBarModule.WaffleBar {}
+    }
+    PanelLoader {
+        identifier: "wBackground"
+        component: WaffleBackgroundModule.WaffleBackground {}
+    }
+    PanelLoader {
+        identifier: "wStartMenu"
+        component: WaffleStartMenu {}
+    }
+    PanelLoader {
+        identifier: "wActionCenter"
+        component: WaffleActionCenter {}
+    }
+    PanelLoader {
+        identifier: "wNotificationCenter"
+        component: WaffleNotificationCenter {}
+    }
+    PanelLoader {
+        identifier: "wOnScreenDisplay"
+        component: WaffleOSDModule.WaffleOSD {}
+    }
+    PanelLoader {
+        identifier: "wLock"
+        component: Lock {}
+    }
+    PanelLoader {
+        identifier: "wWidgets"
+        extraCondition: Config.options?.waffles?.modules?.widgets ?? true
+        component: WaffleWidgets {}
+    }
+    PanelLoader {
+        identifier: "wBackdrop"
+        extraCondition: Config.options?.waffles?.background?.backdrop?.enable ?? true
+        component: WaffleBackdropModule.WaffleBackdrop {}
+    }
+    PanelLoader {
+        identifier: "wNotificationPopup"
+        component: WaffleNotificationPopupModule.WaffleNotificationPopup {}
+    }
+    PanelLoader {
+        identifier: "wPolkit"
+        component: Polkit {}
+    }
+    PanelLoader {
+        identifier: "wSessionScreen"
+        component: SessionScreen {}
+    }
 
     // Shared modules that work with waffle
-    PanelLoader { identifier: "iiCheatsheet"; component: Cheatsheet {} }
-    PanelLoader { identifier: "iiOnScreenKeyboard"; component: OnScreenKeyboard {} }
-    PanelLoader { identifier: "iiOverlay"; component: Overlay {} }
-    PanelLoader { identifier: "iiOverview"; component: Overview {} }
-    PanelLoader { identifier: "iiPolkit"; component: Polkit {} }
-    PanelLoader { identifier: "iiRegionSelector"; component: RegionSelector {} }
-    PanelLoader { identifier: "iiScreenCorners"; component: ScreenCorners {} }
-    PanelLoader { identifier: "iiSessionScreen"; component: SessionScreen {} }
-    PanelLoader { identifier: "iiWallpaperSelector"; component: WallpaperSelector {} }
-    PanelLoader { identifier: "iiClipboard"; component: ClipboardModule.ClipboardPanel {} }
+    PanelLoader {
+        identifier: "iiCheatsheet"
+        component: Cheatsheet {}
+    }
+    PanelLoader {
+        identifier: "iiOnScreenKeyboard"
+        component: OnScreenKeyboard {}
+    }
+    PanelLoader {
+        identifier: "iiOverlay"
+        component: Overlay {}
+    }
+    PanelLoader {
+        identifier: "iiOverview"
+        component: Overview {}
+    }
+    PanelLoader {
+        identifier: "iiPolkit"
+        component: Polkit {}
+    }
+    PanelLoader {
+        identifier: "iiRegionSelector"
+        component: RegionSelector {}
+    }
+    PanelLoader {
+        identifier: "iiScreenCorners"
+        component: ScreenCorners {}
+    }
+    PanelLoader {
+        identifier: "iiSessionScreen"
+        component: SessionScreen {}
+    }
+    PanelLoader {
+        identifier: "iiWallpaperSelector"
+        component: WallpaperSelector {}
+    }
+    PanelLoader {
+        identifier: "iiPackageInstaller"
+        component: PackageInstaller {}
+    }
+    PanelLoader {
+        identifier: "iiClipboard"
+        component: ClipboardModule.ClipboardPanel {}
+    }
 
     // Waffle Clipboard - handles IPC when panelFamily === "waffle"
-    LazyLoader { active: Config.ready && Config.options?.panelFamily === "waffle"; component: WaffleClipboardModule.WaffleClipboard {} }
+    LazyLoader {
+        active: Config.ready && Config.options?.panelFamily === "waffle"
+        component: WaffleClipboardModule.WaffleClipboard {}
+    }
 
     // Waffle AltSwitcher - handles IPC when panelFamily === "waffle"
-    LazyLoader { active: Config.ready && Config.options?.panelFamily === "waffle"; component: WaffleAltSwitcherModule.WaffleAltSwitcher {} }
+    LazyLoader {
+        active: Config.ready && Config.options?.panelFamily === "waffle"
+        component: WaffleAltSwitcherModule.WaffleAltSwitcher {}
+    }
 
     // Waffle TaskView - experimental, disabled by default
-    PanelLoader { identifier: "wTaskView"; component: WaffleTaskViewModule.WaffleTaskView {} }
+    PanelLoader {
+        identifier: "wTaskView"
+        component: WaffleTaskViewModule.WaffleTaskView {}
+    }
 }

@@ -43,13 +43,19 @@ Singleton {
             wallpaperSelectionTarget = "main";
             wallpaperSelectorTargetMonitor = "";
             // Also reset Config targets if they were set
-            if (Config.options?.wallpaperSelector?.selectionTarget &&
-                Config.options.wallpaperSelector.selectionTarget !== "main") {
-                Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
+            if (Config.options?.wallpaperSelector?.selectionTarget && Config.options.wallpaperSelector.selectionTarget !== "main") {
+                Config.setNestedValue("wallpaperSelector.selectionTarget", "main");
             }
             if (Config.options?.wallpaperSelector?.targetMonitor) {
-                Config.setNestedValue("wallpaperSelector.targetMonitor", "")
+                Config.setNestedValue("wallpaperSelector.targetMonitor", "");
             }
+        }
+    }
+    property bool packageInstallerOpen: false
+    property string packageInstallerCategory: ""
+    onPackageInstallerOpenChanged: {
+        if (!packageInstallerOpen) {
+            packageInstallerCategory = "";
         }
     }
     property bool cheatsheetOpen: false
@@ -74,27 +80,27 @@ Singleton {
     property bool _allowMultiple: Config.options?.waffles?.behavior?.allowMultiplePanels ?? false
     onSearchOpenChanged: {
         if (searchOpen && !_allowMultiple) {
-            waffleActionCenterOpen = false
-            waffleNotificationCenterOpen = false
-            waffleWidgetsOpen = false
-            waffleClipboardOpen = false
+            waffleActionCenterOpen = false;
+            waffleNotificationCenterOpen = false;
+            waffleWidgetsOpen = false;
+            waffleClipboardOpen = false;
         }
     }
     onWaffleActionCenterOpenChanged: {
         if (waffleActionCenterOpen && !_allowMultiple) {
-            searchOpen = false
-            waffleNotificationCenterOpen = false
-            waffleWidgetsOpen = false
-            waffleClipboardOpen = false
+            searchOpen = false;
+            waffleNotificationCenterOpen = false;
+            waffleWidgetsOpen = false;
+            waffleClipboardOpen = false;
         }
     }
     onWaffleNotificationCenterOpenChanged: {
         if (waffleNotificationCenterOpen) {
             if (!_allowMultiple) {
-                searchOpen = false
-                waffleActionCenterOpen = false
-                waffleWidgetsOpen = false
-                waffleClipboardOpen = false
+                searchOpen = false;
+                waffleActionCenterOpen = false;
+                waffleWidgetsOpen = false;
+                waffleClipboardOpen = false;
             }
             // Mark notifications as read when opening notification center
             Notifications.timeoutAll();
@@ -103,28 +109,28 @@ Singleton {
     }
     onWaffleWidgetsOpenChanged: {
         if (waffleWidgetsOpen && !_allowMultiple) {
-            searchOpen = false
-            waffleActionCenterOpen = false
-            waffleNotificationCenterOpen = false
-            waffleClipboardOpen = false
+            searchOpen = false;
+            waffleActionCenterOpen = false;
+            waffleNotificationCenterOpen = false;
+            waffleClipboardOpen = false;
         }
     }
     onWaffleClipboardOpenChanged: {
         if (waffleClipboardOpen && !_allowMultiple) {
-            searchOpen = false
-            waffleActionCenterOpen = false
-            waffleNotificationCenterOpen = false
-            waffleWidgetsOpen = false
-            waffleTaskViewOpen = false
+            searchOpen = false;
+            waffleActionCenterOpen = false;
+            waffleNotificationCenterOpen = false;
+            waffleWidgetsOpen = false;
+            waffleTaskViewOpen = false;
         }
     }
     onWaffleTaskViewOpenChanged: {
         if (waffleTaskViewOpen && !_allowMultiple) {
-            searchOpen = false
-            waffleActionCenterOpen = false
-            waffleNotificationCenterOpen = false
-            waffleWidgetsOpen = false
-            waffleClipboardOpen = false
+            searchOpen = false;
+            waffleActionCenterOpen = false;
+            waffleNotificationCenterOpen = false;
+            waffleWidgetsOpen = false;
+            waffleClipboardOpen = false;
         }
     }
 
@@ -154,23 +160,23 @@ Singleton {
             description: "Hold to show workspace numbers, release to show icons"
 
             onPressed: {
-                root.superDown = true
+                root.superDown = true;
             }
             onReleased: {
-                root.superDown = false
+                root.superDown = false;
             }
         }
     }
 
     IpcHandler {
-		target: "zoom"
+        target: "zoom"
 
-		function zoomIn(): void {
-            screenZoom = Math.min(screenZoom + 0.4, 3.0)
+        function zoomIn(): void {
+            screenZoom = Math.min(screenZoom + 0.4, 3.0);
         }
 
         function zoomOut(): void {
-            screenZoom = Math.max(screenZoom - 0.4, 1)
+            screenZoom = Math.max(screenZoom - 0.4, 1);
         }
-	}
+    }
 }
