@@ -223,6 +223,35 @@ Array of pinned application IDs.
 }
 ```
 
+## Search / Launcher
+
+The launcher supports multiple **prefixes** to switch between different modes (apps, actions, calculator, web search, etc.).
+You can customize them under `search.prefix`.
+
+```json
+"search": {
+  "prefix": {
+    "action": "/",
+    "app": ">",
+    "clipboard": ";",
+    "emojis": ":",
+    "math": "=",
+    "shellCommand": "$",
+    "webSearch": "?",
+    "showDefaultActionsWithoutPrefix": true
+  }
+}
+```
+
+- `search.prefix.action` - Prefix for quick actions (default: `/`)
+- `search.prefix.app` - Prefix to force app search (default: `>`)
+- `search.prefix.clipboard` - Prefix for clipboard search (default: `;`)
+- `search.prefix.emojis` - Prefix for emoji picker/search (default: `:`)
+- `search.prefix.math` - Prefix for calculator (default: `=`)
+- `search.prefix.shellCommand` - Prefix to run a shell command (default: `$`)
+- `search.prefix.webSearch` - Prefix for web search using `search.engineBaseUrl` (default: `?`)
+- `search.prefix.showDefaultActionsWithoutPrefix` - If `true`, shows common actions even without typing a prefix
+
 ## Background
 
 ### background.wallpaperPath
