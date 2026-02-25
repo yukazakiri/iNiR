@@ -333,8 +333,11 @@ binds {
     XF86AudioNext { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }
     XF86AudioPrev { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }
     
+    // Inir Menu global launcher (Ctrl+Super+Space)
+    Ctrl+Mod+Space { spawn "qs" "-c" "ii" "ipc" "call" "inirMenu" "toggle"; }
+    
     // Music control (keyboard alternatives for keyboards without media keys)
-    Ctrl+Mod+Space { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
+    Ctrl+Mod+P { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
     Mod+Alt+N { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }
     Mod+Alt+P { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }
     Mod+Shift+M { spawn "qs" "-c" "ii" "ipc" "call" "audio" "mute"; }

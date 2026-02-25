@@ -30,6 +30,7 @@ ShellRoot {
     property var _powerProfilePersistence: PowerProfilePersistence
     property var _voiceSearchService: VoiceSearch
     property var _fontSyncService: FontSyncService
+    property var _inirMenuService: InirMenuService
 
     Component.onCompleted: {
         root._log("[Shell] Initializing singletons");
@@ -159,7 +160,7 @@ ShellRoot {
             "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard",
             "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners",
             "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar",
-            "iiWallpaperSelector", "iiClipboard"
+            "iiWallpaperSelector", "iiClipboard", "iiInirMenu"
         ],
         "waffle": [
             "wBar", "wBackground", "wBackdrop", "wStartMenu", "wActionCenter", "wNotificationCenter", "wNotificationPopup", "wOnScreenDisplay", "wWidgets", "wLock", "wPolkit", "wSessionScreen",

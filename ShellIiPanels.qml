@@ -3,6 +3,7 @@ import qs.modules.bar
 import qs.modules.cheatsheet
 import qs.modules.controlPanel
 import qs.modules.dock
+import qs.modules.inirMenu
 import qs.modules.lock
 import qs.modules.mediaControls
 import qs.modules.notificationPopup
@@ -59,4 +60,5 @@ Item {
     PanelLoader { identifier: "iiClipboard"; component: ClipboardModule.ClipboardPanel {} }
     PanelLoader { identifier: "iiControlPanel"; component: ControlPanel {} }
     PanelLoader { identifier: "iiShellUpdate"; component: ShellUpdateOverlay {} }
+    PanelLoader { identifier: "iiInirMenu"; component: InirMenu {} }
 }
