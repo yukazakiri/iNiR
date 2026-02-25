@@ -11,14 +11,16 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 
-// Mirrors SearchWidget.qml exactly — same chrome, same focus model.
-// Categories shown as result rows. Click one → drills in. Esc/back → returns.
+// Mirrors SearchWidget.qml — same chrome, same focus model.
+// Categories shown as result rows on open. Typing searches across everything.
+// Clicking a category drills in.
 Item {
     id: root
 
     // ── public interface (mirrors SearchWidget) ───────────────────────────
     property string searchingText: ""
-    property bool showResults: activeCat !== null || searchingText !== ""
+    // Always show results — categories visible on open, no empty state
+    property bool showResults: true
 
     // same sizing formula as SearchWidget
     implicitWidth:  searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
@@ -26,7 +28,7 @@ Item {
                     + Appearance.sizes.elevationMargin * 2
 
     // ── nav state ─────────────────────────────────────────────────────────
-    property var  activeCat: null          // null = category menu
+    property var  activeCat: null          // null = top-level menu
     property bool inCategory: activeCat !== null
     property var  cachedResults: []        // populated by _refresh()
 
@@ -49,55 +51,95 @@ Item {
         searchBar.searchInput.text = ""
         root.searchingText = ""
         root.activeCat = null
+        root._refresh()
     }
 
     // ── result builder ────────────────────────────────────────────────────
     function _refresh() {
-        if (!root.inCategory) {
-            // category menu: always show all 6 categories (no search on this level)
-            root.cachedResults = InirMenuService.categories.map(function(cat) {
+        if (root.inCategory) {
+            // ── drilled into a category ───────────────────────────────────
+            const q     = root.debouncedSearchText
+            const items = root.activeCat.buildResults(q)
+
+            const backRow = {
+                key:             "__back__",
+                name:            "Back",
+                clickActionName: "Back",
+                materialSymbol:  "arrow_back",
+                type:            root.activeCat.label,
+                _isBackRow:      true,
+                execute:         function() { root._goBack() }
+            }
+
+            root.cachedResults = [backRow].concat(items.map(function(r, i) {
                 return {
-                    key:             "cat_" + cat.id,
-                    name:            cat.label,
-                    clickActionName: "Open",
-                    materialSymbol:  cat.icon,
-                    type:            cat.description,
-                    _isCategoryRow:  true,
-                    execute:         (function(c) {
-                        return function() { root._openCat(c) }
-                    })(cat)
+                    key:             r.id ? ("r_" + r.id) : ("r_" + i),
+                    name:            r.name  ?? "",
+                    clickActionName: r.verb  ?? "Open",
+                    materialSymbol:  (r.iconType !== 2) ? (r.icon ?? "") : "",
+                    icon:            (r.iconType === 2) ? (r.icon ?? "") : "",
+                    type:            r.description ?? "",
+                    _isResultRow:    true,
+                    execute:         r.execute
                 }
-            })
+            }))
             return
         }
 
-        // drilled: filter category items by searchingText
-        const q = root.debouncedSearchText
-        const items = root.activeCat.buildResults(q)
+        // ── top-level: no active category ─────────────────────────────────
+        const q = (root.debouncedSearchText ?? "").trim().toLowerCase()
 
-        // back row always first
-        const backRow = {
-            key:             "__back__",
-            name:            "Back",
-            clickActionName: "Back",
-            materialSymbol:  "arrow_back",
-            type:            root.activeCat.label,
-            _isBackRow:      true,
-            execute:         function() { root._goBack() }
+        // Always build category rows
+        const cats = InirMenuService.categories
+        let categoryRows = cats.map(function(cat) {
+            return {
+                key:             "cat_" + cat.id,
+                name:            cat.label,
+                clickActionName: "Open",
+                materialSymbol:  cat.icon,
+                type:            cat.description,
+                _isCategoryRow:  true,
+                execute:         (function(c) {
+                    return function() { root._openCat(c) }
+                })(cat)
+            }
+        })
+
+        // No search text → just show categories
+        if (!q) {
+            root.cachedResults = categoryRows
+            return
         }
 
-        root.cachedResults = [backRow].concat(items.map(function(r, i) {
-            return {
-                key:             r.id ? ("r_" + r.id) : ("r_" + i),
-                name:            r.name  ?? "",
-                clickActionName: r.verb  ?? "Open",
-                materialSymbol:  (r.iconType !== 2) ? (r.icon ?? "") : "",
-                icon:            (r.iconType === 2) ? (r.icon ?? "") : "",
-                type:            r.description ?? "",
-                _isResultRow:    true,
-                execute:         r.execute
+        // Has search text → filter categories + search inside ALL categories
+        // 1) matching categories
+        const matchingCats = categoryRows.filter(function(row) {
+            return row.name.toLowerCase().includes(q)
+                || (row.type ?? "").toLowerCase().includes(q)
+        })
+
+        // 2) matching items from every category
+        let matchingItems = []
+        for (let i = 0; i < cats.length; i++) {
+            const cat   = cats[i]
+            const items = cat.buildResults(q)
+            for (let j = 0; j < items.length && matchingItems.length < 20; j++) {
+                const r = items[j]
+                matchingItems.push({
+                    key:             "g_" + cat.id + "_" + (r.id ?? j),
+                    name:            r.name  ?? "",
+                    clickActionName: r.verb  ?? "Open",
+                    materialSymbol:  (r.iconType !== 2) ? (r.icon ?? "") : "",
+                    icon:            (r.iconType === 2) ? (r.icon ?? "") : "",
+                    type:            cat.label + " — " + (r.description ?? ""),
+                    _isResultRow:    true,
+                    execute:         r.execute
+                })
             }
-        }))
+        }
+
+        // Combine: matching categories first, then items
+        root.cachedResults = matchingCats.concat(matchingItems)
     }
 
     function _openCat(cat) {
@@ -191,7 +233,7 @@ Item {
             : Appearance.colors.colLayer0Border
 
         Behavior on implicitHeight {
-            enabled: InirMenuService.open && root.showResults
+            enabled: InirMenuService.open
             NumberAnimation { duration: 200; easing.type: Easing.OutQuart }
         }
 
@@ -212,7 +254,7 @@ Item {
                 }
             }
 
-            // ── search bar — same as SearchWidget uses SearchBar ──────────
+            // ── search bar ────────────────────────────────────────────────
             InirMenuSearchBar {
                 id: searchBar
                 property real verticalPadding: 4
@@ -242,7 +284,7 @@ Item {
                 color: Appearance.colors.colOutlineVariant
             }
 
-            // ── result list — same as SearchWidget ────────────────────────
+            // ── result list ───────────────────────────────────────────────
             ListView {
                 id: appResults
                 visible: root.showResults
@@ -257,7 +299,7 @@ Item {
                 highlightMoveDuration: 100
 
                 onFocusChanged: {
-                    if (focus) currentIndex = 1
+                    if (focus) currentIndex = 0
                 }
 
                 Connections {
@@ -278,7 +320,7 @@ Item {
                     anchors.left:  parent?.left
                     anchors.right: parent?.right
                     entry:         modelData
-                    query:         root.inCategory ? root.debouncedSearchText : ""
+                    query:         root.debouncedSearchText
                     isCategoryRow: modelData._isCategoryRow ?? false
                     isBackRow:     modelData._isBackRow     ?? false
                 }

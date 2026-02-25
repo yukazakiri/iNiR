@@ -43,14 +43,8 @@ RowLayout {
         font.pixelSize: Appearance.font.pixelSize.small
         placeholderText: root.inCategory
             ? "Search " + root.categoryLabel + "…"
-            : "Search, calculate or run"
-        implicitWidth: root.searchingText === ""
-            ? Appearance.sizes.searchWidthCollapsed
-            : Appearance.sizes.searchWidth
-
-        Behavior on implicitWidth {
-            NumberAnimation { duration: 250; easing.type: Easing.OutQuart }
-        }
+            : "Inir Menu"
+        implicitWidth: Appearance.sizes.searchWidth
 
         onTextChanged: root.searchingText = text
 
