@@ -54,6 +54,10 @@ Singleton {
     }
 
     function notifToJSON(notif) {
+        if (!notif) {
+            console.warn("[Notifications] notifToJSON called with null notification")
+            return null
+        }
         return {
             "notificationId": notif.notificationId,
             "actions": notif.actions,
@@ -67,7 +71,8 @@ Singleton {
         }
     }
     function notifToString(notif) {
-        return JSON.stringify(notifToJSON(notif), null, 2);
+        const json = notifToJSON(notif)
+        return json ? JSON.stringify(json, null, 2) : "{}"
     }
 
     component NotifTimer: Timer {
