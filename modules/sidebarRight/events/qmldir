@@ -1,0 +1,3 @@
+module qs.modules.sidebarRight.events
+EventCard 1.0 EventCard.qml
+EventsWidget 1.0 EventsWidget.qml

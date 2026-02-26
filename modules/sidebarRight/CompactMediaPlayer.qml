@@ -2,6 +2,7 @@
 // Enhanced media player widget for the compact sidebar Controls section
 // Shows current track with album art, playback controls, and progress
 
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -154,7 +155,10 @@ Item {
                     colBackgroundHover: root.angelStyle ? Appearance.angel.colGlassCardHover
                         : root.inirStyle ? Appearance.inir.colLayer2Hover
                         : Appearance.colors.colLayer1Hover
-                    onClicked: playerSwitcherMenu.open()
+                    onClicked: {
+                        playerSwitcherMenu.anchorItem = this
+                        playerSwitcherMenu.active = true
+                    }
 
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
@@ -363,13 +367,24 @@ Item {
                     handle: Rectangle {
                         x: volumeSlider.leftPadding + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
                         y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                        width: 14
-                        height: 14
-                        radius: 7
+                        width: 16
+                        height: 16
+                        radius: 8
                         color: root.accentColor
-                        border.width: 2
-                        border.color: "white"
-                        scale: volumeSlider.pressed ? 1.2 : 1.0
+                        border.width: 3
+                        border.color: root.angelStyle ? Appearance.angel.colCard
+                            : root.inirStyle ? Appearance.inir.colLayer1
+                            : Appearance.colors.colLayer1
+                        scale: volumeSlider.pressed ? 1.3 : (volumeSlider.hovered ? 1.15 : 1.0)
+                        
+                        layer.enabled: Appearance.effectsEnabled
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowColor: ColorUtils.transparentize(root.accentColor, 0.4)
+                            shadowBlur: 0.4
+                            shadowScale: 1.1
+                        }
+                        
                         Behavior on scale {
                             NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
                         }
@@ -470,26 +485,20 @@ Item {
         }
     }
 
-    // Player switcher menu
-    Menu {
+    // Player switcher context menu (styled)
+    ContextMenu {
         id: playerSwitcherMenu
         
-        Repeater {
-            model: MprisController.displayPlayers ?? []
-            
-            MenuItem {
-                required property var modelData
-                required property int index
-                
-                text: modelData?.identity ?? ""
-                checkable: true
-                checked: MprisController.activePlayer === modelData
-                
-                onTriggered: {
-                    if (modelData) MprisController.activePlayer = modelData
-                }
+        model: (MprisController.displayPlayers ?? []).map((player, index) => ({
+            type: "item",
+            text: player?.identity ?? "",
+            iconName: "",
+            checkable: true,
+            checked: MprisController.activePlayer === player,
+            onTriggered: () => {
+                if (player) MprisController.activePlayer = player
             }
-        }
+        }))
     }
 
     function formatTime(seconds) {
@@ -510,8 +519,8 @@ Item {
         
         signal clicked()
         
-        implicitWidth: large ? 44 : 34
-        implicitHeight: large ? 44 : 34
+        implicitWidth: large ? 52 : 36
+        implicitHeight: large ? 52 : 36
         
         Rectangle {
             anchors.fill: parent
@@ -522,11 +531,11 @@ Item {
                 if (mcBtnMA.containsPress)
                     return root.angelStyle ? Appearance.angel.colGlassCardActive
                         : root.inirStyle ? Appearance.inir.colLayer2Active
-                        : Appearance.colors.colLayer1Active
+                        : ColorUtils.transparentize(root.accentColor, 0.2)
                 if (mcBtnMA.containsMouse)
                     return root.angelStyle ? Appearance.angel.colGlassCardHover
                         : root.inirStyle ? Appearance.inir.colLayer2Hover
-                        : Appearance.colors.colLayer1Hover
+                        : ColorUtils.transparentize(root.accentColor, 0.3)
                 if (mcBtn.highlighted)
                     return root.accentColor
                 if (mcBtn.toggled)
@@ -542,19 +551,21 @@ Item {
                 } 
             }
             
-            // Subtle glow on highlighted button
-            layer.enabled: mcBtn.highlighted && Appearance.effectsEnabled
+            // Enhanced glow on highlighted button
+            layer.enabled: (mcBtn.highlighted || mcBtn.large) && Appearance.effectsEnabled
             layer.effect: MultiEffect {
                 shadowEnabled: true
-                shadowColor: ColorUtils.transparentize(root.accentColor, 0.5)
-                shadowBlur: 0.3
-                shadowScale: 1.05
+                shadowColor: mcBtn.highlighted 
+                    ? ColorUtils.transparentize(root.accentColor, 0.3)
+                    : ColorUtils.transparentize(root.colTextSecondary, 0.7)
+                shadowBlur: mcBtn.large ? 0.5 : 0.3
+                shadowScale: 1.08
             }
             
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: mcBtn.icon
-                iconSize: mcBtn.large ? 26 : 18
+                iconSize: mcBtn.large ? 28 : 20
                 fill: mcBtn.highlighted || mcBtn.toggled ? 1 : 0
                 color: mcBtn.highlighted
                     ? "white"
@@ -569,12 +580,21 @@ Item {
                 }
             }
             
-            // Scale animation
-            scale: mcBtnMA.containsPress ? 0.92 : 1.0
+            // Enhanced scale animation with rotation for play/pause
+            scale: mcBtnMA.containsPress ? 0.88 : 1.0
+            rotation: mcBtn.large && mcBtnMA.containsPress ? 5 : 0
+            
             Behavior on scale {
                 NumberAnimation { 
-                    duration: 100
+                    duration: 150
                     easing.type: Easing.OutCubic 
+                }
+            }
+            
+            Behavior on rotation {
+                NumberAnimation {
+                    duration: 150
+                    easing.type: Easing.OutCubic
                 }
             }
             

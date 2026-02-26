@@ -8,6 +8,7 @@ import qs.modules.sidebarRight.pomodoro
 import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
+import qs.modules.sidebarRight.dashboard
 import QtQuick
 import QtQuick.Layouts
 // import Qt5Compat.GraphicalEffects // Might not be available, using standard Rectangle gradient instead
@@ -32,6 +33,7 @@ Rectangle {
     property int selectedTab: Persistent.states?.sidebar?.bottomGroup?.tab ?? 0
     property bool collapsed: Persistent.states?.sidebar?.bottomGroup?.collapsed ?? false
     property var allTabs: [
+        {"type": "dashboard", "name": Translation.tr("Dashboard"), "icon": "dashboard", "widget": dashboardWidget},
         {"type": "calendar", "name": Translation.tr("Calendar"), "icon": "calendar_month", "widget": calendarWidget},
         {"type": "todo", "name": Translation.tr("To Do"), "icon": "done_outline", "widget": todoWidget},
         {"type": "notepad", "name": Translation.tr("Notepad"), "icon": "edit_note", "widget": notepadWidget},
@@ -46,9 +48,18 @@ Rectangle {
         function onConfigChanged() { root.configVersion++ }
     }
 
+    // Dashboard component
+    Component {
+        id: dashboardWidget
+        DashboardWidget {
+            anchors.fill: parent
+            anchors.margins: 5
+        }
+    }
+
     readonly property var enabledWidgets: {
         root.configVersion // Force dependency
-        return Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
+        return Config.options?.sidebar?.right?.enabledWidgets ?? ["dashboard", "calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
     }
 
     property var tabs: allTabs.filter(tab => enabledWidgets.includes(tab.type))

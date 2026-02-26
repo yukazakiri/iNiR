@@ -381,7 +381,17 @@ Item {
                 buttonIcon: "edit"
                 onClicked: root.editMode = !root.editMode
                 StyledToolTip {
+                    position: "left"
                     text: Translation.tr("Edit quick toggles") + (root.editMode ? Translation.tr("\nLMB to enable/disable\nRMB to toggle size\nScroll to swap position") : "")
+                }
+            }
+            QuickToggleButton {
+                toggled: false
+                buttonIcon: "view_sidebar"
+                onClicked: Config.setNestedValue("sidebar.layout", "compact")
+                StyledToolTip {
+                    position: "left"
+                    text: Translation.tr("Switch to compact layout")
                 }
             }
             QuickToggleButton {
@@ -408,6 +418,7 @@ Item {
                     Quickshell.reload(true);
                 }
                 StyledToolTip {
+                    position: "left"
                     text: Translation.tr("Reload Quickshell")
                 }
             }
@@ -460,6 +471,7 @@ Item {
                     })
                 }
                 StyledToolTip {
+                    position: "left"
                     text: Translation.tr("Settings")
                 }
             }
@@ -479,6 +491,7 @@ Item {
                     GlobalStates.sessionOpen = true;
                 }
                 StyledToolTip {
+                    position: "left"
                     text: Translation.tr("Session")
                 }
             }

@@ -83,8 +83,9 @@ DockButton {
         return 0;
     }
 
-    // Subtle highlight for active app (disabled in macOS mode — DockMacItem handles scale)
-    scale: (!macosStyle && appIsActive) ? 1.05 : 1.0
+    // Subtle highlight for active app (disabled in macOS and pill modes —
+    // macOS uses magnify, pill uses its own background highlight)
+    scale: (!macosStyle && !pillStyle && appIsActive) ? 1.05 : 1.0
     Behavior on scale {
         enabled: Appearance.animationsEnabled
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -122,9 +123,14 @@ DockButton {
         visible: pillStyle && !isSeparator && !Appearance.gameModeMinimal
         appIsActive: root.appIsActive
         hasWindows: root.hasWindows
+        windowCount: appToplevel.toplevels.length
+        focusedWindowIndex: root.focusedWindowIndex
+        vertical: root.vertical
+        countDotWidth: root.countDotWidth
+        countDotHeight: root.countDotHeight
     }
 
-    // macOS-style icon wrapper: magnify effect + single indicator dot
+    // macOS-style icon wrapper: magnify effect + multi-window indicator dots
     DockMacItem {
         id: macItem
         anchors.fill: parent
@@ -138,6 +144,8 @@ DockButton {
             const hi = root.appListRoot?.macHoveredIndex ?? -1
             return (hi < 0 || root.listIndex < 0) ? 99 : Math.abs(root.listIndex - hi)
         }
+        windowCount: appToplevel.toplevels.length
+        focusedWindowIndex: root.focusedWindowIndex
     }
 
     // Hover shadow (disabled for angel — whole dock already has escalonado)
@@ -420,9 +428,9 @@ DockButton {
             }
 
               // Smart indicator: shows window count and which is focused
-              // Hidden in macOS mode — DockMacItem renders its own minimal dot
+              // Hidden in macOS and pill modes — those render their own indicators
               Loader {
-                  active: root.hasWindows && !root.isSeparator && !root.macosStyle
+                  active: root.hasWindows && !root.isSeparator && !root.macosStyle && !root.pillStyle
                 anchors {
                     top: iconImageLoader.bottom
                     topMargin: 2

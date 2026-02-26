@@ -361,6 +361,23 @@ ContentPage {
                 }
             }
 
+            ContentSubsection {
+                title: Translation.tr("Dock style")
+                tooltip: Translation.tr("Panel: classic unified background. Pill: each icon floats in its own capsule. macOS: frosted glass shelf with magnify effect.")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.dock?.style ?? "panel"
+                    onSelected: newValue => {
+                        Config.setNestedValue("dock.style", newValue)
+                    }
+                    options: [
+                        { displayName: Translation.tr("Panel"), icon: "dock_to_bottom", value: "panel" },
+                        { displayName: Translation.tr("Pill"),  icon: "interests",       value: "pill"  },
+                        { displayName: Translation.tr("macOS"), icon: "desktop_mac",     value: "macos" }
+                    ]
+                }
+            }
+
             ConfigRow {
                 uniform: true
                 ContentSubsection {
@@ -600,6 +617,19 @@ ContentPage {
                     }
                     StyledToolTip {
                         text: Translation.tr("Time to wait before showing window preview")
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "keep"
+                    text: Translation.tr("Keep preview on click")
+                    enabled: Config.options.dock.hoverPreview !== false
+                    checked: Config.options?.dock?.keepPreviewOnClick ?? false
+                    onCheckedChanged: {
+                        Config.setNestedValue("dock.keepPreviewOnClick", checked)
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Don't close the preview popup when clicking a window thumbnail, so you can navigate between windows")
                     }
                 }
             }
@@ -1134,7 +1164,7 @@ ContentPage {
                 title: Translation.tr("Right Sidebar")
                 tooltip: Translation.tr("Toggle which widgets appear in the right sidebar")
 
-                readonly property var defaults: ["calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
+                readonly property var defaults: ["dashboard", "calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
 
                 function isEnabled(widgetId) {
                     return (Config.options?.sidebar?.right?.enabledWidgets ?? defaults).includes(widgetId)
@@ -1155,6 +1185,15 @@ ContentPage {
                         Config.setNestedValue("sidebar.right.enabledWidgets", current)
                     } else {
                         console.log(`[RightSidebar] No change needed`)
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "dashboard"
+                    text: Translation.tr("Dashboard")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("dashboard")
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("dashboard", checked)
                     }
                 }
 
