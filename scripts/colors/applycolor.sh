@@ -259,6 +259,56 @@ apply_gtk_kde() {
   "$SCRIPT_DIR/apply-gtk-theme.sh"
 }
 
+apply_chromium_theme() {
+    local log_file="$STATE_DIR/user/generated/chromium_theme.log"
+
+    if [ ! -f "$STATE_DIR/user/generated/colors.json" ]; then
+        echo "[chromium] colors.json not found. Skipping." | tee -a "$log_file" 2>/dev/null
+        return
+    fi
+
+    local primary_color
+    primary_color=$(jq -r '.primary' "$STATE_DIR/user/generated/colors.json" 2>/dev/null || true)
+
+    if [ -z "$primary_color" ] || [ "$primary_color" = "null" ]; then
+        echo "[chromium] Could not extract primary color. Skipping." | tee -a "$log_file" 2>/dev/null
+        return
+    fi
+
+    echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
+
+    local theme_json
+    theme_json=$(printf '{"BrowserThemeColor": "%s"}' "$primary_color")
+
+    if [ -d "/etc/chromium/policies/managed" ]; then
+        if echo "$theme_json" | sudo tee /etc/chromium/policies/managed/theme.json > /dev/null 2>&1; then
+            echo "[chromium] Written to /etc/chromium/policies/managed/theme.json" | tee -a "$log_file" 2>/dev/null
+        else
+            echo "[chromium] Failed to write to /etc/chromium/policies/managed/theme.json" | tee -a "$log_file" 2>/dev/null
+            return
+        fi
+    else
+        echo "[chromium] /etc/chromium/policies/managed not found. Skipping." | tee -a "$log_file" 2>/dev/null
+        return
+    fi
+
+    if command -v chromium &>/dev/null; then
+        if chromium --refresh-platform-policy 2>/dev/null; then
+            echo "[chromium] Applied to running Chromium instance" | tee -a "$log_file" 2>/dev/null
+        else
+            echo "[chromium] Could not refresh platform policy (may need restart)" | tee -a "$log_file" 2>/dev/null
+        fi
+    fi
+
+    if command -v brave &>/dev/null; then
+        if brave --refresh-platform-policy 2>/dev/null; then
+            echo "[chromium] Applied to running Brave instance" | tee -a "$log_file" 2>/dev/null
+        else
+            echo "[chromium] Could not refresh Brave platform policy (may need restart)" | tee -a "$log_file" 2>/dev/null
+        fi
+    fi
+}
+
 # Check if terminal theming is enabled in config
 CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
@@ -290,8 +340,5 @@ fi
 # Apply code editor themes (Zed, etc.)
 apply_code_editors &
 
-# Sync ii-pixel SDDM theme colors (if installed)
-SDDM_SYNC_SCRIPT="$SCRIPT_DIR/../sddm/sync-pixel-sddm.py"
-if [[ -d "/usr/share/sddm/themes/ii-pixel" && -f "$SDDM_SYNC_SCRIPT" ]]; then
-  python3 "$SDDM_SYNC_SCRIPT" &
-fi
+# Apply Chromium/Brave theme color
+apply_chromium_theme &
