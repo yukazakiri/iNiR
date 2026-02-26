@@ -841,35 +841,9 @@ Item {
                     }
 
                     // Device shortcuts
-                    RowLayout {
-                        Layout.fillWidth: true
+                    SectionDivider {
                         Layout.topMargin: Appearance.sizes.spacingSmall
-                        spacing: Appearance.sizes.spacingSmall
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.5)
-                                : bg.inirEverywhere ? Appearance.inir.colBorder
-                                : Appearance.colors.colLayer0Border
-                        }
-
-                        StyledText {
-                            text: Translation.tr("Devices")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            font.weight: Font.Medium
-                            color: bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                                : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                                : Appearance.colors.colSubtext
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.5)
-                                : bg.inirEverywhere ? Appearance.inir.colBorder
-                                : Appearance.colors.colLayer0Border
-                        }
+                        text: Translation.tr("Devices")
                     }
 
                     GridLayout {
@@ -1355,35 +1329,8 @@ Item {
         id: quickActions
         spacing: Appearance.sizes.spacingSmall
 
-        // Section divider with label
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.5)
-                    : bg.inirEverywhere ? Appearance.inir.colBorder
-                    : Appearance.colors.colLayer0Border
-            }
-
-            StyledText {
-                text: Translation.tr("Quick Actions")
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                font.weight: Font.Medium
-                color: bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                    : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                    : Appearance.colors.colSubtext
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.5)
-                    : bg.inirEverywhere ? Appearance.inir.colBorder
-                    : Appearance.colors.colLayer0Border
-            }
+        SectionDivider {
+            text: Translation.tr("Quick Actions")
         }
 
         // Action buttons — 2×3 grid
