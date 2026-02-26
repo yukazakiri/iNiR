@@ -133,7 +133,7 @@ Item {
                 spacing: 6
 
                 MaterialSymbol {
-                    text: playerBase.effectiveIdentity
+                    text: playerBase.effectiveIdentity ?? "music_note"
                     iconSize: 14
                     color: root.colTextSecondary
                 }
