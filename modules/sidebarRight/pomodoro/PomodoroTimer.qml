@@ -9,6 +9,8 @@ import Quickshell
 
 Item {
     id: root
+    property bool compactMode: false
+    property bool centerMode: true
 
     // Style helpers
     readonly property color _colLayer: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
@@ -26,19 +28,33 @@ Item {
     readonly property color _colText: Appearance.angelEverywhere ? Appearance.angel.colText
         : Appearance.inirEverywhere ? Appearance.inir.colText
         : Appearance.colors.colOnLayer2
+    readonly property color _colTextSecondary: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
+        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
+        : Appearance.colors.colSubtext
 
     property bool settingsOpen: false
 
     StyledFlickable {
         id: flickable
         anchors.fill: parent
-        contentHeight: contentColumn.implicitHeight
+        // In compactMode: contentHeight matches column so no scrolling occurs;
+        // centering is done via anchors.verticalCenter on the column itself.
+        contentHeight: root.compactMode
+            ? flickable.height
+            : contentColumn.implicitHeight
         clip: true
+        interactive: !root.compactMode
 
         ColumnLayout {
             id: contentColumn
             width: flickable.width
             spacing: 0
+            // In compactMode, center vertically by offsetting y — avoids polish loops
+            // caused by spacers that depend on their own parent's implicitHeight,
+            // and avoids invalid anchor-to-non-sibling errors inside Flickable.
+            y: root.compactMode
+                ? Math.max(0, (flickable.height - implicitHeight) / 2)
+                : 0
 
             // The Pomodoro timer circle
             CircularProgress {
@@ -47,7 +63,10 @@ Item {
                 value: {
                     return TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration;
                 }
-                implicitSize: 200
+                // Responsive size: adapt to available height, capped at 200
+                implicitSize: root.compactMode
+                    ? Math.min(200, Math.max(120, flickable.height * 0.32))
+                    : 200
                 enableAnimation: true
 
                 ColumnLayout {
@@ -62,13 +81,15 @@ Item {
                             return `${minutes}:${seconds}`;
                         }
                         font.pixelSize: Math.round(40 * Appearance.fontSizeScale)
-                        color: Appearance.m3colors.m3onSurface
+                        color: Appearance.angelEverywhere ? Appearance.angel.colText
+                            : Appearance.inirEverywhere ? Appearance.inir.colText
+                            : Appearance.m3colors.m3onSurface
                     }
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter
                         text: TimerService.pomodoroLongBreak ? Translation.tr("Long break") : TimerService.pomodoroBreak ? Translation.tr("Break") : Translation.tr("Focus")
                         font.pixelSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colSubtext
+                        color: root._colTextSecondary
                     }
                 }
 
@@ -155,6 +176,7 @@ Item {
             }
 
             // Settings toggle — only when timer is stopped
+            Item { Layout.preferredHeight: 4 }
             RippleButton {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 8
@@ -171,7 +193,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.settingsOpen ? "keyboard_arrow_up" : "settings"
                     iconSize: 20
-                    color: Appearance.colors.colSubtext
+                    color: root._colTextSecondary
                 }
 
                 StyledToolTip {
@@ -194,7 +216,7 @@ Item {
                     Layout.fillWidth: true
                     text: Translation.tr("Focus → Break → Focus → Break → ... → Long break")
                     font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colSubtext
+                    color: root._colTextSecondary
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     Layout.bottomMargin: 4
@@ -219,14 +241,14 @@ Item {
                     MaterialSymbol {
                         text: adjustRow.icon
                         iconSize: 16
-                        color: Appearance.colors.colSubtext
+                        color: root._colTextSecondary
                         Layout.rightMargin: 6
                     }
 
                     StyledText {
                         text: adjustRow.label
                         font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
+                        color: root._colTextSecondary
                         Layout.fillWidth: true
                     }
 
@@ -242,7 +264,7 @@ Item {
                             anchors.centerIn: parent
                             text: "remove"
                             iconSize: 16
-                            color: enabled ? root._colText : Appearance.colors.colSubtext
+                            color: enabled ? root._colText : root._colTextSecondary
                         }
                     }
 
@@ -251,7 +273,11 @@ Item {
                         implicitWidth: 56
                         implicitHeight: 28
                         radius: Appearance.rounding.small
-                        color: adjustRow._editing ? Appearance.colors.colPrimaryContainer : root._colLayer
+                        color: adjustRow._editing
+                            ? (Appearance.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.8)
+                             : Appearance.inirEverywhere ? Appearance.inir.colSecondaryContainer
+                             : Appearance.colors.colPrimaryContainer)
+                            : root._colLayer
 
                         TextInput {
                             id: valueInput
@@ -285,7 +311,7 @@ Item {
                             visible: adjustRow.isMinutes
                             text: "m"
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
+                            color: root._colTextSecondary
                             opacity: 0.7
                         }
                     }
@@ -302,7 +328,7 @@ Item {
                             anchors.centerIn: parent
                             text: "add"
                             iconSize: 16
-                            color: enabled ? root._colText : Appearance.colors.colSubtext
+                            color: enabled ? root._colText : root._colTextSecondary
                         }
                     }
                 }
@@ -351,14 +377,14 @@ Item {
                     MaterialSymbol {
                         text: (Config.options?.sounds?.pomodoro ?? false) ? "volume_up" : "volume_off"
                         iconSize: 16
-                        color: Appearance.colors.colSubtext
+                        color: root._colTextSecondary
                         Layout.rightMargin: 6
                     }
                     StyledText {
                         Layout.fillWidth: true
                         text: Translation.tr("Sound")
                         font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
+                        color: root._colTextSecondary
                     }
                     Switch {
                         checked: Config.options?.sounds?.pomodoro ?? false
@@ -366,6 +392,8 @@ Item {
                     }
                 }
             }
+
+            // No bottom spacer needed — centering handled by anchors.verticalCenter in compactMode
         }
     }
 }
