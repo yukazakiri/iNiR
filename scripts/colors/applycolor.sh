@@ -277,34 +277,41 @@ apply_chromium_theme() {
 
     echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
 
-    local theme_json
-    theme_json=$(printf '{"BrowserThemeColor": "%s"}' "$primary_color")
+    local policy_dir="/etc/chromium/policies/managed"
+    local theme_file="$policy_dir/theme.json"
 
-    if [ -d "/etc/chromium/policies/managed" ]; then
-        if echo "$theme_json" | sudo tee /etc/chromium/policies/managed/theme.json > /dev/null 2>&1; then
-            echo "[chromium] Written to /etc/chromium/policies/managed/theme.json" | tee -a "$log_file" 2>/dev/null
+    if [ ! -d "$policy_dir" ]; then
+        if sudo mkdir -p "$policy_dir" 2>/dev/null; then
+            echo "[chromium] Created policy directory: $policy_dir" | tee -a "$log_file" 2>/dev/null
         else
-            echo "[chromium] Failed to write to /etc/chromium/policies/managed/theme.json" | tee -a "$log_file" 2>/dev/null
+            echo "[chromium] Failed to create policy directory. Skipping." | tee -a "$log_file" 2>/dev/null
             return
         fi
+    fi
+
+    if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" | sudo tee "$theme_file" > /dev/null 2>&1; then
+        echo "[chromium] Written to $theme_file" | tee -a "$log_file" 2>/dev/null
     else
-        echo "[chromium] /etc/chromium/policies/managed not found. Skipping." | tee -a "$log_file" 2>/dev/null
+        echo "[chromium] Failed to write to $theme_file. Skipping." | tee -a "$log_file" 2>/dev/null
         return
     fi
 
-    if command -v chromium &>/dev/null; then
-        if chromium --refresh-platform-policy 2>/dev/null; then
-            echo "[chromium] Applied to running Chromium instance" | tee -a "$log_file" 2>/dev/null
-        else
-            echo "[chromium] Could not refresh platform policy (may need restart)" | tee -a "$log_file" 2>/dev/null
+    local chromium_cmds=("chromium" "chromium-browser" "google-chrome" "chrome")
+    for cmd in "${chromium_cmds[@]}"; do
+        if command -v "$cmd" &>/dev/null; then
+            if "$cmd" --refresh-platform-policy --no-startup-window 2>/dev/null; then
+                echo "[chromium] Applied to running $cmd instance" | tee -a "$log_file" 2>/dev/null
+            else
+                echo "[chromium] Could not refresh $cmd (may need restart)" | tee -a "$log_file" 2>/dev/null
+            fi
         fi
-    fi
+    done
 
     if command -v brave &>/dev/null; then
-        if brave --refresh-platform-policy 2>/dev/null; then
+        if brave --refresh-platform-policy --no-startup-window 2>/dev/null; then
             echo "[chromium] Applied to running Brave instance" | tee -a "$log_file" 2>/dev/null
         else
-            echo "[chromium] Could not refresh Brave platform policy (may need restart)" | tee -a "$log_file" 2>/dev/null
+            echo "[chromium] Could not refresh Brave (may need restart)" | tee -a "$log_file" 2>/dev/null
         fi
     fi
 }
