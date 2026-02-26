@@ -277,23 +277,27 @@ apply_chromium_theme() {
 
     echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
 
-    local policy_dir="/etc/chromium/policies/managed"
-    local theme_file="$policy_dir/theme.json"
+    local chromium_policy_dir="/etc/chromium/policies/managed"
+    local brave_policy_dir="/etc/brave/policies/managed"
+    local theme_file="$chromium_policy_dir/theme.json"
+    local brave_theme_file="$brave_policy_dir/theme.json"
 
-    if [ ! -d "$policy_dir" ]; then
-        if sudo mkdir -p "$policy_dir" 2>/dev/null; then
-            echo "[chromium] Created policy directory: $policy_dir" | tee -a "$log_file" 2>/dev/null
+    if [ -d "$chromium_policy_dir" ]; then
+        if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" > "$theme_file" 2>/dev/null; then
+            echo "[chromium] Written to $theme_file" | tee -a "$log_file" 2>/dev/null
         else
-            echo "[chromium] Failed to create policy directory. Skipping." | tee -a "$log_file" 2>/dev/null
-            return
+            echo "[chromium] Failed to write to $theme_file" | tee -a "$log_file" 2>/dev/null
         fi
+    else
+        echo "[chromium] Chromium policy directory not found: $chromium_policy_dir" | tee -a "$log_file" 2>/dev/null
     fi
 
-    if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" | sudo tee "$theme_file" > /dev/null 2>&1; then
-        echo "[chromium] Written to $theme_file" | tee -a "$log_file" 2>/dev/null
-    else
-        echo "[chromium] Failed to write to $theme_file. Skipping." | tee -a "$log_file" 2>/dev/null
-        return
+    if [ -d "$brave_policy_dir" ]; then
+        if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" > "$brave_theme_file" 2>/dev/null; then
+            echo "[chromium] Written to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
+        else
+            echo "[chromium] Failed to write to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
+        fi
     fi
 
     local chromium_cmds=("chromium" "chromium-browser" "google-chrome" "chrome")
