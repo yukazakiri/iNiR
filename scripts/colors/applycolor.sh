@@ -275,18 +275,6 @@ apply_chromium_theme() {
         return
     fi
 
-    local current_mode
-    current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
-    local dark_mode_value="0"
-    
-    if [ "$current_mode" = "prefer-dark" ]; then
-        dark_mode_value="1"
-        echo "[chromium] System dark mode detected" | tee -a "$log_file" 2>/dev/null
-    else
-        dark_mode_value="0"
-        echo "[chromium] System light mode detected" | tee -a "$log_file" 2>/dev/null
-    fi
-
     echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
 
     local chromium_policy_dir="/etc/chromium/policies/managed"
@@ -295,7 +283,7 @@ apply_chromium_theme() {
     local brave_theme_file="$brave_policy_dir/theme.json"
 
     if [ -d "$chromium_policy_dir" ]; then
-        if printf '{"BrowserThemeColor": "%s", "ForceDarkMode": %s}\n' "$primary_color" "$dark_mode_value" > "$theme_file" 2>/dev/null; then
+        if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" > "$theme_file" 2>/dev/null; then
             echo "[chromium] Written to $theme_file" | tee -a "$log_file" 2>/dev/null
         else
             echo "[chromium] Failed to write to $theme_file" | tee -a "$log_file" 2>/dev/null
@@ -305,7 +293,7 @@ apply_chromium_theme() {
     fi
 
     if [ -d "$brave_policy_dir" ]; then
-        if printf '{"BrowserThemeColor": "%s", "ForceDarkMode": %s}\n' "$primary_color" "$dark_mode_value" > "$brave_theme_file" 2>/dev/null; then
+        if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" > "$brave_theme_file" 2>/dev/null; then
             echo "[chromium] Written to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
         else
             echo "[chromium] Failed to write to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
