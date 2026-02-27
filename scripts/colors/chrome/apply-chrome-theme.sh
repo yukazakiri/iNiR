@@ -44,17 +44,30 @@ if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then
   [[ "$enable_chrome" != "true" ]] && exit 0
 fi
 
-# ── Extract primary color from SCSS ──────────────────────────────────────────
-# SCSS lines look like:  $primary: #6750A4;
+# ── Extract primary color and dark mode flag from SCSS ───────────────────────
+# SCSS lines look like:  $primary: #6750A4;  and  $darkmode: True;
 # Fall back to $term4 (blue slot) if $primary is absent, then hardcoded fallback.
 primary=$(grep -m1 '^\$primary:' "$SCSS" | cut -d: -f2 | tr -d ' ;')
 [[ -z "$primary" ]] && primary=$(grep -m1 '^\$term4:' "$SCSS" | cut -d: -f2 | tr -d ' ;')
 primary="${primary:-#4285F4}"
 
-_log "[chrome-theme] primary=$primary"
+# $darkmode: True|False  →  BrowserColorScheme: 2 (dark) | 1 (light)
+# Chrome normally infers this from the XDG portal color-scheme signal, but the
+# portal can be out of sync with the actual theme. Setting the policy directly
+# ensures the browser always matches the system's actual dark/light state.
+darkmode_raw=$(grep -m1 '^\$darkmode:' "$SCSS" | cut -d: -f2 | tr -d ' ;')
+if [[ "${darkmode_raw,,}" == "true" ]]; then
+  color_scheme=2   # dark
+else
+  color_scheme=1   # light
+fi
+
+_log "[chrome-theme] primary=$primary dark=$([[ $color_scheme -eq 2 ]] && echo true || echo false)"
 
 # ── Build policy JSON ─────────────────────────────────────────────────────────
-POLICY_JSON="{\"BrowserThemeColor\":\"$primary\",\"NtpCustomBackgroundEnabled\":true}"
+# BrowserColorScheme: 1=light 2=dark (Chrome 123+, Brave 141+)
+# This overrides the XDG portal signal, which can be stale/wrong.
+POLICY_JSON="{\"BrowserThemeColor\":\"$primary\",\"BrowserColorScheme\":$color_scheme,\"NtpCustomBackgroundEnabled\":true}"
 
 # ── Browser registry ──────────────────────────────────────────────────────────
 # Format: "label|policy-dir|space-separated binaries|space-separated pgrep comm names"
