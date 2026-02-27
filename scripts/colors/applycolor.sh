@@ -259,6 +259,10 @@ apply_gtk_kde() {
   "$SCRIPT_DIR/apply-gtk-theme.sh"
 }
 
+apply_chrome() {
+  bash "$SCRIPT_DIR/chrome/apply-chrome-theme.sh"
+}
+
 # Check if terminal theming is enabled in config
 CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
@@ -289,6 +293,9 @@ fi
 
 # Apply code editor themes (Zed, etc.)
 apply_code_editors &
+
+# Apply Chrome/Chromium GM3 theme via managed policies
+apply_chrome &
 
 # Sync ii-pixel SDDM theme colors (if installed)
 SDDM_SYNC_SCRIPT="$SCRIPT_DIR/../sddm/sync-pixel-sddm.py"
