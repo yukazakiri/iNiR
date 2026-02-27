@@ -64,6 +64,20 @@ fi
 
 _log "[chrome-theme] primary=$primary dark=$([[ $color_scheme -eq 2 ]] && echo true || echo false)"
 
+# ── Sync system color-scheme so portal and browsers agree ────────────────────
+# gsettings → xdg-desktop-portal-gtk emits SettingChanged on the session bus.
+# Browsers listen to this signal for live dark/light updates independent of policy.
+# We set it here so both the policy value AND the live signal are always in sync.
+if command -v gsettings &>/dev/null; then
+  if [[ $color_scheme -eq 2 ]]; then
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' 2>/dev/null || true
+  else
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-light' 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3' 2>/dev/null || true
+  fi
+fi
+
 # ── Build policy JSON ─────────────────────────────────────────────────────────
 # BrowserColorScheme: 1=light 2=dark (Chrome 123+, Brave 141+)
 # This overrides the XDG portal signal, which can be stale/wrong.
@@ -96,9 +110,13 @@ _is_running() {
 # causes the new process to signal it and exit immediately (Chrome 142+/Brave 141+).
 # We only call it when we have confirmed the browser IS running; otherwise it
 # would open a new browser window.
+# IMPORTANT: flush all writes to disk first (sync) and give the kernel a moment
+# to settle before signalling — the browser reads the file on receipt of the
+# signal, and a race window between write and signal causes it to read the old value.
 _refresh_policy() {
   local bin="$1" label="$2"
-  # Run with a tight timeout; exits 0 and fast if the flag is supported + instance running.
+  sync
+  sleep 0.3
   if timeout 4s "$bin" --refresh-platform-policy --no-startup-window &>/dev/null; then
     _log "[chrome-theme] $label: policies reloaded via --refresh-platform-policy"
     return 0
