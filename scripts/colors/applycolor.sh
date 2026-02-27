@@ -305,7 +305,7 @@ apply_chromium_theme() {
     fi
 
     if [ -d "$brave_policy_dir" ]; then
-        if printf '{"BrowserThemeColor": "%s"}\n' "$primary_color" > "$brave_theme_file" 2>/dev/null; then
+        if printf '{"BrowserThemeColor": "%s", "ForceDarkMode": %s}\n' "$primary_color" "$dark_mode_value" > "$brave_theme_file" 2>/dev/null; then
             echo "[chromium] Written to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
         else
             echo "[chromium] Failed to write to $brave_theme_file" | tee -a "$log_file" 2>/dev/null
