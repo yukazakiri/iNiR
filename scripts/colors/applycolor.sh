@@ -294,9 +294,10 @@ apply_chromium_theme() {
     local dark_mode_value="0"
     if [ "$is_dark" = true ]; then
         dark_mode_value="1"
-        echo "[chromium] Dark mode detected, forcing dark theme" | tee -a "$log_file" 2>/dev/null
+        echo "[chromium] Dark wallpaper detected, using dark theme" | tee -a "$log_file" 2>/dev/null
     else
-        echo "[chromium] Light mode detected, using light theme" | tee -a "$log_file" 2>/dev/null
+        dark_mode_value="0"
+        echo "[chromium] Light wallpaper detected, using light theme" | tee -a "$log_file" 2>/dev/null
     fi
 
     echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
