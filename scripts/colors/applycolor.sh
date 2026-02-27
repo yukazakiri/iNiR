@@ -269,35 +269,22 @@ apply_chromium_theme() {
 
     local primary_color
     primary_color=$(jq -r '.primary' "$STATE_DIR/user/generated/colors.json" 2>/dev/null || true)
-    local background_color
-    background_color=$(jq -r '.background' "$STATE_DIR/user/generated/colors.json" 2>/dev/null || true)
 
     if [ -z "$primary_color" ] || [ "$primary_color" = "null" ]; then
         echo "[chromium] Could not extract primary color. Skipping." | tee -a "$log_file" 2>/dev/null
         return
     fi
 
-    local is_dark=false
-    if [ -n "$background_color" ] && [ "$background_color" != "null" ]; then
-        local bg_luminance
-        bg_luminance=$(echo "$background_color" | sed 's/#//' | while read -r hex; do
-            r=$((16#${hex:0:2}))
-            g=$((16#${hex:2:2}))
-            b=$((16#${hex:4:2}))
-            echo $(( (r*299 + g*587 + b*114) / 1000 ))
-        done)
-        if [ "$bg_luminance" -lt 128 ]; then
-            is_dark=true
-        fi
-    fi
-
+    local current_mode
+    current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
     local dark_mode_value="0"
-    if [ "$is_dark" = true ]; then
+    
+    if [ "$current_mode" = "prefer-dark" ]; then
         dark_mode_value="1"
-        echo "[chromium] Dark wallpaper detected, using dark theme" | tee -a "$log_file" 2>/dev/null
+        echo "[chromium] System dark mode detected" | tee -a "$log_file" 2>/dev/null
     else
         dark_mode_value="0"
-        echo "[chromium] Light wallpaper detected, using light theme" | tee -a "$log_file" 2>/dev/null
+        echo "[chromium] System light mode detected" | tee -a "$log_file" 2>/dev/null
     fi
 
     echo "[chromium] Applying theme color: $primary_color" | tee -a "$log_file" 2>/dev/null
