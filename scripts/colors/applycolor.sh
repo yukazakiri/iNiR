@@ -206,7 +206,7 @@ apply_qt() {
 }
 
 apply_code_editors() {
-  # Generate code editor themes (Zed, VSCode, etc.)
+  # Generate code editor themes (Zed, VSCode, etc.) and update Zed settings
   local log_file="$STATE_DIR/user/generated/code_editor_themes.log"
 
   if [ ! -f "$STATE_DIR/user/generated/material_colors.scss" ]; then
@@ -214,67 +214,40 @@ apply_code_editors() {
     return
   fi
 
-  # Get Python command
-  local python_cmd="python3"
-  local _ac_venv
-  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
-    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
-  else
-    _ac_venv="$HOME/.local/state/quickshell/.venv"
-  fi
-  local venv_python="$_ac_venv/bin/python3"
-  if [[ -x "$venv_python" ]]; then
-    python_cmd="$venv_python"
-  fi
-
-  if ! command -v "$python_cmd" &>/dev/null && [[ ! -x "$python_cmd" ]]; then
-    echo "[code-editors] ERROR: Python not found ($python_cmd). Cannot generate themes." >> "$log_file" 2>/dev/null
-    return
-  fi
-
   # Check if Zed is installed and enabled
   local enable_zed="true"
   if [ -f "$CONFIG_FILE" ]; then
-    enable_zed=$(jq -r 'if .appearance.wallpaperTheming | has("enableZed") then .appearance.wallpaperTheming.enableZed else true end' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    enable_zed=$(jq -r '.appearance.wallpaperTheming.enableZed // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
   fi
 
   if [[ "$enable_zed" == "true" ]] && { command -v zed &>/dev/null || command -v zeditor &>/dev/null; }; then
     echo "[code-editors] Generating Zed theme..." | tee -a "$log_file" 2>/dev/null
-    "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
-      --scss "$STATE_DIR/user/generated/material_colors.scss" \
-      --zed >> "$log_file" 2>&1
 
-    if [ $? -eq 0 ]; then
-      echo "[code-editors] Zed theme generated (Zed auto-reloads on file change)" >> "$log_file" 2>/dev/null
+    # Run the Python script to generate Zed config
+    local python_cmd="python3"
+    local _ac_venv
+    if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+      _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
     else
-      echo "[code-editors] ERROR: Failed to generate Zed theme" >> "$log_file" 2>/dev/null
+      _ac_venv="$HOME/.local/state/quickshell/.venv"
     fi
-  fi
+    local venv_python="$_ac_venv/bin/python3"
+    if [[ -x "$venv_python" ]]; then
+      python_cmd="$venv_python"
+    fi
 
-  # Check if VSCode is installed and enabled
-  local enable_vscode="true"
-  if [ -f "$CONFIG_FILE" ]; then
-    enable_vscode=$(jq -r 'if .appearance.wallpaperTheming | has("enableVSCode") then .appearance.wallpaperTheming.enableVSCode else true end' "$CONFIG_FILE" 2>/dev/null || echo "true")
-  fi
-
-  if [[ "$enable_vscode" == "true" ]]; then
-    # Check if any VSCode variant is installed
-    local vscode_found=false
-    [[ -d "$HOME/.config/Code" ]] && vscode_found=true
-    [[ -d "$HOME/.config/VSCodium" ]] && vscode_found=true
-    [[ -d "$HOME/.config/Cursor" ]] && vscode_found=true
-
-    if [[ "$vscode_found" == "true" ]]; then
-      echo "[code-editors] Generating VSCode theme..." | tee -a "$log_file" 2>/dev/null
+    if command -v "$python_cmd" &>/dev/null || [[ -x "$python_cmd" ]]; then
       "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
         --scss "$STATE_DIR/user/generated/material_colors.scss" \
-        --vscode >> "$log_file" 2>&1
+        --zed >> "$log_file" 2>&1
 
       if [ $? -eq 0 ]; then
-        echo "[code-editors] VSCode theme generated (auto-reloads instantly)" >> "$log_file" 2>/dev/null
+        echo "[code-editors] Zed theme generated (Zed auto-reloads on file change)" >> "$log_file" 2>/dev/null
       else
-        echo "[code-editors] ERROR: Failed to generate VSCode theme" >> "$log_file" 2>/dev/null
+        echo "[code-editors] ERROR: Failed to generate Zed theme" >> "$log_file" 2>/dev/null
       fi
+    else
+      echo "[code-editors] ERROR: Python not found ($python_cmd). Cannot generate Zed theme." >> "$log_file" 2>/dev/null
     fi
   fi
 }
@@ -287,13 +260,151 @@ apply_gtk_kde() {
 }
 
 apply_chrome() {
-  # apply-chrome-theme.sh applies GM3 BrowserThemeColor to Chromium-based browsers
-  # Supports: Google Chrome, Chromium, Brave (and Omarchy fork with CLI theming)
-  "$SCRIPT_DIR/apply-chrome-theme.sh"
+  # Apply Chrome/Chromium/Brave theme via managed policies using GM3 BrowserThemeColor
+  # Chrome 142+ supports --refresh-platform-policy for instant theme application
+  # Brave cherry-picked this for their Chrome 141-based release
+  #
+  # How it works:
+  #   1. Write BrowserThemeColor policy to /etc/<browser>/policies/managed/
+  #   2. Chrome's GM3 engine uses this as the seed color for its full Material Design 3 palette
+  #   3. --refresh-platform-policy forces Chrome to re-read policies from disk instantly
+  #   4. No browser restart needed — colors update in real-time
+  local log_file="$STATE_DIR/user/generated/chrome_theme.log"
+  : > "$log_file" 2>/dev/null
+
+  local colors_json="$STATE_DIR/user/generated/colors.json"
+  local scss_file="$STATE_DIR/user/generated/material_colors.scss"
+
+  # Extract primary color for GM3 seed — prefer colors.json, fall back to SCSS
+  local primary_color=""
+  if [[ -f "$colors_json" ]] && command -v jq &>/dev/null; then
+    primary_color=$(jq -r '.primary // empty' "$colors_json" 2>/dev/null)
+  fi
+  if [[ -z "$primary_color" && -f "$scss_file" ]]; then
+    primary_color=$(grep '^\$primary:' "$scss_file" | sed 's/.*: *\(#[A-Fa-f0-9]\{6\}\).*/\1/')
+  fi
+
+  if [[ -z "$primary_color" ]]; then
+    echo "[chrome] Could not determine primary color. Skipping." >> "$log_file"
+    return
+  fi
+
+  echo "[chrome] GM3 seed color: $primary_color" >> "$log_file"
+
+  # Build the managed policy JSON
+  # BrowserThemeColor sets the GM3 seed — Chrome generates the full Material palette from it
+  local policy_json="{
+  \"BrowserThemeColor\": \"$primary_color\"
+}"
+
+  # Browser detection: binary names -> policy directories (Linux paths)
+  local -a browser_names=()
+  local -a browser_bins=()
+  local -a policy_dirs=()
+
+  # Google Chrome
+  if command -v google-chrome-stable &>/dev/null; then
+    browser_names+=("Google Chrome")
+    browser_bins+=("google-chrome-stable")
+    policy_dirs+=("/etc/opt/chrome/policies/managed")
+  elif command -v google-chrome &>/dev/null; then
+    browser_names+=("Google Chrome")
+    browser_bins+=("google-chrome")
+    policy_dirs+=("/etc/opt/chrome/policies/managed")
+  fi
+
+  # Chromium
+  if command -v chromium &>/dev/null; then
+    browser_names+=("Chromium")
+    browser_bins+=("chromium")
+    policy_dirs+=("/etc/chromium/policies/managed")
+  elif command -v chromium-browser &>/dev/null; then
+    browser_names+=("Chromium")
+    browser_bins+=("chromium-browser")
+    policy_dirs+=("/etc/chromium/policies/managed")
+  fi
+
+  # Brave
+  if command -v brave &>/dev/null; then
+    browser_names+=("Brave")
+    browser_bins+=("brave")
+    policy_dirs+=("/etc/brave/policies/managed")
+  elif command -v brave-browser &>/dev/null; then
+    browser_names+=("Brave")
+    browser_bins+=("brave-browser")
+    policy_dirs+=("/etc/brave/policies/managed")
+  fi
+
+  if [[ ${#browser_names[@]} -eq 0 ]]; then
+    echo "[chrome] No Chromium-based browsers found. Skipping." >> "$log_file"
+    return
+  fi
+
+  local any_applied=false
+  local -a setup_needed=()
+
+  for idx in "${!browser_names[@]}"; do
+    local name="${browser_names[$idx]}"
+    local bin="${browser_bins[$idx]}"
+    local policy_dir="${policy_dirs[$idx]}"
+    local policy_file="$policy_dir/ii-theme.json"
+
+    if [[ -d "$policy_dir" && -w "$policy_dir" ]]; then
+      # Policy dir exists and is writable — write directly
+      if echo "$policy_json" > "$policy_file" 2>/dev/null; then
+        echo "[chrome] Wrote GM3 theme policy for $name -> $policy_file" >> "$log_file"
+        any_applied=true
+
+        # Instant-apply via --refresh-platform-policy (Chrome 142+ / Brave 141+)
+        # --no-startup-window prevents opening a new window if browser is already running
+        if pgrep -f "$bin" &>/dev/null 2>&1; then
+          {
+            "$bin" --refresh-platform-policy --no-startup-window 2>/dev/null
+          } & disown || true
+          echo "[chrome] Sent --refresh-platform-policy to $name" >> "$log_file"
+        else
+          echo "[chrome] $name not running — theme will apply on next launch" >> "$log_file"
+        fi
+      else
+        echo "[chrome] Failed to write $policy_file despite dir being writable" >> "$log_file"
+      fi
+    else
+      # Policy dir missing or not writable — record setup command
+      setup_needed+=("$name|$policy_dir")
+      echo "[chrome] Policy dir not accessible for $name: $policy_dir" >> "$log_file"
+    fi
+  done
+
+  # Provide one-time setup instructions for browsers that need it
+  if [[ ${#setup_needed[@]} -gt 0 ]]; then
+    echo "[chrome] ---" >> "$log_file"
+    echo "[chrome] One-time setup needed for managed policies:" >> "$log_file"
+    for entry in "${setup_needed[@]}"; do
+      local name="${entry%%|*}"
+      local dir="${entry##*|}"
+      echo "[chrome]   $name: sudo mkdir -p \"$dir\" && sudo chown \"\$USER\" \"$dir\"" >> "$log_file"
+    done
+    echo "[chrome] After setup, wallpaper theming will auto-apply to Chrome/Chromium." >> "$log_file"
+
+    # Send a one-time desktop notification if notify-send is available and this is the first failure
+    local notified_flag="$STATE_DIR/user/generated/.chrome_policy_notified"
+    if [[ ! -f "$notified_flag" ]] && command -v notify-send &>/dev/null; then
+      local setup_cmds=""
+      for entry in "${setup_needed[@]}"; do
+        local dir="${entry##*|}"
+        setup_cmds+="sudo mkdir -p $dir && sudo chown \$USER $dir\n"
+      done
+      notify-send -u normal \
+        "iNiR: Chrome theme setup needed" \
+        "Run in terminal to enable auto-theming:\n$(echo -e "$setup_cmds")" \
+        2>/dev/null || true
+      touch "$notified_flag" 2>/dev/null
+    fi
+  fi
 }
 
 # Check if terminal theming is enabled in config
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
+CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
   enable_terminal=$(jq -r '.appearance.wallpaperTheming.enableTerminal // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
   if [ "$enable_terminal" = "true" ]; then
