@@ -56,9 +56,11 @@ Item {
     property bool showAudioOutputDialog: false
     property bool showAudioInputDialog: false
     property bool showBluetoothDialog: false
+    property bool showEventsDialog: false
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
     property bool editMode: false
+    property var eventsDialogEditEvent: null
     property bool reloadButtonEnabled: true
     property bool settingsButtonEnabled: true
 
@@ -97,7 +99,17 @@ Item {
 
     Component { id: dashboardComponent;  DashboardWidget  { anchors.fill: parent; anchors.margins: 8 } }
     Component { id: calendarComponent;   CalendarWidget   { anchors.fill: parent; anchors.margins: 8 } }
-    Component { id: eventsComponent;     EventsWidget     { anchors.fill: parent; anchors.margins: 8 } }
+    Component { 
+        id: eventsComponent
+        EventsWidget { 
+            anchors.fill: parent
+            anchors.margins: 8
+            onOpenEventsDialog: (editEvent) => {
+                root.eventsDialogEditEvent = editEvent
+                root.showEventsDialog = true
+            }
+        }
+    }
     Component { id: todoComponent;       TodoWidget       { anchors.fill: parent; anchors.margins: 8 } }
     Component { id: notepadComponent;    NotepadWidget    { anchors.fill: parent; anchors.margins: 8 } }
     Component { id: calculatorComponent; CalculatorWidget { anchors.fill: parent; anchors.margins: 8 } }
@@ -227,9 +239,11 @@ Item {
             if (!GlobalStates.sidebarRightOpen) {
                 root.showWifiDialog        = false
                 root.showBluetoothDialog   = false
+                root.showEventsDialog      = false
                 root.showAudioOutputDialog = false
                 root.showAudioInputDialog  = false
                 root.showNightLightDialog  = false
+                root.eventsDialogEditEvent = null
             }
         }
     }
@@ -1030,6 +1044,26 @@ Item {
             if (!shown) return
             Network.enableWifi()
             Network.rescanWifi()
+        }
+    }
+
+    ToggleDialog {
+        id: compactEventsToggle
+        shownPropertyString: "showEventsDialog"
+        dialog: EventsDialog {}
+        onShownChanged: {
+            if (shown && compactEventsToggle.item) {
+                if (root.eventsDialogEditEvent) {
+                    compactEventsToggle.item.loadEvent(root.eventsDialogEditEvent)
+                } else {
+                    compactEventsToggle.item.resetForm()
+                }
+            }
+        }
+        onActiveChanged: {
+            if (!active) {
+                root.eventsDialogEditEvent = null
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
 import qs.modules.sidebarRight.dashboard
+import qs.modules.sidebarRight.events
 import QtQuick
 import QtQuick.Layouts
 // import Qt5Compat.GraphicalEffects // Might not be available, using standard Rectangle gradient instead
@@ -32,9 +33,11 @@ Rectangle {
     implicitHeight: visible ? (collapsed ? collapsedBottomWidgetGroupRow.implicitHeight : bottomWidgetGroupRow.implicitHeight) : 0
     property int selectedTab: Persistent.states?.sidebar?.bottomGroup?.tab ?? 0
     property bool collapsed: Persistent.states?.sidebar?.bottomGroup?.collapsed ?? false
+    
     property var allTabs: [
         {"type": "dashboard", "name": Translation.tr("Dashboard"), "icon": "dashboard", "widget": dashboardWidget},
         {"type": "calendar", "name": Translation.tr("Calendar"), "icon": "calendar_month", "widget": calendarWidget},
+        {"type": "events", "name": Translation.tr("Events"), "icon": "event_upcoming", "widget": eventsWidgetComponent},
         {"type": "todo", "name": Translation.tr("To Do"), "icon": "done_outline", "widget": todoWidget},
         {"type": "notepad", "name": Translation.tr("Notepad"), "icon": "edit_note", "widget": notepadWidget},
         {"type": "calculator", "name": Translation.tr("Calc"), "icon": "calculate", "widget": calculatorWidget},
@@ -57,9 +60,22 @@ Rectangle {
         }
     }
 
+    // Signal to open events dialog (propagated from EventsWidget)
+    signal openEventsDialog(var editEvent)
+
+    // Events component
+    Component {
+        id: eventsWidgetComponent
+        EventsWidget {
+            anchors.fill: parent
+            anchors.margins: 5
+            onOpenEventsDialog: (editEvent) => root.openEventsDialog(editEvent)
+        }
+    }
+
     readonly property var enabledWidgets: {
         root.configVersion // Force dependency
-        return Config.options?.sidebar?.right?.enabledWidgets ?? ["dashboard", "calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
+        return Config.options?.sidebar?.right?.enabledWidgets ?? ["dashboard", "calendar", "events", "todo", "notepad", "calculator", "sysmon", "timer"]
     }
 
     property var tabs: allTabs.filter(tab => enabledWidgets.includes(tab.type))
@@ -222,8 +238,9 @@ Rectangle {
             // Collapse button (Fixed at top)
             CalendarHeaderButton {
                 id: collapseBtn
-                anchors.left: parent.left
+                anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
+                anchors.left: undefined
                 anchors.leftMargin: 0
                 forceCircle: true
                 downAction: () => {
