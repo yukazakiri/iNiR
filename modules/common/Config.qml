@@ -1097,7 +1097,7 @@ Singleton {
 
                 // Right sidebar widget toggles
                 property JsonObject right: JsonObject {
-                    property list<string> enabledWidgets: ["dashboard", "calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
+                    property list<string> enabledWidgets: ["dashboard", "calendar", "events", "todo", "notepad", "calculator", "sysmon", "timer"]
                 }
             }
 

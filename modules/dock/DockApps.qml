@@ -586,7 +586,7 @@ Item {
             // (overrides the base DockAppButton scale property)
               scale: isBeingDragged ? 1.08
                    : (root.macosStyle ? 1.0
-                       : (appToplevel.toplevels.find(t => t.activated === true) !== undefined ? 1.05 : 1.0))
+                       : (((appToplevel?.toplevels ?? []).find(t => t.activated === true) !== undefined) ? 1.05 : 1.0))
 
             // Dragged item lifts slightly; others dim just enough to signal drag mode
             opacity: isBeingDragged ? 0.8

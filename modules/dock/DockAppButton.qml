@@ -17,8 +17,9 @@ DockButton {
     property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
     property real countDotHeight: 4
-    property bool appIsActive: appToplevel.toplevels.find(t => (t.activated == true)) !== undefined
-    property bool hasWindows: appToplevel.toplevels.length > 0
+    readonly property var toplevels: appToplevel?.toplevels ?? []
+    property bool appIsActive: toplevels.find(t => (t.activated == true)) !== undefined
+    property bool hasWindows: toplevels.length > 0
     property bool pillStyle:  Config.options?.dock?.style === "pill"
     property bool macosStyle: Config.options?.dock?.style === "macos"
 
@@ -41,11 +42,11 @@ DockButton {
     // Determine focused window index for smart indicator (Niri only)
     // Returns the index (0-based) of the focused window sorted by column position
     property int focusedWindowIndex: {
-        if (!root.appIsActive || appToplevel.toplevels.length <= 1)
+        if (!root.appIsActive || toplevels.length <= 1)
             return 0;
 
         // Find the focused toplevel
-        const focusedToplevel = appToplevel.toplevels.find(t => t.activated === true);
+        const focusedToplevel = toplevels.find(t => t.activated === true);
         if (!focusedToplevel)
             return 0;
 
@@ -55,8 +56,8 @@ DockButton {
 
             // Build array of {toplevelIdx, column} for sorting
             const windowPositions = [];
-            for (let i = 0; i < appToplevel.toplevels.length; i++) {
-                const tl = appToplevel.toplevels[i];
+            for (let i = 0; i < toplevels.length; i++) {
+                const tl = toplevels[i];
                 let col = 999999;
                 if (tl.niriWindowId) {
                     const niriWin = niriWindows.find(w => w.id === tl.niriWindowId);
@@ -77,8 +78,8 @@ DockButton {
         }
 
         // Fallback: find by activated flag in original order
-        for (let i = 0; i < appToplevel.toplevels.length; i++) {
-            if (appToplevel.toplevels[i].activated) return i;
+        for (let i = 0; i < toplevels.length; i++) {
+            if (toplevels[i].activated) return i;
         }
         return 0;
     }
@@ -123,7 +124,7 @@ DockButton {
         visible: pillStyle && !isSeparator && !Appearance.gameModeMinimal
         appIsActive: root.appIsActive
         hasWindows: root.hasWindows
-        windowCount: appToplevel.toplevels.length
+        windowCount: toplevels.length
         focusedWindowIndex: root.focusedWindowIndex
         vertical: root.vertical
         countDotWidth: root.countDotWidth
@@ -144,7 +145,7 @@ DockButton {
             const hi = root.appListRoot?.macHoveredIndex ?? -1
             return (hi < 0 || root.listIndex < 0) ? 99 : Math.abs(root.listIndex - hi)
         }
-        windowCount: appToplevel.toplevels.length
+        windowCount: toplevels.length
         focusedWindowIndex: root.focusedWindowIndex
     }
 
@@ -173,7 +174,7 @@ DockButton {
 
     // Use RippleButton's built-in buttonHovered instead of separate MouseArea
     onButtonHoveredChanged: {
-        if (appToplevel.toplevels.length > 0) {
+        if (toplevels.length > 0) {
             if (buttonHovered) {
                 appListRoot.lastHoveredButton = root
                 appListRoot.buttonHovered = true
@@ -222,14 +223,14 @@ DockButton {
         // macOS click micro-pulse
         if (macosStyle) macItem.clickPulse()
         // Sin ventanas abiertas: lanzar nueva instancia desde desktop entry o fallbacks
-        if (appToplevel.toplevels.length === 0) {
+        if (toplevels.length === 0) {
             launchFromDesktopEntry();
             return;
         }
         // Con ventanas: rotar foco entre instancias abiertas
-        const total = appToplevel.toplevels.length
+        const total = toplevels.length
         lastFocused = (lastFocused + 1) % total
-        const toplevel = appToplevel.toplevels[lastFocused]
+        const toplevel = toplevels[lastFocused]
         if (CompositorService.isNiri) {
             if (toplevel?.niriWindowId) {
                 NiriService.focusWindow(toplevel.niriWindowId)
@@ -306,10 +307,10 @@ DockButton {
                 { type: "separator" },
                 {
                     iconName: "close",
-                    text: appToplevel.toplevels.length > 1 ? Translation.tr("Close all windows") : Translation.tr("Close window"),
+                    text: toplevels.length > 1 ? Translation.tr("Close all windows") : Translation.tr("Close window"),
                     monochromeIcon: true,
                     action: () => {
-                        for (let toplevel of appToplevel.toplevels) {
+                        for (let toplevel of toplevels) {
                             toplevel.close()
                         }
                     }
@@ -451,7 +452,7 @@ DockButton {
                             const showAll = Config.options?.dock?.showAllWindowDots !== false;
                             const max = Config.options?.dock?.maxIndicatorDots ?? 5;
                             if (root.appIsActive || showAll) {
-                                return Math.min(appToplevel.toplevels.length, max);
+                                return Math.min(toplevels.length, max);
                             }
                             return 0;
                         }
@@ -465,7 +466,7 @@ DockButton {
                             property bool isFocusedWindow: {
                                 if (!root.appIsActive) return false;
                                 if (!smartMode) return true; // All indicators same when smart mode off
-                                if (appToplevel.toplevels.length <= 1) return true;
+                                if (toplevels.length <= 1) return true;
                                 return index === root.focusedWindowIndex;
                             }
 
