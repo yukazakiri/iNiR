@@ -189,8 +189,19 @@ Singleton {
     function getEventsForDate(date) {
         const targetDate = new Date(date)
         targetDate.setHours(0, 0, 0, 0)
-        const nextDay = new Date(targetDate)
-        nextDay.setDate(nextDay.getDate() + 1)
+        
+        return root.list.filter(event => {
+            const eventDate = new Date(event.dateTime)
+            eventDate.setHours(0, 0, 0, 0)
+            // Only show non-notified events (upcoming or future)
+            return eventDate.getTime() === targetDate.getTime() && !event.notified
+        })
+    }
+    
+    // Get ALL events for a date (including notified/past) - for history view
+    function getAllEventsForDate(date) {
+        const targetDate = new Date(date)
+        targetDate.setHours(0, 0, 0, 0)
         
         return root.list.filter(event => {
             const eventDate = new Date(event.dateTime)

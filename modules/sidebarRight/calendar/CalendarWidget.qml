@@ -10,9 +10,18 @@ import Quickshell
 
 Item {
     id: root
+
+    // Emitted when a day with events is clicked, carrying the date
+    signal dayWithEventsClicked(var date)
     
-    // Track events list changes to update calendar
-    property var _eventsList: Events.list
+    // Trigger to force recomputation when events change
+    property int _eventsTrigger: 0
+    Connections {
+        target: Events
+        function onEventAdded(event) { root._eventsTrigger++ }
+        function onEventRemoved(id) { root._eventsTrigger++ }
+        function onEventUpdated(event) { root._eventsTrigger++ }
+    }
 
     // Style tokens (5-style support)
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -57,7 +66,7 @@ Item {
 
     // Helper to get event count for a specific date
     function getEventCountForDay(day: int, weekRow: int, dayIndex: int): int {
-        const _dep = root._eventsList // force dependency
+        const _t = root._eventsTrigger // force dependency on trigger
         const cellData = root.calendarLayout[weekRow]?.[dayIndex]
         if (!cellData) return 0
         
@@ -233,6 +242,20 @@ Item {
                         day: root.calendarLayout[modelData][index].day
                         isToday: root.calendarLayout[modelData][index].today
                         eventCount: root.getEventCountForDay(root.calendarLayout[modelData][index].day, modelData, index)
+                        onClicked: {
+                            if (eventCount > 0) {
+                                const cellData = root.calendarLayout[modelData][index]
+                                const year = root.viewingDate.getFullYear()
+                                const month = root.viewingDate.getMonth()
+                                let targetMonth = month
+                                let targetYear = year
+                                if (cellData.today === -1) {
+                                    if (month === 0) { targetMonth = 11; targetYear = year - 1 }
+                                    else targetMonth = month - 1
+                                }
+                                root.dayWithEventsClicked(new Date(targetYear, targetMonth, cellData.day))
+                            }
+                        }
                     }
                 }
             }

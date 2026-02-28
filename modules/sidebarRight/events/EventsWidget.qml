@@ -14,6 +14,43 @@ Item {
     
     property int fabSize: 48
     property int fabMargins: 14
+
+    // Style tokens
+    readonly property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+        : Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
+        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+    readonly property color colSubtext: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
+        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
+    readonly property color colBadgeBg: Appearance.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.70)
+        : Appearance.inirEverywhere ? Appearance.inir.colSecondaryContainer
+        : Appearance.colors.colSecondaryContainer
+    readonly property color colBadgeText: Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
+        : Appearance.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
+        : Appearance.colors.colOnSecondaryContainer
+    readonly property color colEmptyBg: Appearance.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.85)
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+        : Appearance.auroraEverywhere ? (Appearance.aurora?.colSubSurface ?? Appearance.colors.colSecondaryContainer)
+        : Appearance.colors.colSecondaryContainer
+    
+    // Trigger to force recomputation when events change
+    property int _eventsTrigger: 0
+    Connections {
+        target: Events
+        function onEventAdded(event) { root._eventsTrigger++ }
+        function onEventRemoved(id) { root._eventsTrigger++ }
+        function onEventUpdated(event) { root._eventsTrigger++ }
+    }
+    
+    // Computed properties that react to events changes via trigger
+    readonly property var upcomingEvents: {
+        const _t = root._eventsTrigger // force dependency
+        return Events.getUpcomingEvents(30)
+    }
+    readonly property int upcomingCount: {
+        const _t = root._eventsTrigger // force dependency
+        return Events.getUpcomingEvents(7).length
+    }
     
     ColumnLayout {
         anchors.fill: parent
@@ -28,31 +65,33 @@ Item {
             MaterialSymbol {
                 text: "event_upcoming"
                 iconSize: 20
-                color: Appearance.colors.colPrimary
+                fill: 1
+                color: root.colPrimary
             }
             
             StyledText {
                 Layout.fillWidth: true
                 text: Translation.tr("Events & Reminders")
-                font.pixelSize: Appearance.font.pixelSize.large
+                font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.Medium
-                color: Appearance.colors.colOnLayer1
+                color: root.colText
             }
             
             Rectangle {
-                visible: Events.getUpcomingEvents(7).length > 0
-                implicitWidth: countText.implicitWidth + 12
+                visible: root.upcomingCount > 0
+                implicitWidth: Math.max(20, countText.implicitWidth + 10)
                 implicitHeight: 20
                 radius: 10
-                color: Appearance.colors.colSecondaryContainer
+                color: root.colBadgeBg
                 
                 StyledText {
                     id: countText
                     anchors.centerIn: parent
-                    text: Events.getUpcomingEvents(7).length
+                    text: root.upcomingCount
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     font.weight: Font.Bold
-                    color: Appearance.colors.colOnSecondaryContainer
+                    font.family: Appearance.font.family.numbers
+                    color: root.colBadgeText
                 }
             }
         }
@@ -75,7 +114,7 @@ Item {
                 
                 // Upcoming events
                 Repeater {
-                    model: Events.getUpcomingEvents(30)
+                    model: root.upcomingEvents
                     
                     delegate: EventCard {
                         required property var modelData
@@ -90,27 +129,55 @@ Item {
                 
                 // Empty state
                 Item {
+                    id: emptyState
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
-                    visible: Events.getUpcomingEvents(30).length === 0
+                    visible: root.upcomingEvents.length === 0
                     
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 12
-                        
-                        MaterialSymbol {
+                        width: parent.width - 32
+
+                        Rectangle {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "event_available"
-                            iconSize: 48
-                            color: Appearance.colors.colSubtext
-                            opacity: 0.5
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            radius: 24
+                            color: root.colEmptyBg
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "event_available"
+                                iconSize: 24
+                                fill: 0
+                                color: root.colPrimary
+
+                                SequentialAnimation on opacity {
+                                    running: emptyState.visible && Appearance.animationsEnabled
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.5; duration: 2000; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
+                                }
+                            }
                         }
                         
                         StyledText {
                             Layout.alignment: Qt.AlignHCenter
                             text: Translation.tr("No upcoming events")
                             font.pixelSize: Appearance.font.pixelSize.normal
-                            color: Appearance.colors.colSubtext
+                            font.weight: Font.Medium
+                            color: root.colText
+                        }
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            text: Translation.tr("Tap + to add your first event")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: root.colSubtext
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }
