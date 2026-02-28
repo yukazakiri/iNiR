@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -9,6 +10,9 @@ import Quickshell
 
 Item {
     id: root
+    
+    // Track events list changes to update calendar
+    property var _eventsList: Events.list
 
     // Style tokens (5-style support)
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -50,6 +54,32 @@ Item {
     property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, locale?.firstDayOfWeek ?? 1)
     width: calendarColumn.width
     implicitHeight: calendarColumn.height + 10 * 2
+
+    // Helper to get event count for a specific date
+    function getEventCountForDay(day: int, weekRow: int, dayIndex: int): int {
+        const _dep = root._eventsList // force dependency
+        const cellData = root.calendarLayout[weekRow]?.[dayIndex]
+        if (!cellData) return 0
+        
+        const year = root.viewingDate.getFullYear()
+        const month = root.viewingDate.getMonth()
+        
+        // Adjust for days from adjacent months
+        let targetMonth = month
+        let targetYear = year
+        if (cellData.today === -1) {
+            // Previous month
+            if (month === 0) {
+                targetMonth = 11
+                targetYear = year - 1
+            } else {
+                targetMonth = month - 1
+            }
+        }
+        
+        const targetDate = new Date(targetYear, targetMonth, day)
+        return Events.getEventsForDate(targetDate).length
+    }
 
     Keys.onPressed: (event) => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp)
@@ -175,6 +205,7 @@ Item {
             Repeater {
                 model: weekDaysModel
                 delegate: CalendarDayButton {
+                    required property var modelData
                     day: modelData.label
                     isToday: modelData.today ? 1 : 0
                     isHeader: true
@@ -189,14 +220,19 @@ Item {
             id: calendarRows
             model: 6
             delegate: RowLayout {
+                required property int index
+                property int weekRow: index
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: false
                 spacing: 5
                 Repeater {
-                    model: Array(7).fill(modelData)
+                    model: Array(7).fill(parent.weekRow)
                     delegate: CalendarDayButton {
-                        day: calendarLayout[modelData][index].day
-                        isToday: calendarLayout[modelData][index].today
+                        required property int index
+                        required property int modelData
+                        day: root.calendarLayout[modelData][index].day
+                        isToday: root.calendarLayout[modelData][index].today
+                        eventCount: root.getEventCountForDay(root.calendarLayout[modelData][index].day, modelData, index)
                     }
                 }
             }
