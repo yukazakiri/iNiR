@@ -55,25 +55,52 @@ Item {
         : inirStyle ? Appearance.inir.roundingNormal : Appearance.rounding.normal
     readonly property color colPrimary: angelStyle ? Appearance.angel.colPrimary
         : inirStyle ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+    readonly property color colControlSurface: angelStyle
+        ? ColorUtils.transparentize(Appearance.angel.colGlassElevated, 0.40)
+        : inirStyle
+        ? ColorUtils.transparentize(Appearance.inir.colLayer2, 0.44)
+        : auroraStyle
+        ? ColorUtils.transparentize(Appearance.aurora.colSubSurface, 0.50)
+        : ColorUtils.transparentize((blendedColors?.colLayer1 ?? Appearance.colors.colLayer1), 0.48)
+    readonly property color colControlBorder: angelStyle ? Appearance.angel.colCardBorder
+        : inirStyle ? Appearance.inir.colBorderSubtle : Appearance.colors.colOutlineVariant
+    readonly property color colControlOverlay: angelStyle
+        ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.30)
+        : inirStyle
+        ? ColorUtils.transparentize(Appearance.inir.colLayer2, 0.32)
+        : auroraStyle
+        ? ColorUtils.transparentize(Appearance.aurora.colSubSurface, 0.42)
+        : ColorUtils.transparentize((blendedColors?.colLayer1 ?? Appearance.colors.colLayer1), 0.38)
+    readonly property color colAuxButton: angelStyle
+        ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.42)
+        : inirStyle
+        ? ColorUtils.transparentize(Appearance.inir.colLayer2, 0.22)
+        : ColorUtils.transparentize((blendedColors?.colLayer1 ?? Appearance.colors.colLayer1), 0.45)
+    readonly property color colAuxButtonHover: angelStyle ? Appearance.angel.colGlassCardHover
+        : inirStyle ? Appearance.inir.colLayer2Hover
+        : ColorUtils.transparentize(root.accentColor, 0.72)
+    readonly property color colAuxButtonActive: angelStyle ? Appearance.angel.colGlassCardActive
+        : inirStyle ? Appearance.inir.colLayer2Active
+        : ColorUtils.transparentize(root.accentColor, 0.62)
+    readonly property color colAuxButtonBorder: angelStyle ? Appearance.angel.colCardBorder
+        : inirStyle ? Appearance.inir.colBorderSubtle
+        : Appearance.colors.colOutlineVariant
     
     // Dynamic accent from album art
     readonly property color accentColor: playerBase.downloaded && !inirStyle && !angelStyle
         ? (blendedColors?.colPrimary ?? colPrimary)
         : colPrimary
 
-    StyledRectangularShadow {
-        target: playerCard
-        visible: !inirStyle && !auroraStyle
-    }
+    StyledRectangularShadow { visible: false; target: playerCard }
 
     Rectangle {
         id: playerCard
         anchors.fill: parent
         implicitHeight: contentColumn.implicitHeight + 16
         radius: root.radius
-        color: root.colCard
-        border.width: root.borderWidth
-        border.color: root.colBorder
+        color: "transparent"
+        border.width: 0
+        border.color: "transparent"
         clip: true
 
         layer.enabled: true
@@ -88,9 +115,9 @@ Item {
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             visible: playerBase.displayedArtFilePath !== ""
-            opacity: root.inirStyle ? 0.12 : (root.auroraStyle ? 0.22 : 0.35)
+            opacity: root.inirStyle ? 0.09 : (root.auroraStyle ? 0.16 : 0.26)
             layer.enabled: Appearance.effectsEnabled
-            layer.effect: MultiEffect { blurEnabled: true; blur: 0.35; blurMax: 32; saturation: 0.2 }
+            layer.effect: MultiEffect { blurEnabled: true; blur: 0.28; blurMax: 28; saturation: 0.18 }
         }
 
         // Gradient overlay for depth and text readability
@@ -225,7 +252,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: MprisController.togglePlaying()
+                            onClicked: playerBase.togglePlaying()
                         }
                     }
                 }
@@ -321,66 +348,101 @@ Item {
                 }
             }
 
-            // Control buttons row with enhanced styling
-            RowLayout {
+            // Control surface + primary transport controls (refactored)
+            Rectangle {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 6
+                implicitHeight: controlsRow.implicitHeight + 10
+                radius: root.angelStyle ? Appearance.angel.roundingNormal
+                    : root.inirStyle ? Appearance.inir.roundingNormal
+                    : Appearance.rounding.normal
+                color: root.colControlSurface
+                border.width: root.angelStyle ? Appearance.angel.cardBorderWidth : (root.inirStyle ? 1 : 1)
+                border.color: root.colControlBorder
+                clip: true
 
-                // Left spacer (fixed width to match right side)
-                Item {
-                    Layout.preferredWidth: MprisController.shuffleSupported ? 36 : 0
-                    Layout.preferredHeight: 36
+                Rectangle {
+                    id: controlBlurLayer
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: "transparent"
+                    clip: true
+                    layer.enabled: true
+                    layer.effect: GE.OpacityMask {
+                        maskSource: Rectangle {
+                            width: controlBlurLayer.width
+                            height: controlBlurLayer.height
+                            radius: controlBlurLayer.radius
+                        }
+                    }
 
-                    // Shuffle
-                    MediaControlBtn {
+                    Image {
                         anchors.fill: parent
+                        source: playerBase.displayedArtFilePath
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        visible: playerBase.displayedArtFilePath !== ""
+                        opacity: root.inirStyle ? 0.34 : (root.auroraStyle ? 0.42 : 0.50)
+                        layer.enabled: Appearance.effectsEnabled
+                        layer.effect: MultiEffect {
+                            blurEnabled: true
+                            blur: 0.84
+                            blurMax: 52
+                            saturation: root.inirStyle ? 0.22 : 0.30
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: root.colControlOverlay
+                    }
+                }
+
+                RowLayout {
+                    id: controlsRow
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 6
+
+                    MediaControlBtn {
                         visible: MprisController.shuffleSupported
                         icon: "shuffle"
                         toggled: MprisController.hasShuffle
                         onClicked: MprisController.setShuffle(!MprisController.hasShuffle)
                         tooltipText: Translation.tr("Shuffle")
                     }
-                }
 
-                Item { Layout.fillWidth: true }
+                    Item { Layout.fillWidth: true }
 
-                // Previous
-                MediaControlBtn {
-                    visible: MprisController.canGoPrevious
-                    icon: "skip_previous"
-                    onClicked: MprisController.previous()
-                    tooltipText: Translation.tr("Previous")
-                }
+                    PlayerControls {
+                        Layout.alignment: Qt.AlignHCenter
+                        isPlaying: MprisController.isPlaying
+                        showLabels: false
+                        buttonSize: 34
+                        playButtonSize: 46
+                        iconSize: 20
+                        playIconSize: 24
+                        buttonColor: "transparent"
+                        buttonRadius: root.angelStyle ? Appearance.angel.roundingSmall
+                            : root.inirStyle ? Appearance.inir.roundingSmall
+                            : Appearance.rounding.full
+                        playButtonRadius: buttonRadius
+                        buttonHoverColor: root.angelStyle ? Appearance.angel.colGlassCardHover
+                            : root.inirStyle ? Appearance.inir.colLayer2Hover
+                            : ColorUtils.transparentize(root.accentColor, 0.65)
+                        buttonRippleColor: root.angelStyle ? Appearance.angel.colGlassCardActive
+                            : root.inirStyle ? Appearance.inir.colLayer2Active
+                            : ColorUtils.transparentize(root.accentColor, 0.5)
+                        iconColor: root.colText
+                        playIconColor: root.accentColor
+                        onPreviousClicked: playerBase.previous()
+                        onPlayPauseClicked: playerBase.togglePlaying()
+                        onNextClicked: playerBase.next()
+                    }
 
-                // Play/Pause (larger, highlighted)
-                MediaControlBtn {
-                    visible: MprisController.canTogglePlaying
-                    icon: MprisController.isPlaying ? "pause" : "play_arrow"
-                    highlighted: true
-                    large: true
-                    onClicked: MprisController.togglePlaying()
-                    tooltipText: MprisController.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
-                }
+                    Item { Layout.fillWidth: true }
 
-                // Next
-                MediaControlBtn {
-                    visible: MprisController.canGoNext
-                    icon: "skip_next"
-                    onClicked: MprisController.next()
-                    tooltipText: Translation.tr("Next")
-                }
-
-                Item { Layout.fillWidth: true }
-
-                // Right spacer (fixed width to match left side)
-                Item {
-                    Layout.preferredWidth: MprisController.loopSupported ? 36 : 0
-                    Layout.preferredHeight: 36
-
-                    // Loop
                     MediaControlBtn {
-                        anchors.fill: parent
                         visible: MprisController.loopSupported
                         icon: MprisController.loopState === 2 ? "repeat_one" : "repeat"
                         toggled: MprisController.loopState !== 0
@@ -389,6 +451,12 @@ Item {
                             MprisController.setLoopState(next)
                         }
                         tooltipText: Translation.tr("Loop")
+                    }
+
+                    MediaControlBtn {
+                        icon: "open_in_full"
+                        onClicked: GlobalStates.mediaControlsOpen = true
+                        tooltipText: Translation.tr("Open full player")
                     }
                 }
             }
@@ -441,24 +509,22 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: root.angelStyle ? Appearance.angel.roundingSmall
-                : root.inirStyle ? Appearance.inir.roundingSmall : width / 2
+                : root.inirStyle ? Appearance.inir.roundingSmall : Appearance.rounding.small
+            border.width: 1
+            border.color: root.colAuxButtonBorder
             
             color: {
                 if (mcBtnMA.containsPress)
-                    return root.angelStyle ? Appearance.angel.colGlassCardActive
-                        : root.inirStyle ? Appearance.inir.colLayer2Active
-                        : ColorUtils.transparentize(root.accentColor, 0.2)
+                    return root.colAuxButtonActive
                 if (mcBtnMA.containsMouse)
-                    return root.angelStyle ? Appearance.angel.colGlassCardHover
-                        : root.inirStyle ? Appearance.inir.colLayer2Hover
-                        : ColorUtils.transparentize(root.accentColor, 0.3)
+                    return root.colAuxButtonHover
                 if (mcBtn.highlighted)
                     return root.accentColor
                 if (mcBtn.toggled)
-                    return root.angelStyle ? ColorUtils.transparentize(root.accentColor, 0.7)
+                    return root.angelStyle ? ColorUtils.transparentize(root.accentColor, 0.64)
                         : root.inirStyle ? Appearance.inir.colSecondaryContainer
-                        : ColorUtils.transparentize(root.accentColor, 0.85)
-                return "transparent"
+                        : ColorUtils.transparentize(root.accentColor, 0.78)
+                return root.colAuxButton
             }
             
             Behavior on color { 
@@ -476,7 +542,7 @@ Item {
                 color: mcBtn.highlighted
                     ? "white"
                     : mcBtn.toggled
-                    ? root.accentColor
+                    ? (root.inirStyle ? Appearance.inir.colOnSecondaryContainer : root.accentColor)
                     : root.colTextSecondary
                 
                 Behavior on color {
