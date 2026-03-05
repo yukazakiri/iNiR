@@ -916,6 +916,80 @@ ContentPage {
     SettingsCardSection {
         visible: root.isIiActive
         expanded: false
+        icon: "transition_fade"
+        title: Translation.tr("Wallpaper transitions")
+
+        SettingsGroup {
+            SettingsSwitch {
+                buttonIcon: "animation"
+                text: Translation.tr("Enable wallpaper transitions")
+                checked: Config.options?.background?.transition?.enable ?? true
+                onCheckedChanged: {
+                    Config.setNestedValue("background.transition.enable", checked);
+                }
+                StyledToolTip {
+                    text: Translation.tr("Smoothly transition between wallpapers when changing them")
+                }
+            }
+
+            ContentSubsection {
+                visible: Config.options?.background?.transition?.enable ?? true
+                title: Translation.tr("Transition style")
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 2
+                    text: {
+                        const t = Config.options?.background?.transition?.type ?? "crossfade"
+                        switch (t) {
+                        case "crossfade": return Translation.tr("Smoothly blends from the old wallpaper into the new one")
+                        case "slide":     return Translation.tr("The new wallpaper slides in from the side")
+                        case "zoom":      return Translation.tr("Subtle zoom effect as the new wallpaper fades in")
+                        case "blurFade":  return Translation.tr("The old wallpaper blurs away while the new one appears")
+                        default:          return ""
+                        }
+                    }
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.8
+                    wrapMode: Text.WordWrap
+                }
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.background?.transition?.type ?? "crossfade"
+                    onSelected: newValue => {
+                        Config.setNestedValue("background.transition.type", newValue);
+                    }
+                    options: [
+                        { displayName: Translation.tr("Crossfade"), icon: "transition_fade", value: "crossfade" },
+                        { displayName: Translation.tr("Slide"), icon: "swipe_right_alt", value: "slide" },
+                        { displayName: Translation.tr("Zoom"), icon: "zoom_in", value: "zoom" },
+                        { displayName: Translation.tr("Blur fade"), icon: "blur_on", value: "blurFade" }
+                    ]
+                }
+            }
+
+            ConfigSpinBox {
+                visible: Config.options?.background?.transition?.enable ?? true
+                icon: "timer"
+                text: Translation.tr("Transition duration (ms)")
+                value: Config.options?.background?.transition?.duration ?? 800
+                from: 200
+                to: 3000
+                stepSize: 100
+                onValueChanged: {
+                    Config.setNestedValue("background.transition.duration", value);
+                }
+                StyledToolTip {
+                    text: Translation.tr("How long the transition animation takes in milliseconds. Lower values feel snappy, higher values feel cinematic.")
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
         icon: "aspect_ratio"
         title: Translation.tr("Wallpaper scaling")
 

@@ -182,7 +182,11 @@ Variants {
 
         Timer {
             id: wallpaperSizeDebounce
-            interval: 350
+            // Fire magick identify quickly so the result arrives while the
+            // crossfader transition is still running.  The container has
+            // Behavior on width/height/x/y so the resize blends smoothly
+            // with the ongoing transition instead of snapping afterwards.
+            interval: 80
             repeat: false
             onTriggered: {
                 if (!bgRoot.wallpaperPath || bgRoot.wallpaperPath.length === 0) return;
@@ -276,20 +280,22 @@ Variants {
                 }
                 width: useParallax ? (bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.width
                 height: useParallax ? (bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.height
+                // Animate container resize so it blends with the crossfader transition
+                readonly property int _transitionDur: Config.options?.background?.transition?.duration ?? 800
+                Behavior on width {
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    NumberAnimation { duration: wallpaperContainer._transitionDur; easing.type: Easing.InOutCubic }
+                }
+                Behavior on height {
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    NumberAnimation { duration: wallpaperContainer._transitionDur; easing.type: Easing.InOutCubic }
+                }
 
-                // Static wallpaper (non-GIF, non-video images only)
-                StyledImage {
+                // Static wallpaper with crossfade transitions (non-GIF, non-video images only)
+                WallpaperCrossfader {
                     id: wallpaper
                     anchors.fill: parent
-                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
-                    opacity: (!bgRoot.wallpaperIsVideo && !bgRoot.wallpaperIsGif && status === Image.Ready) ? 1 : 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
-                    cache: true
-                    smooth: true
-                    mipmap: true
+                    visible: !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
                     source: (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperIsGif) ? "" : bgRoot.wallpaperPath
                     fillMode: bgRoot.fillMode === "fit" ? Image.PreserveAspectFit
                             : bgRoot.fillMode === "tile" ? Image.Tile

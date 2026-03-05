@@ -1234,5 +1234,18 @@
   "Search wallpapers from wallhaven.cc\nUse %1safe or %2lewd to toggle NSFW (requires API key)": "Search wallpapers from wallhaven.cc\nUse %1safe or %2lewd to toggle NSFW (requires API key)",
   "Discord": "Discord",
   "%1 unread · %2 total": "%1 unread · %2 total",
-  "Filter apps...": "Filter apps..."
+  "Filter apps...": "Filter apps...",
+  "Enable wallpaper transitions": "Enable wallpaper transitions",
+  "Smoothly transition between wallpapers when changing them": "Smoothly transition between wallpapers when changing them",
+  "Transition style": "Transition style",
+  "Crossfade": "Crossfade",
+  "Slide": "Slide",
+  "Zoom": "Zoom",
+  "Blur fade": "Blur fade",
+  "Smoothly blends from the old wallpaper into the new one": "Smoothly blends from the old wallpaper into the new one",
+  "The new wallpaper slides in from the side": "The new wallpaper slides in from the side",
+  "Subtle zoom effect as the new wallpaper fades in": "Subtle zoom effect as the new wallpaper fades in",
+  "The old wallpaper blurs away while the new one appears": "The old wallpaper blurs away while the new one appears",
+  "Transition duration (ms)": "Transition duration (ms)",
+  "How long the transition animation takes in milliseconds. Lower values feel snappy, higher values feel cinematic.": "How long the transition animation takes in milliseconds. Lower values feel snappy, higher values feel cinematic."
 }
