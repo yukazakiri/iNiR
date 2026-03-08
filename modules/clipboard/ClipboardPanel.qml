@@ -92,6 +92,10 @@ Scope {
         }
         Cliphist.wipe()
         showClearConfirmation = false
+        // Reset model and count immediately so the UI reflects the wipe
+        // (the async refresh would miss because the panel closes below)
+        filteredClipboardModel.clear()
+        totalCount = 0
         GlobalStates.clipboardOpen = false
     }
 
@@ -242,6 +246,20 @@ Scope {
             }
         }
 
+        // Scrim backdrop for glass styles
+        Rectangle {
+            anchors.fill: parent
+            color: Appearance.colors.colScrim
+            visible: Appearance.auroraEverywhere
+            opacity: GlobalStates.clipboardOpen ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.calcEffectiveDuration(200)
+                    easing.type: Easing.OutCubic
+                }
+            }
+        }
+
         StyledRectangularShadow {
             target: panelBackground
             radius: panelBackground.radius
@@ -271,7 +289,9 @@ Scope {
             height: Math.min(contentColumn.implicitHeight, panelMaxHeight)
             fallbackColor: Appearance.colors.colLayer1
             inirColor: Appearance.inir.colLayer1
-            auroraTransparency: Appearance.aurora.popupTransparentize
+            auroraTransparency: Appearance.angelEverywhere
+                ? Appearance.angel.panelTransparentize
+                : Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14)
             screenX: (window.screen?.width ?? 1920) / 2 - width / 2
             screenY: (window.screen?.height ?? 1080) / 2 - height / 2
             screenWidth: window.screen?.width ?? 1920
@@ -430,9 +450,12 @@ Scope {
                     implicitHeight: Math.min(480, Math.max(160, listView.contentHeight + 20))
                     radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
                         : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                    color: Appearance.angelEverywhere
+                        ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.76)
                         : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                        : Appearance.auroraEverywhere ? Appearance.colors.colLayer2Base
+                        : Appearance.auroraEverywhere
+                        ? ColorUtils.transparentize(Appearance.colors.colLayer0Base,
+                            Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14))
                         : Appearance.colors.colLayer2
                     clip: true
 
@@ -539,9 +562,12 @@ Scope {
                         implicitHeight: hintsColumn.implicitHeight + 16
                         radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
                             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                            : Appearance.inirEverywhere ? Appearance.inir.colLayer2 
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer2Base
+                        color: Appearance.angelEverywhere
+                            ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.76)
+                            : Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                            : Appearance.auroraEverywhere
+                            ? ColorUtils.transparentize(Appearance.colors.colLayer0Base,
+                                Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14))
                             : Appearance.colors.colPrimaryContainer
                         opacity: root.showKeyboardHints ? 1 : 0
 
