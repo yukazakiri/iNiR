@@ -235,7 +235,19 @@ resolve_variant() {
     variant=$(jq -r '.appearance.palette.type // "auto"' "$config_file" 2>/dev/null)
     if [[ -n "$variant" && "$variant" != "null" && "$variant" != "auto" ]]; then
       # Convert scheme-xxx to xxx for Chrome (e.g., scheme-tonal-spot -> tonal_spot)
-      echo "$variant" | sed 's/scheme-//'
+      local chrome_variant
+      chrome_variant=$(echo "$variant" | sed 's/scheme-//')
+      
+      # Chrome only supports: tonal_spot, neutral, vibrant, expressive
+      # Map unsupported variants to neutral
+      case "$chrome_variant" in
+        tonal_spot|neutral|vibrant|expressive)
+          echo "$chrome_variant"
+          ;;
+        *)
+          echo "neutral"
+          ;;
+      esac
       return
     fi
   fi
