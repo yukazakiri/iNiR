@@ -189,7 +189,18 @@ Button {
             }
 
             onClicked: {
+                // Position anchor at right edge, vertically centered on the button
+                menuAnchor.x = parent.width
+                menuAnchor.y = menuButton.y + menuButton.height / 2
+
+                if (contextMenu.active) {
+                    contextMenu.close()
+                }
+
                 contextMenu.active = true
+                Qt.callLater(() => {
+                    contextMenu.updateAnchor()
+                })
             }
         }
 
