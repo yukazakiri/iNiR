@@ -218,10 +218,20 @@
             "generateColors": true,
             "folder": ""
         },
+        "backend": {
+            "provider": "internal",
+            "awww": {
+                "transitionFps": 60,
+                "simpleStep": 5,
+                "spatialStep": 30
+            }
+        },
         "transition": {
             "enable": true,
             "type": "crossfade",
-            "duration": 800
+            "direction": "right",
+            "duration": 800,
+            "bezier": [0.54, 0.0, 0.34, 0.99]
         },
         "widgets": {
             "clock": {
@@ -686,6 +696,10 @@
         "tools": {
             "enable": false
         },
+        "plugins": {
+            "enable": false,
+            "lastActivePlugin": ""
+        },
         "ytmusic": {
             "enable": false,
             "autoConnect": true,
@@ -825,19 +839,28 @@
     "wallpaperSelector": {
         "selectionTarget": "main",
         "style": "grid",
+        "coverflowView": "gallery",
         "targetMonitor": "",
         "useSystemFileDialog": false
     },
     "screenRecord": {
         "savePath": "",
+        "qualityPreset": "balanced",
         "videoCodec": "libx264",
         "audioCodec": "aac",
+        "accelerationMode": "auto",
+        "hardwareDevice": "/dev/dri/renderD128",
         "fps": 60,
         "videoBitrateKbps": 12000,
         "audioBitrateKbps": 192,
+        "audioSource": "",
+        "audioBackend": "",
+        "audioSampleRate": 48000,
         "pixelFormat": "yuv420p",
         "preset": "veryfast",
-        "crf": 21
+        "crf": 21,
+        "vaapiFilter": "scale_vaapi=format=nv12:out_range=full",
+        "enableFallback": true
     },
     "windows": {
         "centerTitle": true,

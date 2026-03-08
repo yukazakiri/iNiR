@@ -535,10 +535,20 @@ Singleton {
                     property bool generateColors: true // regenerate theme colors on each change
                     property string folder: "" // empty = use current wallpaper folder
                 }
+                property JsonObject backend: JsonObject {
+                    property string provider: "internal"
+                    property JsonObject awww: JsonObject {
+                        property int transitionFps: 60
+                        property int simpleStep: 5
+                        property int spatialStep: 30
+                    }
+                }
                 property JsonObject transition: JsonObject {
                     property bool enable: true
                     property string type: "crossfade" // "crossfade" | "slide" | "zoom" | "blurFade"
+                    property string direction: "right"
                     property int duration: 800 // ms
+                    property list<var> bezier: [0.54, 0.0, 0.34, 0.99]
                 }
             }
 
@@ -1007,6 +1017,11 @@ Singleton {
                 property JsonObject tools: JsonObject {
                     property bool enable: false
                 }
+                // Web Apps / Plugins tab - embedded webapps in sidebar
+                property JsonObject plugins: JsonObject {
+                    property bool enable: false
+                    property string lastActivePlugin: ""
+                }
                 // YT Music tab - Search and play YouTube music via yt-dlp
                 property JsonObject ytmusic: JsonObject {
                     property bool enable: false
@@ -1172,18 +1187,27 @@ Singleton {
                 property string selectionTarget: "main"
                 property string targetMonitor: ""
                 property string style: "grid" // "grid" | "coverflow"
+                property string coverflowView: "gallery" // "gallery" | "skew"
             }
 
             property JsonObject screenRecord: JsonObject {
                 property string savePath: "" // Empty = use XDG Videos or ~/Videos
+                property string qualityPreset: "balanced"
                 property string videoCodec: "libx264"
                 property string audioCodec: "aac"
+                property string accelerationMode: "auto"
+                property string hardwareDevice: "/dev/dri/renderD128"
                 property int fps: 60
                 property int videoBitrateKbps: 12000
                 property int audioBitrateKbps: 192
+                property string audioSource: ""
+                property string audioBackend: ""
+                property int audioSampleRate: 48000
                 property string pixelFormat: "yuv420p"
                 property string preset: "veryfast"
                 property int crf: 21
+                property string vaapiFilter: "scale_vaapi=format=nv12:out_range=full"
+                property bool enableFallback: true
             }
 
             property JsonObject windows: JsonObject {
