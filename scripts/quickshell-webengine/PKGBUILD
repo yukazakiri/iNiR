@@ -38,6 +38,7 @@ makedepends=(
     'pkg-config'
     'qt6-shadertools'
     'spirv-tools'
+    'vulkan-headers'
     'wayland-protocols'
 )
 provides=('quickshell')

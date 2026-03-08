@@ -56,6 +56,30 @@ prevent_sudo_or_root
 ask=true
 quiet=false
 
+# Build and install quickshell-webengine from PKGBUILD or generic script.
+# Handles removing stock quickshell first (conflicts with our package).
+_build_install_qs_webengine() {
+    local build_script="${REPO_ROOT}/scripts/quickshell-webengine/build-quickshell-webengine.sh"
+    local pkgbuild_dir="${REPO_ROOT}/scripts/quickshell-webengine"
+
+    # Remove stock quickshell first — our package conflicts with it and
+    # pacman --noconfirm defaults to N on conflict prompts, aborting the install.
+    if pacman -Q quickshell &>/dev/null 2>&1 && ! pacman -Q quickshell-webengine-git &>/dev/null 2>&1; then
+        tui_info "Removing stock quickshell (will be replaced by webengine build)..."
+        pkg_sudo pacman -Rdd --noconfirm quickshell 2>/dev/null || true
+    fi
+
+    if command -v makepkg >/dev/null 2>&1 && [[ -f "${pkgbuild_dir}/PKGBUILD" ]]; then
+        tui_info "Building with PKGBUILD (Arch)..."
+        (cd "$pkgbuild_dir" && makepkg -sif --noconfirm) && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
+    elif [[ -f "$build_script" ]]; then
+        tui_info "Building with generic script..."
+        bash "$build_script" --install && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
+    else
+        tui_warn "No build method available"
+    fi
+}
+
 # Check privilege escalation availability
 _check_privilege_prereqs() {
   # Load the package installers to get access to privilege detection
@@ -322,15 +346,7 @@ run_install() {
             if $ask; then
                 if tui_confirm "Build and install quickshell with WebEngine support?"; then
                     echo ""
-                    local build_script="${REPO_ROOT}/scripts/quickshell-webengine/build-quickshell-webengine.sh"
-                    local pkgbuild_dir="${REPO_ROOT}/scripts/quickshell-webengine"
-                    if command -v makepkg >/dev/null 2>&1 && [[ -f "${pkgbuild_dir}/PKGBUILD" ]]; then
-                        tui_info "Building with PKGBUILD (Arch)..."
-                        (cd "$pkgbuild_dir" && makepkg -si --noconfirm) && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    elif [[ -f "$build_script" ]]; then
-                        tui_info "Building with generic script..."
-                        bash "$build_script" --install && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    fi
+                    _build_install_qs_webengine
                 fi
             else
                 tui_info "Run: cd ${REPO_ROOT}/scripts/quickshell-webengine && makepkg -si"
@@ -345,14 +361,7 @@ run_install() {
                         tui_info "Installing qt6-webengine..."
                         pkg_sudo pacman -S --needed --noconfirm qt6-webengine || true
                     fi
-                    local build_script="${REPO_ROOT}/scripts/quickshell-webengine/build-quickshell-webengine.sh"
-                    local pkgbuild_dir="${REPO_ROOT}/scripts/quickshell-webengine"
-                    if command -v makepkg >/dev/null 2>&1 && [[ -f "${pkgbuild_dir}/PKGBUILD" ]]; then
-                        tui_info "Building quickshell with WebEngine..."
-                        (cd "$pkgbuild_dir" && makepkg -si --noconfirm) && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    elif [[ -f "$build_script" ]]; then
-                        bash "$build_script" --install && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    fi
+                    _build_install_qs_webengine
                 fi
             else
                 tui_info "To enable: pacman -S qt6-webengine"
@@ -929,15 +938,7 @@ MATUGEN_SDDM_EOF
             if $ask; then
                 if tui_confirm "Build and install quickshell with WebEngine support?"; then
                     echo ""
-                    local build_script="${REPO_ROOT}/scripts/quickshell-webengine/build-quickshell-webengine.sh"
-                    local pkgbuild_dir="${REPO_ROOT}/scripts/quickshell-webengine"
-                    if command -v makepkg >/dev/null 2>&1 && [[ -f "${pkgbuild_dir}/PKGBUILD" ]]; then
-                        tui_info "Building with PKGBUILD (Arch)..."
-                        (cd "$pkgbuild_dir" && makepkg -si --noconfirm) && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    elif [[ -f "$build_script" ]]; then
-                        tui_info "Building with generic script..."
-                        bash "$build_script" --install && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    fi
+                    _build_install_qs_webengine
                 fi
             else
                 tui_info "Run: cd ${REPO_ROOT}/scripts/quickshell-webengine && makepkg -si"
@@ -952,14 +953,7 @@ MATUGEN_SDDM_EOF
                         tui_info "Installing qt6-webengine..."
                         pkg_sudo pacman -S --needed --noconfirm qt6-webengine || true
                     fi
-                    local build_script="${REPO_ROOT}/scripts/quickshell-webengine/build-quickshell-webengine.sh"
-                    local pkgbuild_dir="${REPO_ROOT}/scripts/quickshell-webengine"
-                    if command -v makepkg >/dev/null 2>&1 && [[ -f "${pkgbuild_dir}/PKGBUILD" ]]; then
-                        tui_info "Building quickshell with WebEngine..."
-                        (cd "$pkgbuild_dir" && makepkg -si --noconfirm) && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    elif [[ -f "$build_script" ]]; then
-                        bash "$build_script" --install && tui_success "quickshell-webengine installed!" || tui_warn "Build failed — see errors above"
-                    fi
+                    _build_install_qs_webengine
                 fi
             else
                 tui_info "To enable: pacman -S qt6-webengine"
