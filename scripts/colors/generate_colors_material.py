@@ -302,9 +302,12 @@ if args.termscheme is not None:
             term_colors[color] = material_colors.get("onSurface", "#e0e0e0")
             continue
         
-        # Bright background (term8): Slightly brighter than term0
+        # term8: autosuggestion color — needs contrast against term0
         if color == "term8":
-            term_colors[color] = get_interpolated_surface(min(1.0, user_bg_brightness + 0.15))
+            if darkmode:
+                term_colors[color] = material_colors.get("outline", get_interpolated_surface(min(1.0, user_bg_brightness + 0.45)))
+            else:
+                term_colors[color] = material_colors.get("outline_variant", material_colors.get("outlineVariant", get_interpolated_surface(max(0.0, user_bg_brightness - 0.45))))
             continue
             
         if color == "term7":
