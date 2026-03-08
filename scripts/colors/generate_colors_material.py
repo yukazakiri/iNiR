@@ -243,20 +243,17 @@ if args.termscheme is not None:
     term_source_colors = json.loads(json_termscheme)["dark" if darkmode else "light"]
 
     # Handle both snake_case and camelCase key naming across library versions
-    primary_key = material_colors.get(
-        "primary_paletteKeyColor",
-        material_colors.get(
-            "primaryPaletteKeyColor", material_colors.get("primary", "#6750A4")
-        ),
-    )
+    primary_key = material_colors.get("primary_paletteKeyColor",
+                  material_colors.get("primaryPaletteKeyColor",
+                  material_colors.get("primary", "#6750A4")))
     primary_color_argb = hex_to_argb(primary_key)
-
+    
     # User-configurable parameters
     user_saturation = args.term_saturation  # 0.0-1.0
     user_brightness = args.term_brightness  # 0.0-1.0
     user_harmony = args.harmony  # 0.0-1.0
     user_bg_brightness = args.term_bg_brightness  # 0.0-1.0
-
+    
     # Define surface colors for interpolation based on bg_brightness
     # 0.0 = background (darkest), 0.5 = surfaceContainerLow (matches shell), 1.0 = surfaceContainerHighest (lightest)
     surface_levels = [
@@ -267,7 +264,7 @@ if args.termscheme is not None:
         ("surfaceContainerHigh", 0.8),
         ("surfaceContainerHighest", 1.0),
     ]
-
+    
     def get_interpolated_surface(brightness):
         """Get a surface color based on brightness (0-1)"""
         # Find the two surface levels to interpolate between
@@ -277,11 +274,7 @@ if args.termscheme is not None:
                     return material_colors.get(name, "#1a1a1a")
                 # Interpolate between previous and current
                 prev_name, prev_level = surface_levels[i - 1]
-                t = (
-                    (brightness - prev_level) / (level - prev_level)
-                    if level != prev_level
-                    else 0
-                )
+                t = (brightness - prev_level) / (level - prev_level) if level != prev_level else 0
                 c1 = hex_to_argb(material_colors.get(prev_name, "#1a1a1a"))
                 c2 = hex_to_argb(material_colors.get(name, "#2a2a2a"))
                 # Simple RGB interpolation
@@ -292,41 +285,28 @@ if args.termscheme is not None:
                 b = int(b1 + (b2 - b1) * t)
                 return f"#{r:02X}{g:02X}{b:02X}"
         return material_colors.get("surfaceContainerLow", "#1a1a1a")
-
+    
     for color, val in term_source_colors.items():
         if args.scheme == "monochrome":
             term_colors[color] = val
             continue
-
+        
         # Terminal background: Interpolate based on user_bg_brightness
         # 0.5 = surfaceContainerLow (matches shell surfaces perfectly)
         if color == "term0":
             term_colors[color] = get_interpolated_surface(user_bg_brightness)
             continue
-
+        
         # Terminal foreground: Use EXACT Material onSurface color
         if color == "term15":
             term_colors[color] = material_colors.get("onSurface", "#e0e0e0")
             continue
-
-        # Autocomplete/autosuggestion color (term8): must be readable against term0.
-        # In dark mode: jump well above the background so suggestions are visible.
-        # In light mode: jump well below the background so suggestions are visible.
+        
+        # Bright background (term8): Slightly brighter than term0
         if color == "term8":
-            if darkmode:
-                # Dark bg → push term8 significantly lighter (outline range)
-                term_colors[color] = material_colors.get(
-                    "outline",
-                    get_interpolated_surface(min(1.0, user_bg_brightness + 0.45)),
-                )
-            else:
-                # Light bg → push term8 significantly darker (outlineVariant range)
-                term_colors[color] = material_colors.get(
-                    "outlineVariant",
-                    get_interpolated_surface(max(0.0, user_bg_brightness - 0.45)),
-                )
+            term_colors[color] = get_interpolated_surface(min(1.0, user_bg_brightness + 0.15))
             continue
-
+            
         if color == "term7":
             # Neutral colors (gray tones) - minimal harmonization
             harmonized = harmonize(
