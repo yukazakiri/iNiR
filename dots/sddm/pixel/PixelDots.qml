@@ -36,7 +36,7 @@ Item {
     Row {
         id: dotsRow
         x: -root.scrollX
-        spacing: 10
+        spacing: 1
         anchors.verticalCenter: parent.verticalCenter
 
         Repeater {
