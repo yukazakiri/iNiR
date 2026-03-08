@@ -183,6 +183,7 @@ apply_to_browser() {
   local prefs_dir="$3"
   local theme_color="$4"
   local mode="$5"  # "dark" or "light"
+  local variant="$6"  # "tonal_spot", "content", "rainbow", etc.
   local name="$bin"
 
   # We must explicitly set Chrome's internal theme engine to Dark (2) or Light (1).
@@ -215,13 +216,30 @@ apply_to_browser() {
            --refresh-platform-policy \
            --set-user-color="$rgb_color" \
            --set-color-scheme="$mode" \
-           --set-color-variant="tonal_spot" >/dev/null 2>&1 & disown
+           --set-color-variant="$variant" >/dev/null 2>&1 & disown
   else
     log "$name: Standard browser detected. Using policy refresh."
     "$bin" --refresh-platform-policy --no-startup-window >/dev/null 2>&1 & disown
   fi
 
-  log "$name: applied theme $theme_color (mode=$mode, pref_cs2=$pref_cs2)"
+  log "$name: applied theme $theme_color (mode=$mode, variant=$variant)"
+}
+
+# ── Resolve variant (scheme type) ──────────────────────────────────────────────
+
+resolve_variant() {
+  # Read variant from config
+  local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
+  if [[ -f "$config_file" ]]; then
+    local variant
+    variant=$(jq -r '.appearance.palette.type // "auto"' "$config_file" 2>/dev/null)
+    if [[ -n "$variant" && "$variant" != "null" && "$variant" != "auto" ]]; then
+      # Convert scheme-xxx to xxx for Chrome (e.g., scheme-tonal-spot -> tonal_spot)
+      echo "$variant" | sed 's/scheme-//'
+      return
+    fi
+  fi
+  echo "tonal_spot"  # Default fallback
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -238,7 +256,10 @@ main() {
   local mode
   mode=$(resolve_color_scheme)
 
-  log "GM3 seed color: $theme_color, mode: $mode"
+  local variant
+  variant=$(resolve_variant)
+
+  log "GM3 seed color: $theme_color, mode: $mode, variant: $variant"
 
   _dedup_browsers
 
@@ -249,7 +270,7 @@ main() {
 
   for entry in "${BROWSERS[@]}"; do
     IFS='|' read -r bin policy_dir prefs_dir <<< "$entry"
-    apply_to_browser "$bin" "$policy_dir" "$prefs_dir" "$theme_color" "$mode"
+    apply_to_browser "$bin" "$policy_dir" "$prefs_dir" "$theme_color" "$mode" "$variant"
   done
 }
 
