@@ -192,6 +192,10 @@ Item {
                 // Profile created externally with storageName pre-set
                 profile: root.webProfile
 
+                // Allow autoplay — webapps like Discord need audio for
+                // notifications/calls without requiring a click first.
+                settings.playbackRequiresUserGesture: false
+
                 onLoadingChanged: function(loadRequest) {
                     if (loadRequest.status === WebEngineView.LoadSucceededStatus) {
                         root._injectUserscripts()
