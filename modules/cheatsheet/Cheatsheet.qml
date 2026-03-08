@@ -19,6 +19,11 @@ Scope {
             "component": "CheatsheetKeybinds.qml"
         },
         {
+            "icon": "code",
+            "name": Translation.tr("Neovim"),
+            "component": "CheatsheetNeovim.qml"
+        },
+        {
             "icon": "experiment",
             "name": Translation.tr("Elements"),
             "component": "CheatsheetPeriodicTable.qml"
