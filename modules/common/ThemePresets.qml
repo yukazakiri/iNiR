@@ -2997,15 +2997,28 @@ Singleton {
     function applyExternalThemes(c) {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
         const enableVesktop = Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true;
+        const enableSpicetify = Config.options?.appearance?.wallpaperTheming?.enableSpicetify ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
         
+        // Generate colors.json for external app integrations that read it directly.
+        if (enableVesktop || (enableAppsAndShell && enableSpicetify)) {
+            generateColorsJson(c);
+        }
+
         // Generate colors.json for Vesktop (if enabled)
         if (enableVesktop) {
-            generateColorsJson(c);
             Qt.callLater(() => {
                 Quickshell.execDetached([
                     "/usr/bin/python3",
                     Directories.scriptPath + "/colors/system24_palette.py"
+                ]);
+            });
+        }
+
+        if (enableAppsAndShell && enableSpicetify) {
+            Qt.callLater(() => {
+                Quickshell.execDetached([
+                    Directories.scriptPath + "/colors/apply-spicetify-theme.sh"
                 ]);
             });
         }
@@ -3419,4 +3432,3 @@ Singleton {
         m3.m3onSuccessContainer = c.m3onSuccessContainer;
     }
 }
-

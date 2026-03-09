@@ -1,0 +1,14 @@
+:root {
+  --spice-main-elevated: var(--spice-main);
+  --spice-highlight: var(--spice-main-secondary);
+  --spice-highlight-elevated: var(--spice-main-secondary);
+}
+
+.main-topBar-background {
+  background-image: linear-gradient(var(--spice-main) 0%, transparent 100%);
+  background-color: unset !important;
+}
+
+.main-topBar-overlay {
+  background-color: var(--spice-main);
+}
