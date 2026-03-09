@@ -875,6 +875,12 @@ Singleton {
         } else {
             // For preset themes, just toggle the darkmode flag directly
             root.m3colors.darkmode = newMode
+            // Regenerate terminal colors when toggling dark mode
+            const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
+            if (enableTerminal) {
+                console.log("[Appearance] Regenerating terminal colors for dark mode toggle")
+                ThemePresets.applyTerminalColors(Appearance.m3colors)
+            }
         }
     }
 }
