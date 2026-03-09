@@ -1,7 +1,8 @@
 # Matugen configuration for iNiR
 #
 # Responsibility split:
-#   matugen  → shell colors (colors.json), GTK3/4 CSS, fuzzel, KDE source color, wallpaper path
+#   matugen  → shell colors (colors.json), GTK3/4 CSS, fuzzel, Spicetify color.ini,
+#              KDE source color, wallpaper path
 #   Python   → terminal colors (generate_colors_material.py → material_colors.scss)
 #              → per-app configs (generate_terminal_configs.py via TERMINAL_REGISTRY)
 #
@@ -35,6 +36,12 @@ output_path = '~/.config/gtk-3.0/gtk.css'
 [templates.fuzzel]
 input_path = '~/.config/matugen/templates/fuzzel/fuzzel_theme.ini'
 output_path = '~/.config/fuzzel/fuzzel_theme.ini'
+
+# Spicetify color scheme for Spotify (applied by apply-spicetify-theme.sh)
+[templates.spicetify]
+input_path = '~/.config/matugen/templates/spicetify/color.ini'
+output_path = '~/.local/state/quickshell/user/generated/spicetify/color.ini'
+post_hook = '~/.config/quickshell/ii/scripts/colors/apply-spicetify-theme.sh'
 
 # KDE source color cache (used by kde-material-you-colors-wrapper)
 [templates.kde_colors]
