@@ -11,6 +11,7 @@ XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE_DIR="$XDG_STATE_HOME/quickshell"
 COLORS_JSON="$STATE_DIR/user/generated/colors.json"
 LOG_FILE="$STATE_DIR/user/generated/spicetify_theme.log"
+WATCH_PID_FILE="$STATE_DIR/user/generated/spicetify_watch.pid"
 
 THEME_NAME="Sleek"
 SCHEME_NAME="matugen"
@@ -104,44 +105,65 @@ fi
 spicetify config inject_css 1 replace_colors 1 >> "$LOG_FILE" 2>&1 || true
 spicetify config current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LOG_FILE" 2>&1 || true
 
+is_watch_running() {
+  if [[ -f "$WATCH_PID_FILE" ]]; then
+    local pid
+    pid=$(cat "$WATCH_PID_FILE" 2>/dev/null)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  if pgrep -f "spicetify watch" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+start_watch() {
+  log "Starting spicetify watch -s in background..."
+  nohup spicetify watch -s >> "$LOG_FILE" 2>&1 &
+  watch_pid=$!
+  echo "$watch_pid" > "$WATCH_PID_FILE"
+  sleep 1
+  if kill -0 "$watch_pid" 2>/dev/null; then
+    log "Started watch with PID $watch_pid"
+    return 0
+  else
+    log "Failed to start watch process"
+    return 1
+  fi
+}
+
 spotify_running=$(pgrep -x spotify 2>/dev/null)
-watch_running=false
 
-if pgrep -f "spicetify watch" >/dev/null 2>&1; then
-  watch_running=true
-fi
-
-if [[ -n "$spotify_running" ]] && $watch_running; then
-  log "Spotify and watch running - colors updated, watch will reload automatically."
+if is_watch_running; then
+  log "Watch running - colors updated (will reload live)."
   log "Updated: primary=$(strip_hash "$primary"), surface=$(strip_hash "$surface")"
   exit 0
 fi
 
-if [[ -n "$spotify_running" ]]; then
-  log "Spotify running but no watch detected - triggering live reload."
-  spicetify apply >> "$LOG_FILE" 2>&1 || true
+if [[ -z "$spotify_running" ]]; then
+  log "Spotify not running - applying theme to start it."
+  if ! apply_out=$(spicetify apply 2>&1); then
+    printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
+    if printf "%s" "$apply_out" | grep -Eqi "backup|cannot find backup|run.*backup"; then
+      log "Running 'spicetify backup apply'."
+      if ! backup_out=$(spicetify backup apply 2>&1); then
+        printf "%s\n" "$backup_out" >> "$LOG_FILE" 2>&1
+        log "spicetify backup apply failed."
+        exit 1
+      fi
+    else
+      log "spicetify apply failed."
+      exit 1
+    fi
+  fi
+  log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
+  sleep 2
+  start_watch
   exit 0
 fi
 
-log "Spotify not running - running initial apply."
-
-apply_out=""
-if ! apply_out=$(spicetify apply 2>&1); then
-  printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
-  if printf "%s" "$apply_out" | grep -Eqi "backup|cannot find backup|run.*backup"; then
-    log "Detected missing/invalid backup. Running 'spicetify backup apply'."
-    if ! backup_out=$(spicetify backup apply 2>&1); then
-      printf "%s\n" "$backup_out" >> "$LOG_FILE" 2>&1
-      log "spicetify backup apply failed."
-      exit 1
-    fi
-    printf "%s\n" "$backup_out" >> "$LOG_FILE" 2>&1
-  else
-    log "spicetify apply failed."
-    exit 1
-  fi
-else
-  printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
-fi
-
-log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
+log "Spotify running but watch not detected - starting watch (no apply)..."
+start_watch
+exit 0
