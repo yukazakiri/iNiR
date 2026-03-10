@@ -2997,11 +2997,19 @@ Singleton {
     function applyExternalThemes(c) {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
         const enableVesktop = Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true;
+        const enableSpicetify = Config.options?.appearance?.wallpaperTheming?.enableSpicetify ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
+        const enableZed = Config.options?.appearance?.wallpaperTheming?.enableZed ?? true;
+        const enableVSCode = Config.options?.appearance?.wallpaperTheming?.enableVSCode ?? true;
+        const enableChrome = Config.options?.appearance?.wallpaperTheming?.enableChrome ?? true;
+        const enableApplyColorTargets = enableTerminal || enableZed || enableVSCode || enableChrome || enableSpicetify;
         
-        // Generate colors.json for Vesktop (if enabled)
-        if (enableVesktop) {
+        // colors.json is consumed by Vesktop and Spicetify generators.
+        if (enableVesktop || enableSpicetify) {
             generateColorsJson(c);
+        }
+
+        if (enableVesktop) {
             Qt.callLater(() => {
                 Quickshell.execDetached([
                     "/usr/bin/python3",
@@ -3026,8 +3034,9 @@ Singleton {
             });
         }
         
-        // Apply terminal colors (if enabled)
-        if (enableTerminal) {
+        // material_colors.scss feeds applycolor.sh, which handles terminals plus
+        // other generated app themes such as VSCode, Chrome, and Spicetify.
+        if (enableApplyColorTargets) {
             applyTerminalColors(c);
         }
     }
@@ -3419,4 +3428,3 @@ Singleton {
         m3.m3onSuccessContainer = c.m3onSuccessContainer;
     }
 }
-

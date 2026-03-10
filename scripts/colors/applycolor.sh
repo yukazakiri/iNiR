@@ -326,6 +326,30 @@ apply_chrome() {
   "$SCRIPT_DIR/apply-chrome-theme.sh"
 }
 
+apply_spicetify_theme() {
+  local log_file="$STATE_DIR/user/generated/spicetify_theme.log"
+  local colors_file="$STATE_DIR/user/generated/colors.json"
+  local generator="$SCRIPT_DIR/spicetify_theme.py"
+
+  if [ ! -f "$colors_file" ] || [ ! -f "$generator" ]; then
+    return
+  fi
+
+  local python_cmd="python3"
+  local _ac_venv
+  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+  else
+    _ac_venv="$HOME/.local/state/quickshell/.venv"
+  fi
+  local venv_python="$_ac_venv/bin/python3"
+  if [[ -x "$venv_python" ]]; then
+    python_cmd="$venv_python"
+  fi
+
+  "$python_cmd" "$generator" >> "$log_file" 2>&1
+}
+
 # Check if terminal theming is enabled in config
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
 if [ -f "$CONFIG_FILE" ]; then
@@ -405,6 +429,18 @@ if [ -f "$CONFIG_FILE" ]; then
   fi
 else
   apply_chrome &
+fi
+
+# Generate Spicetify theme files from Material You colors
+if [ -f "$CONFIG_FILE" ]; then
+  enable_spicetify=$(jq -r '.appearance.wallpaperTheming.enableSpicetify // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+  if [ "$enable_spicetify" = "true" ] && command -v spicetify &>/dev/null; then
+    apply_spicetify_theme &
+  fi
+else
+  if command -v spicetify &>/dev/null; then
+    apply_spicetify_theme &
+  fi
 fi
 
 # Sync ii-pixel SDDM theme colors (if installed)

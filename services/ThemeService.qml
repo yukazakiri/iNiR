@@ -25,6 +25,7 @@ Singleton {
         enableAppsAndShell: wallpaperThemingCfg?.enableAppsAndShell ?? true,
         enableTerminal: wallpaperThemingCfg?.enableTerminal ?? true,
         enableVesktop: wallpaperThemingCfg?.enableVesktop ?? true,
+        enableSpicetify: wallpaperThemingCfg?.enableSpicetify ?? true,
         enableChrome: wallpaperThemingCfg?.enableChrome ?? true,
         enableZed: wallpaperThemingCfg?.enableZed ?? true,
         enableVSCode: wallpaperThemingCfg?.enableVSCode ?? true,
