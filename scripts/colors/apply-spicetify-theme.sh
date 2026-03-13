@@ -65,11 +65,20 @@ is_process_running() {
 }
 
 is_watch_active() {
-  [[ -f "$WATCH_LOCK" ]] || pgrep -f "spicetify watch" >/dev/null 2>&1
+  if [[ -f "$WATCH_LOCK" ]]; then
+    local pid
+    pid=$(cat "$WATCH_LOCK")
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null && ps -p "$pid" -o args= 2>/dev/null | grep -q "spicetify watch"; then
+      return 0
+    else
+      rm -f "$WATCH_LOCK" 2>/dev/null || true
+    fi
+  fi
+  pgrep -f "spicetify watch" >/dev/null 2>&1
 }
 
 acquire_watch_lock() {
-  echo $$ > "$WATCH_LOCK"
+  echo "$1" > "$WATCH_LOCK"
 }
 
 release_watch_lock() {
@@ -189,7 +198,7 @@ start_watch_mode() {
   sleep 0.5
 
   if kill -0 "$watch_pid" 2>/dev/null; then
-    acquire_watch_lock
+    acquire_watch_lock "$watch_pid"
     log "Watch mode started (PID: $watch_pid)"
     return 0
   else
@@ -242,6 +251,9 @@ main() {
     start_watch_mode || {
       log "Watch start failed, colors will apply on next Spotify launch"
     }
+    # Touch files to ensure watch mode picks up the changes
+    sleep 1
+    touch "$theme_dir/color.ini" "$theme_dir/user.css" 2>/dev/null || true
   fi
 
   exit 0
