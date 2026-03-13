@@ -165,10 +165,12 @@ fix_preferences() {
     .browser.theme.color_scheme = $cs |
     .browser.theme.color_scheme2 = $cs |
     del(.browser.theme.user_color) |
-    del(.browser.theme.user_color2)
+    del(.browser.theme.user_color2) |
+    del(.browser.theme.saved_local_theme) |
+    del(.browser.theme.color_variant2)
   ' "$prefs_file" > "$tmp_file" 2>/dev/null && [[ -s "$tmp_file" ]]; then
     mv "$tmp_file" "$prefs_file"
-    log "$name: preferences set (color_scheme=$cs2, color_scheme2=$cs2)"
+    log "$name: preferences set (color_scheme=$cs2, color_scheme2=$cs2, cleared cached theme)"
   else
     rm -f "$tmp_file"
     log "$name: ERROR — failed to update preferences"
@@ -198,9 +200,13 @@ apply_to_browser() {
   # 1. Fix preferences first — ensures GM3 theme engine generates correct dark/light palette
   fix_preferences "$prefs_dir" "$name" "$pref_cs2"
 
-  # 2. Write policy — only BrowserThemeColor (persists across restarts)
+  # 2. Write policy — BrowserThemeColor + BrowserColorScheme (persists across restarts,
+  #    BrowserColorScheme is picked up live via --refresh-platform-policy)
+  #    BrowserColorScheme: 1 = Light, 2 = Dark
   if [[ -d "$policy_dir" && -w "$policy_dir" ]]; then
-    echo "{\"BrowserThemeColor\": \"$theme_color\"}" | tee "$policy_dir/ii-theme.json" >/dev/null
+    printf '{"BrowserThemeColor": "%s", "BrowserColorScheme": %d}\n' \
+      "$theme_color" "$pref_cs2" | tee "$policy_dir/ii-theme.json" >/dev/null
+    log "$name: policy written (BrowserThemeColor=$theme_color, BrowserColorScheme=$pref_cs2)"
   else
     log "$name: policy dir not writable → sudo mkdir -p $policy_dir && sudo chown \$USER $policy_dir"
   fi
