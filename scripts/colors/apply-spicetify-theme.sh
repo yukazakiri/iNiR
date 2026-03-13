@@ -99,14 +99,18 @@ read_colors() {
   fi
 
   COLORS[primary]=$(jq -r '.primary // "#8caaee"' "$COLORS_JSON")
+  COLORS[on_primary]=$(jq -r '.on_primary // "#ffffff"' "$COLORS_JSON")
   COLORS[on_surface]=$(jq -r '.on_surface // "#dce0e8"' "$COLORS_JSON")
   COLORS[on_surface_variant]=$(jq -r '.on_surface_variant // "#a6adc8"' "$COLORS_JSON")
   COLORS[surface]=$(jq -r '.surface // "#1e1e2e"' "$COLORS_JSON")
+  COLORS[surface_variant]=$(jq -r '.surface_variant // "#313244"' "$COLORS_JSON")
   COLORS[surface_container_low]=$(jq -r '.surface_container_low // "#181825"' "$COLORS_JSON")
   COLORS[surface_container]=$(jq -r '.surface_container // "#313244"' "$COLORS_JSON")
   COLORS[surface_container_high]=$(jq -r '.surface_container_high // "#45475a"' "$COLORS_JSON")
+  COLORS[surface_container_highest]=$(jq -r '.surface_container_highest // "#585b70"' "$COLORS_JSON")
   COLORS[primary_container]=$(jq -r '.primary_container // "#313244"' "$COLORS_JSON")
   COLORS[secondary]=$(jq -r '.secondary // "#89b4fa"' "$COLORS_JSON")
+  COLORS[secondary_container]=$(jq -r '.secondary_container // "#45475a"' "$COLORS_JSON")
   COLORS[tertiary]=$(jq -r '.tertiary // "#94e2d5"' "$COLORS_JSON")
   COLORS[outline]=$(jq -r '.outline // "#585b70"' "$COLORS_JSON")
   COLORS[outline_variant]=$(jq -r '.outline_variant // "#45475a"' "$COLORS_JSON")
@@ -126,6 +130,9 @@ generate_color_ini() {
 text               = $(strip_hash "${COLORS[on_surface]}")
 subtext            = $(strip_hash "${COLORS[on_surface_variant]}")
 main               = $(strip_hash "${COLORS[surface]}")
+main-elevated      = $(strip_hash "${COLORS[surface_container]}")
+highlight          = $(strip_hash "${COLORS[surface_container_low]}")
+highlight-elevated = $(strip_hash "${COLORS[surface_container_high]}")
 sidebar            = $(strip_hash "${COLORS[surface_container_low]}")
 player             = $(strip_hash "${COLORS[surface_container]}")
 card               = $(strip_hash "${COLORS[surface_container_high]}")
@@ -153,6 +160,69 @@ download_sleek_css() {
   fi
 }
 
+# Convert hex color (#RRGGBB or RRGGBB) to "R,G,B" format for --spice-rgb-* variables
+hex_to_rgb() {
+  local hex="${1#\#}"
+  printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+# Inject/update a :root{} block at the TOP of user.css that defines all
+# missing --spice-* custom properties the Sleek CSS references.
+# This runs after every color change so the bridge always reflects current colors.
+inject_css_variable_bridge() {
+  local css_file="$1"
+  [[ -f "$css_file" ]] || return 0
+
+  read_colors || return 0
+
+  local surface="${COLORS[surface]}"
+  local surface_container="${COLORS[surface_container]}"
+  local surface_container_low="${COLORS[surface_container_low]}"
+  local surface_container_high="${COLORS[surface_container_high]}"
+  local surface_container_highest="${COLORS[surface_container_highest]}"
+  local primary="${COLORS[primary]}"
+  local primary_container="${COLORS[primary_container]}"
+  local secondary="${COLORS[secondary]}"
+  local on_surface="${COLORS[on_surface]}"
+  local outline="${COLORS[outline]}"
+  local outline_variant="${COLORS[outline_variant]}"
+  local shadow="${COLORS[shadow]}"
+
+  local bridge
+  bridge="/* === iNiR CSS variable bridge - auto-generated, do not edit === */
+:root {
+  /* Aliases for variables used by Sleek CSS but not in color.ini */
+  --spice-main-secondary:      #$(strip_hash "$surface_container");
+  --spice-main-elevated:       #$(strip_hash "$surface_container");
+  --spice-highlight:           #$(strip_hash "$surface_container_low");
+  --spice-highlight-elevated:  #$(strip_hash "$surface_container_high");
+  --spice-nav-active:          #$(strip_hash "$primary_container");
+  --spice-nav-active-text:     #$(strip_hash "$on_surface");
+  --spice-playback-bar:        #$(strip_hash "$outline");
+  --spice-play-button:         #$(strip_hash "$primary");
+  --spice-play-button-active:  #$(strip_hash "$secondary");
+
+  /* RGB variants used for rgba() calls */
+  --spice-rgb-main:            $(hex_to_rgb "$surface");
+  --spice-rgb-main-secondary:  $(hex_to_rgb "$surface_container");
+  --spice-rgb-sidebar:         $(hex_to_rgb "$surface_container_low");
+  --spice-rgb-selected-row:    $(hex_to_rgb "$primary_container");
+  --spice-rgb-button:          $(hex_to_rgb "$primary");
+  --spice-rgb-shadow:          $(hex_to_rgb "$shadow");
+  --spice-rgb-misc:            $(hex_to_rgb "$outline_variant");
+}
+/* === end iNiR CSS variable bridge === */"
+
+  # Strip any previous bridge block, then prepend the new one
+  local tmp_css
+  tmp_css=$(mktemp)
+  # Remove old bridge if present (from previous runs)
+  sed '/\/\* === iNiR CSS variable bridge/,/=== end iNiR CSS variable bridge === \*\//d' "$css_file" > "$tmp_css"
+  # Prepend new bridge
+  { printf '%s\n' "$bridge"; cat "$tmp_css"; } > "$css_file"
+  rm -f "$tmp_css"
+}
+
 # ─── Spicetify operations ──────────────────────────────────────────────────────
 
 configure_spicetify() {
@@ -163,6 +233,7 @@ configure_spicetify() {
   mkdir -p "$theme_dir" 2>/dev/null || return 1
   download_sleek_css "$user_css"
   generate_color_ini "$color_file" || return 1
+  inject_css_variable_bridge "$user_css"
 
   spicetify config inject_css 1 replace_colors 1 >> "$LOG_FILE" 2>&1 || true
   spicetify config current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LOG_FILE" 2>&1 || true
