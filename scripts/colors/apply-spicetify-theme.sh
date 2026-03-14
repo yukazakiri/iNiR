@@ -348,6 +348,9 @@ main() {
     start_watch_mode
   else
     log "Spotify running without watch - starting watch mode (no restart)"
+    # If watch wasn't running, the file changes we just wrote won't be picked up.
+    # We must explicitly refresh the running instance, then start watch for future changes.
+    spicetify refresh -s >> "$LOG_FILE" 2>&1 || true
     start_watch_mode || {
       log "Watch start failed, colors will apply on next Spotify launch"
     }
