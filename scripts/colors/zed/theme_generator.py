@@ -480,13 +480,14 @@ def generate_zed_config(colors, scss_path, output_path):
         term6 = term_colors.get("term6", secondary)
 
         # Force a strong saturation bump for syntax so it's always readable
-        # Mix 12% of the theme's primary color into the vibrant syntax colors so it matches the vibe
-        syn_red = mix_colors(saturate(term1, 2.0), primary, 0.12)
-        syn_green = mix_colors(saturate(term2, 2.0), primary, 0.12)
-        syn_yellow = mix_colors(saturate(term3, 2.0), primary, 0.12)
-        syn_blue = mix_colors(saturate(term4, 2.0), primary, 0.12)
-        syn_magenta = mix_colors(saturate(term5, 2.0), primary, 0.12)
-        syn_cyan = mix_colors(saturate(term6, 2.0), primary, 0.12)
+        # Mix a percentage of the theme's primary color into the vibrant syntax colors
+        mix_ratio = 0.25
+        syn_red = mix_colors(saturate(term1, 2.0), primary, mix_ratio)
+        syn_green = mix_colors(saturate(term2, 2.0), primary, mix_ratio)
+        syn_yellow = mix_colors(saturate(term3, 2.0), primary, mix_ratio)
+        syn_blue = mix_colors(saturate(term4, 2.0), primary, mix_ratio)
+        syn_magenta = mix_colors(saturate(term5, 2.0), primary, mix_ratio)
+        syn_cyan = mix_colors(saturate(term6, 2.0), primary, mix_ratio)
 
         theme["syntax"] = {
             "attribute": {
@@ -924,13 +925,14 @@ def generate_zed_config(colors, scss_path, output_path):
         term6 = term_colors.get("term6", secondary)
 
         # Force a strong saturation bump and slightly darken for light theme legibility
-        # Mix 12% of the theme's primary color into the vibrant syntax colors so it matches the vibe
-        syn_red = darken(mix_colors(saturate(term1, 2.0), primary, 0.12), 0.8)
-        syn_green = darken(mix_colors(saturate(term2, 2.0), primary, 0.12), 0.8)
-        syn_yellow = darken(mix_colors(saturate(term3, 2.0), primary, 0.12), 0.8)
-        syn_blue = darken(mix_colors(saturate(term4, 2.0), primary, 0.12), 0.8)
-        syn_magenta = darken(mix_colors(saturate(term5, 2.0), primary, 0.12), 0.8)
-        syn_cyan = darken(mix_colors(saturate(term6, 2.0), primary, 0.12), 0.8)
+        # Mix a percentage of the theme's primary color into the vibrant syntax colors
+        mix_ratio = 0.25
+        syn_red = darken(mix_colors(saturate(term1, 2.0), primary, mix_ratio), 0.8)
+        syn_green = darken(mix_colors(saturate(term2, 2.0), primary, mix_ratio), 0.8)
+        syn_yellow = darken(mix_colors(saturate(term3, 2.0), primary, mix_ratio), 0.8)
+        syn_blue = darken(mix_colors(saturate(term4, 2.0), primary, mix_ratio), 0.8)
+        syn_magenta = darken(mix_colors(saturate(term5, 2.0), primary, mix_ratio), 0.8)
+        syn_cyan = darken(mix_colors(saturate(term6, 2.0), primary, mix_ratio), 0.8)
 
         light_theme["syntax"] = {
             "attribute": {
