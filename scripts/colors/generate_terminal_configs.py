@@ -15,7 +15,11 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from zed.theme_generator import generate_zed_config
-from vscode.theme_generator import generate_vscode_theme, generate_all_vscode_themes, VSCODE_FORKS
+from vscode.theme_generator import (
+    generate_vscode_theme,
+    generate_all_vscode_themes,
+    VSCODE_FORKS,
+)
 
 
 def parse_scss_colors(scss_path):
@@ -156,7 +160,11 @@ color15 {colors.get("term15", "#EBDBB2")}
     import subprocess
 
     try:
-        subprocess.run(["pkill", "--signal", "SIGUSR1", "-x", "kitty"], capture_output=True, timeout=2)
+        subprocess.run(
+            ["pkill", "--signal", "SIGUSR1", "-x", "kitty"],
+            capture_output=True,
+            timeout=2,
+        )
         print("  → Live-reloaded Kitty config (SIGUSR1)")
     except Exception:
         pass
@@ -865,17 +873,14 @@ def generate_omp_config(colors, output_path):
                         "foreground": on_surface_variant,
                         "background": surface_container_high,
                         "template": " {{ .FormattedMs }} ",
-                        "properties": {
-                            "style": "austin",
-                            "threshold": 500
-                        }
+                        "properties": {"style": "austin", "threshold": 500},
                     },
                     {
                         "type": "status",
                         "style": "plain",
                         "foreground": on_error_container,
                         "background": error_container,
-                        "template": " {{ if gt .Code 0 }}✗ {{ .Code }}{{ end }} "
+                        "template": " {{ if gt .Code 0 }}✗ {{ .Code }}{{ end }} ",
                     },
                     {
                         "type": "path",
@@ -883,10 +888,7 @@ def generate_omp_config(colors, output_path):
                         "foreground": on_surface,
                         "background": surface_container,
                         "template": " {{ .Path }} ",
-                        "properties": {
-                            "style": "full",
-                            "folder_separator_icon": "/"
-                        }
+                        "properties": {"style": "full", "folder_separator_icon": "/"},
                     },
                     {
                         "type": "git",
@@ -894,12 +896,9 @@ def generate_omp_config(colors, output_path):
                         "foreground": on_primary_container,
                         "background": primary_container,
                         "template": " {{ .HEAD }}{{ if .Working.Changed }} ●{{ end }}{{ if .Staging.Changed }} ✚{{ end }} ",
-                        "properties": {
-                            "branch_icon": "",
-                            "fetch_status": True
-                        }
-                    }
-                ]
+                        "properties": {"branch_icon": "", "fetch_status": True},
+                    },
+                ],
             },
             {
                 "type": "rprompt",
@@ -908,9 +907,9 @@ def generate_omp_config(colors, output_path):
                         "type": "time",
                         "style": "plain",
                         "foreground": on_surface_variant,
-                        "template": " {{ .CurrentDate | date \"15:04\" }} "
+                        "template": ' {{ .CurrentDate | date "15:04" }} ',
                     }
-                ]
+                ],
             },
             {
                 "type": "prompt",
@@ -921,11 +920,11 @@ def generate_omp_config(colors, output_path):
                         "type": "text",
                         "style": "plain",
                         "foreground": primary,
-                        "template": "❯ "
+                        "template": "❯ ",
                     }
-                ]
-            }
-        ]
+                ],
+            },
+        ],
     }
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -1236,6 +1235,64 @@ def generate_pywalfox_config(colors, output_path):
     print(f"\u2713 Generated Pywalfox colors")
 
 
+def _render_zed_alt_theme(scss_path):
+    """Render the matugen-template-based alt Zed theme using the current colors.json and scss."""
+    home = os.path.expanduser("~")
+    template_path = f"{home}/.config/matugen/templates/zed-colors.json"
+    output_path = f"{home}/.config/zed/themes/inir-alt-theme.json"
+
+    if not os.path.exists(template_path):
+        return
+
+    # Load M3 tokens from colors.json
+    colors_json_path = f"{home}/.local/state/quickshell/user/generated/colors.json"
+    try:
+        with open(colors_json_path) as f:
+            m3 = {k: v.lstrip("#").lower() for k, v in json.load(f).items()}
+    except FileNotFoundError:
+        m3 = {}
+
+    # Pull extra tokens from material_colors.scss (camelCase -> snake_case)
+    scss_extras = {}
+    try:
+        with open(scss_path) as f:
+            for line in f:
+                match = re.match(r"\$(\w+):\s*(#[A-Fa-f0-9]{6});", line.strip())
+                if match:
+                    camel, val = match.groups()
+                    snake = re.sub(
+                        r"([A-Z])", lambda x: "_" + x.group(1).lower(), camel
+                    )
+                    scss_extras[snake] = val.lstrip("#").lower()
+    except FileNotFoundError:
+        pass
+
+    # scss_extras fills in tokens missing from colors.json (e.g. *_fixed, surface_dim)
+    merged = {**scss_extras, **m3}
+
+    with open(template_path) as f:
+        template = f.read()
+
+    def resolve(match):
+        parts = match.group(1).split(
+            "."
+        )  # e.g. ['colors', 'primary_fixed_dim', 'dark', 'hex']
+        if len(parts) >= 3 and parts[0] == "colors" and parts[-1] == "hex":
+            key = re.sub(r"([A-Z])", lambda x: "_" + x.group(1).lower(), parts[1])
+            val = merged.get(key) or merged.get(parts[1].lower())
+            if val:
+                return "#" + val
+        return match.group(0)
+
+    result = re.sub(r"\{\{([^}]+)\}\}", resolve, template)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(result)
+
+    print("\u2713 Generated Zed alt theme (iNiR-alt)")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate terminal color configs from material_colors.scss"
@@ -1347,9 +1404,13 @@ def main():
             with open(colors_json_path, "r") as f:
                 m3_colors = json.load(f)
                 omp_colors = {**colors, **m3_colors}
-                generate_omp_config(omp_colors, f"{home}/.config/oh-my-posh/ii-auto.json")
+                generate_omp_config(
+                    omp_colors, f"{home}/.config/oh-my-posh/ii-auto.json"
+                )
         except FileNotFoundError:
-            print(f"Warning: {colors_json_path} not found, oh-my-posh theme may be incomplete")
+            print(
+                f"Warning: {colors_json_path} not found, oh-my-posh theme may be incomplete"
+            )
             generate_omp_config(colors, f"{home}/.config/oh-my-posh/ii-auto.json")
 
     if "btop" in terminals:
@@ -1362,9 +1423,13 @@ def main():
                 m3_colors = json.load(f)
                 # Merge M3 tokens with terminal colors
                 btop_colors = {**colors, **m3_colors}
-                generate_btop_config(btop_colors, f"{home}/.config/btop/themes/ii-auto.theme")
+                generate_btop_config(
+                    btop_colors, f"{home}/.config/btop/themes/ii-auto.theme"
+                )
         except FileNotFoundError:
-            print(f"Warning: {colors_json_path} not found, btop theme may be incomplete")
+            print(
+                f"Warning: {colors_json_path} not found, btop theme may be incomplete"
+            )
             generate_btop_config(colors, f"{home}/.config/btop/themes/ii-auto.theme")
 
     if "lazygit" in terminals:
@@ -1379,6 +1444,8 @@ def main():
         generate_zed_config(
             colors, args.scss, f"{home}/.config/zed/themes/ii-theme.json"
         )
+        # Also render the matugen-based alt Zed theme (iNiR-alt Dark/Light)
+        _render_zed_alt_theme(args.scss)
 
     if args.vscode:
         # Use the new multi-fork generation that auto-detects all installed forks
@@ -1386,7 +1453,11 @@ def main():
             "~/.local/state/quickshell/user/generated/colors.json"
         )
         # Parse enabled forks from --vscode-forks argument if provided
-        forks_to_generate = args.vscode_forks if hasattr(args, 'vscode_forks') and args.vscode_forks else None
+        forks_to_generate = (
+            args.vscode_forks
+            if hasattr(args, "vscode_forks") and args.vscode_forks
+            else None
+        )
         results = generate_all_vscode_themes(colors_json, args.scss, forks_to_generate)
         if not results:
             print("✗ No VSCode forks found or all disabled")
