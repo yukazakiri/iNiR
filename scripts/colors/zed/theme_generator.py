@@ -143,7 +143,7 @@ def generate_zed_config(colors, scss_path, output_path):
         if factor > 1.0 and s < 0.35:
             # Force a minimum saturation proportional to the factor
             s += 0.25 * (factor - 1.0)
-            
+
         s = min(1.0, s)
 
         def hue_to_rgb(p, q, t):
@@ -169,7 +169,6 @@ def generate_zed_config(colors, scss_path, output_path):
             b = hue_to_rgb(p, q, h - 1 / 3)
 
         return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
-
 
     def mix_colors(hex1, hex2, weight=0.1):
         """Mix hex2 into hex1 by weight (0.0 to 1.0)"""
@@ -247,12 +246,12 @@ def generate_zed_config(colors, scss_path, output_path):
         on_surface_variant = _dk_on_surface_variant
 
         theme = {
-            "border": hex_with_alpha(outline, "ff"),
-            "border.variant": hex_with_alpha(adjust_lightness(surface_low, 0.8), "ff"),
+            "border": hex_with_alpha(on_surface, "20"),
+            "border.variant": hex_with_alpha(surface_std, "20"),
             "border.focused": hex_with_alpha(primary, "ff"),
-            "border.selected": hex_with_alpha(adjust_lightness(primary, 0.7), "ff"),
+            "border.selected": hex_with_alpha(on_surface, "40"),
             "border.transparent": "#00000000",
-            "border.disabled": hex_with_alpha(adjust_lightness(outline, 0.5), "ff"),
+            "border.disabled": hex_with_alpha(_dk_outline_variant, "60"),
             "elevated_surface.background": hex_with_alpha(surface_low, "ff"),
             "surface.background": hex_with_alpha(surface_low, "ff"),
             "background": hex_with_alpha(surface, "ff"),
@@ -501,12 +500,16 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "comment": {
-                "color": hex_with_alpha(adjust_lightness(on_surface_variant, 0.7), "ff"),
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.7), "ff"
+                ),
                 "font_style": "italic",
                 "font_weight": None,
             },
             "comment.doc": {
-                "color": hex_with_alpha(adjust_lightness(on_surface_variant, 0.8), "ff"),
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.8), "ff"
+                ),
                 "font_style": "italic",
                 "font_weight": None,
             },
@@ -586,7 +589,9 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "predictive": {
-                "color": hex_with_alpha(adjust_lightness(on_surface_variant, 0.7), "ff"),
+                "color": hex_with_alpha(
+                    adjust_lightness(on_surface_variant, 0.7), "ff"
+                ),
                 "font_style": "italic",
                 "font_weight": None,
             },
