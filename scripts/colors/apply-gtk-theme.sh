@@ -8,10 +8,11 @@
 # Reads from colors.json (matugen's output) for UI consistency.
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 COLORS_JSON="$XDG_STATE_HOME/quickshell/user/generated/colors.json"
 KDEGLOBALS="$HOME/.config/kdeglobals"
-DARKLY_COLORS="$HOME/.local/share/color-schemes/Darkly.colors"
+DARKLY_COLORS="$XDG_DATA_HOME/color-schemes/Darkly.colors"
 SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

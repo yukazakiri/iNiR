@@ -106,6 +106,7 @@ Variants {
         readonly property string fillMode: bgRoot.backgroundOptions.fillMode ?? "fill"
         readonly property bool dynamicParallaxRequested: (bgRoot.parallaxOptions.enableWorkspace ?? false) || (bgRoot.parallaxOptions.enableSidebar ?? false)
         readonly property bool externalMainWallpaperActive: !wallpaperSafetyTriggered
+            && !(bgRoot.backgroundOptions.backdrop?.hideWallpaper ?? false)
             && AwwwBackend.supportsVisibleMainWallpaper(
                 bgRoot.wallpaperPathRaw,
                 bgRoot.fillMode,
@@ -402,7 +403,7 @@ Variants {
                     return [x1, y1, x2, y2, 1, 1]
                 }
                 Behavior on width {
-                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax && bgRoot._awwwRevealOpacity >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline
@@ -410,7 +411,7 @@ Variants {
                     }
                 }
                 Behavior on height {
-                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax && bgRoot._awwwRevealOpacity >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline
@@ -656,7 +657,7 @@ Variants {
                 closeOnHoverLost: true
                 model: [
                     { text: Translation.tr("Settings"), iconName: "settings", monochromeIcon: true,
-                        action: () => { Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]) } },
+                        action: () => { Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "settings", "open"]) } },
                     { type: "separator" },
                     { text: Translation.tr("Change wallpaper"), iconName: "image", monochromeIcon: true,
                         action: () => { GlobalStates.wallpaperSelectorOpen = true } },
@@ -664,7 +665,7 @@ Variants {
                         action: () => { GlobalStates.regionSelectorOpen = true } },
                     { type: "separator" },
                     { text: Translation.tr("Reload shell"), iconName: "refresh", monochromeIcon: true,
-                        action: () => { Quickshell.reload() } }
+                        action: () => { Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")]) } }
                 ]
             }
 

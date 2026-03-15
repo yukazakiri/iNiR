@@ -196,7 +196,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Config Hot-Reload
 
-- Most config changes apply immediately. Some (like enabling/disabling modules) require restarting ii with `qs kill -c ii && qs -c ii`.
+- Most config changes apply immediately. Some (like enabling/disabling modules) require restarting inir with `qs kill -c inir && qs -c inir`.
 
 ---
 

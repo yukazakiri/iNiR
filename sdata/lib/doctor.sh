@@ -138,7 +138,7 @@ get_missing_dependencies() {
 }
 
 check_critical_files() {
-    local target="${XDG_CONFIG_HOME}/quickshell/ii"
+    local target="${XDG_CONFIG_HOME}/quickshell/inir"
     local critical=("shell.qml" "GlobalStates.qml" "modules/common/Config.qml" "services/NiriService.qml")
     local missing=0
     
@@ -150,7 +150,7 @@ check_critical_files() {
 }
 
 check_script_permissions() {
-    local target="${XDG_CONFIG_HOME}/quickshell/ii/scripts"
+    local target="${XDG_CONFIG_HOME}/quickshell/inir/scripts"
     [[ ! -d "$target" ]] && return 0
     
     local bad=$(find "$target" \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) ! -executable 2>/dev/null | wc -l)
@@ -192,7 +192,7 @@ check_state_directories() {
 
 check_python_packages() {
     local venv="${XDG_STATE_HOME}/quickshell/.venv"
-    local req="${XDG_CONFIG_HOME}/quickshell/ii/sdata/uv/requirements.txt"
+    local req="${XDG_CONFIG_HOME}/quickshell/inir/sdata/uv/requirements.txt"
     
     # Check for broken venv (e.g. after python update)
     if [[ -d "$venv/bin" ]]; then
@@ -249,26 +249,40 @@ check_niri_running() {
 
 check_version_tracking() {
     local version_file="${XDG_CONFIG_HOME}/illogical-impulse/version.json"
+    local runtime_version_file="${XDG_CONFIG_HOME}/quickshell/inir/version.json"
     local installed_marker="${XDG_CONFIG_HOME}/illogical-impulse/installed_true"
     
     if [[ -f "$installed_marker" && ! -f "$version_file" ]]; then
-        # Existing install without tracking - create it
-        local repo_ver=$(get_repo_version 2>/dev/null || echo "unknown")
-        local repo_commit=$(get_repo_commit 2>/dev/null || echo "unknown")
-        set_installed_version "$repo_ver" "$repo_commit" "doctor"
-        doctor_fix "Created version tracking"
+        if [[ -f "$runtime_version_file" ]]; then
+            mkdir -p "$(dirname "$version_file")"
+            cp "$runtime_version_file" "$version_file"
+            doctor_fix "Created version tracking from runtime metadata"
+        else
+            # Existing install without tracking - create it
+            local repo_ver=$(get_repo_version 2>/dev/null || echo "unknown")
+            local repo_commit=$(get_repo_commit 2>/dev/null || echo "unknown")
+            set_installed_version "$repo_ver" "$repo_commit" "doctor"
+            doctor_fix "Created version tracking"
+        fi
     else
         doctor_pass "Version tracking OK"
     fi
 }
 
 check_manifest() {
-    local manifest="${XDG_CONFIG_HOME}/quickshell/ii/.ii-manifest"
+    local manifest="${XDG_CONFIG_HOME}/quickshell/inir/.inir-manifest"
     local installed_marker="${XDG_CONFIG_HOME}/illogical-impulse/installed_true"
+    local installed_strategy
+    installed_strategy=$(get_installed_update_strategy)
+
+    if [[ "$installed_strategy" == "package-manager" ]]; then
+        doctor_pass "File manifest not required for externally managed install"
+        return 0
+    fi
     
     if [[ -f "$installed_marker" && ! -f "$manifest" ]]; then
         # Generate manifest from current state
-        local target="${XDG_CONFIG_HOME}/quickshell/ii"
+        local target="${XDG_CONFIG_HOME}/quickshell/inir"
         if [[ -d "$target" ]]; then
             generate_manifest "$target" "$manifest" 2>/dev/null || true
             doctor_fix "Created file manifest"
@@ -286,7 +300,7 @@ check_quickshell_loads() {
     fi
     
     # If already running, just check it's responsive
-    if pgrep -f "qs.*-c.*ii" &>/dev/null; then
+    if pgrep -f "qs.*-c.*inir" &>/dev/null; then
         doctor_pass "Quickshell running"
         return 0
     fi
@@ -296,7 +310,7 @@ check_quickshell_loads() {
     
     # Start in background and capture initial output
     local logfile="/tmp/qs-doctor-$$.log"
-    nohup qs -c ii >"$logfile" 2>&1 &
+    nohup qs -c inir >"$logfile" 2>&1 &
     local qs_pid=$!
     disown
     
@@ -332,7 +346,7 @@ check_quickshell_loads() {
 check_matugen_colors() {
     local colors_json="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/colors.json"
     local colors_scss="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/generated/material_colors.scss"
-    local darkly_file="${HOME}/.local/share/color-schemes/Darkly.colors"
+    local darkly_file="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Darkly.colors"
     
     # Check if colors exist (colors.json is primary, scss is legacy)
     if [[ ! -f "$colors_json" && ! -f "$colors_scss" ]]; then
@@ -363,7 +377,7 @@ check_matugen_colors() {
     
     if [[ ! -f "$darkly_file" ]]; then
         # Try to regenerate Darkly colors
-        local darkly_script="${XDG_CONFIG_HOME}/quickshell/ii/scripts/colors/apply-gtk-theme.sh"
+        local darkly_script="${XDG_CONFIG_HOME}/quickshell/inir/scripts/colors/apply-gtk-theme.sh"
         if [[ -f "$darkly_script" ]]; then
             bash "$darkly_script" 2>/dev/null
             [[ -f "$darkly_file" ]] && doctor_fix "Regenerated Darkly Qt colors" || doctor_fail "Darkly Qt colors generation failed"
@@ -401,7 +415,7 @@ check_conflicting_services() {
 check_wallpaper_health() {
     local wallpaper_dir
     wallpaper_dir="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Wallpapers"
-    local assets_dir="${XDG_CONFIG_HOME}/quickshell/ii/assets/wallpapers"
+    local assets_dir="${XDG_CONFIG_HOME}/quickshell/inir/assets/wallpapers"
     
     [[ ! -d "$wallpaper_dir" ]] && { doctor_pass "Wallpapers (dir not created yet)"; return 0; }
     

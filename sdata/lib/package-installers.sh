@@ -256,7 +256,7 @@ install-python-packages(){
   # Try repo location first (during install), then target location (during doctor)
   local requirements_file="${REPO_ROOT}/sdata/uv/requirements.txt"
   if [[ ! -f "$requirements_file" ]]; then
-    requirements_file="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/ii/sdata/uv/requirements.txt"
+    requirements_file="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir/sdata/uv/requirements.txt"
   fi
 
   if [[ -f "$requirements_file" ]]; then
@@ -866,7 +866,7 @@ if status is-interactive
         alias ls 'eza --icons'
     end
     alias clear "printf '\033[2J\033[3J\033[1;1H'"
-    alias q 'qs -c ii'
+    alias q 'qs -c inir'
 
     # Add local bin to PATH
     fish_add_path ~/.local/bin
@@ -908,7 +908,7 @@ if command -v eza &> /dev/null; then
 elif [[ -x ~/.local/bin/eza ]]; then
     alias ls='~/.local/bin/eza --icons'
 fi
-alias q='qs -c ii'
+alias q='qs -c inir'
 
 # Add local bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
@@ -960,7 +960,7 @@ if command -v eza &> /dev/null; then
 elif [[ -x ~/.local/bin/eza ]]; then
     alias ls='~/.local/bin/eza --icons'
 fi
-alias q='qs -c ii'
+alias q='qs -c inir'
 
 # Add local bin to PATH
 export PATH="$HOME/.local/bin:$PATH"

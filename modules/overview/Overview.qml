@@ -69,7 +69,7 @@ Scope {
                 anchors.fill: parent
                 z: -1
                 color: {
-                    const ov = Config.options.overview
+                    const ov = Config.options?.overview ?? null
                     const v = (ov && ov.scrimDim !== undefined) ? ov.scrimDim : 35
                     const clamped = Math.max(0, Math.min(100, v))
                     const a = clamped / 100
@@ -177,7 +177,7 @@ Scope {
             }
 
             function maybeSwitchWorkspaceOnOpen() {
-                const ov = Config.options.overview;
+                const ov = Config.options?.overview ?? null;
                 if (!ov || !ov.switchToWorkspaceOnOpen || !ov.switchWorkspaceIndex || ov.switchWorkspaceIndex <= 0)
                     return;
 
@@ -343,21 +343,26 @@ Scope {
         return ""
     }
 
-    function toggleClipboard() {
-        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
-            GlobalStates.overviewOpen = false;
-            return;
-        }
+    function openWithPrefix(prefix) {
         const focusedName = getFocusedMonitorName()
         for (let i = 0; i < overviewVariants.instances.length; i++) {
             let panelWindow = overviewVariants.instances[i];
             if (panelWindow.modelData.name == focusedName) {
                 overviewScope.dontAutoCancelSearch = true;
-                panelWindow.setSearchingText(Config.options.search.prefix.clipboard);
+                panelWindow.setSearchingText(prefix);
                 GlobalStates.overviewOpen = true;
-                return;
+                return true;
             }
         }
+        return false;
+    }
+
+    function toggleClipboard() {
+        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
+            GlobalStates.overviewOpen = false;
+            return;
+        }
+        overviewScope.openWithPrefix(Config.options?.search?.prefix?.clipboard ?? ";");
     }
 
     function toggleEmojis() {
@@ -365,16 +370,7 @@ Scope {
             GlobalStates.overviewOpen = false;
             return;
         }
-        const focusedName = getFocusedMonitorName()
-        for (let i = 0; i < overviewVariants.instances.length; i++) {
-            let panelWindow = overviewVariants.instances[i];
-            if (panelWindow.modelData.name == focusedName) {
-                overviewScope.dontAutoCancelSearch = true;
-                panelWindow.setSearchingText(Config.options.search.prefix.emojis);
-                GlobalStates.overviewOpen = true;
-                return;
-            }
-        }
+        overviewScope.openWithPrefix(Config.options?.search?.prefix?.emojis ?? ":");
     }
 
     IpcHandler {
@@ -407,6 +403,13 @@ Scope {
         }
         function clipboardToggle(): void {
             overviewScope.toggleClipboard();
+        }
+        function actionOpen(): void {
+            if (Config.options?.panelFamily === "waffle") {
+                GlobalStates.searchOpen = true;
+            } else {
+                overviewScope.openWithPrefix(Config.options?.search?.prefix?.action ?? "/");
+            }
         }
     }
 }

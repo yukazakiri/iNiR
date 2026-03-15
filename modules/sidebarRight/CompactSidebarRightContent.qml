@@ -1428,7 +1428,7 @@ Item {
             Hyprland.dispatch("reload")
         else if (CompositorService.isNiri)
             Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"])
-        Quickshell.reload(true)
+        Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")])
     }
 
     function doSettings() {
@@ -1447,7 +1447,7 @@ Item {
             }
         }
         GlobalStates.sidebarRightOpen = false
-        Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]))
+        Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "settings", "open"]))
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -1734,7 +1734,7 @@ Item {
                 label: Translation.tr("Screenshot")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "screenshot"]))
+                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "region", "screenshot"]))
                 }
             }
 
@@ -1744,7 +1744,7 @@ Item {
                 label: Translation.tr("Record")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "record"]))
+                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "region", "record"]))
                 }
             }
 
@@ -1754,7 +1754,7 @@ Item {
                 label: Translation.tr("OCR")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "ocr"]))
+                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "region", "ocr"]))
                 }
             }
 
@@ -1764,7 +1764,7 @@ Item {
                 label: Translation.tr("Search")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "search"]))
+                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "region", "search"]))
                 }
             }
 

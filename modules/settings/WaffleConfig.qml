@@ -63,7 +63,7 @@ ContentPage {
                 mainText: Translation.tr("Pick main wallpaper")
                 onClicked: {
                     Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
-                    Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
+                    Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }
 
@@ -75,7 +75,7 @@ ContentPage {
                 mainText: Translation.tr("Pick Waffle wallpaper")
                 onClicked: {
                     Config.setNestedValue("wallpaperSelector.selectionTarget", "waffle")
-                    Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
+                    Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }
 
@@ -185,7 +185,7 @@ ContentPage {
                 text: Translation.tr("Hide main wallpaper (show only backdrop)")
                 checked: Config.options?.waffles?.background?.backdrop?.hideWallpaper ?? false
                 onCheckedChanged: {
-                    Config.options.waffles.background.backdrop.hideWallpaper = checked;
+                    Config.setNestedValue("waffles.background.backdrop.hideWallpaper", checked);
                 }
                 StyledToolTip { text: Translation.tr("Hides the desktop wallpaper, showing only the backdrop during Niri's overview") }
             }
@@ -209,7 +209,7 @@ ContentPage {
                 mainText: Translation.tr("Pick backdrop wallpaper")
                 onClicked: {
                     Config.setNestedValue("wallpaperSelector.selectionTarget", "waffle-backdrop")
-                    Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
+                    Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"]);
                 }
             }
 
@@ -495,16 +495,27 @@ ContentPage {
     }
 
     SettingsCardSection {
-        visible: root.isWaffleActive && root.isPanelEnabled("iiAltSwitcher")
+        visible: root.isWaffleActive
         expanded: false
         icon: "swap_horiz"
         title: Translation.tr("Alt+Tab Switcher")
 
         SettingsGroup {
             SettingsSwitch {
+                enabled: {
+                    const preset = Config.options?.waffles?.altSwitcher?.preset ?? "thumbnails"
+                    return preset !== "skew" && preset !== "none"
+                }
                 buttonIcon: "visibility_off"
                 text: Translation.tr("No visual UI (cycle windows only)")
-                checked: Config.options?.waffles?.altSwitcher?.noVisualUi ?? false
+                checked: {
+                    const preset = Config.options?.waffles?.altSwitcher?.preset ?? "thumbnails"
+                    if (preset === "none")
+                        return true
+                    if (preset === "skew")
+                        return false
+                    return Config.options?.waffles?.altSwitcher?.noVisualUi ?? false
+                }
                 onCheckedChanged: Config.setNestedValue("waffles.altSwitcher.noVisualUi", checked)
                 StyledToolTip { text: Translation.tr("Use Alt+Tab to switch windows without showing the switcher overlay") }
             }
@@ -515,10 +526,14 @@ ContentPage {
                     { displayName: Translation.tr("Cards"), icon: "view_carousel", value: "cards" },
                     { displayName: Translation.tr("Compact"), icon: "view_module", value: "compact" },
                     { displayName: Translation.tr("List"), icon: "view_list", value: "list" },
+                    { displayName: Translation.tr("Skew previews"), icon: "view_in_ar", value: "skew" },
                     { displayName: Translation.tr("None (no UI)"), icon: "visibility_off", value: "none" }
                 ]
                 currentValue: Config.options?.waffles?.altSwitcher?.preset ?? "thumbnails"
-                onSelected: (newValue) => Config.setNestedValue("waffles.altSwitcher.preset", newValue)
+                onSelected: (newValue) => {
+                    Config.setNestedValue("waffles.altSwitcher.preset", newValue)
+                    Config.setNestedValue("waffles.altSwitcher.noVisualUi", newValue === "none")
+                }
             }
 
             SettingsSwitch {

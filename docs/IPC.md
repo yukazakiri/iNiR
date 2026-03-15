@@ -5,13 +5,13 @@ ii exposes IPC targets you can call from Niri keybinds, scripts, or your termina
 From terminal (for testing, or showing off):
 
 ```bash
-qs -c ii ipc call <target> <function>
+qs -c inir ipc call <target> <function>
 ```
 
 In Niri config (for actual keybinds):
 
 ```kdl
-bind "Key" { spawn "qs" "-c" "ii" "ipc" "call" "<target>" "<function>"; }
+bind "Key" { spawn "qs" "-c" "inir" "ipc" "call" "<target>" "<function>"; }
 ```
 
 Yes, it's verbose. No, there's no shorter way. Welcome to IPC.

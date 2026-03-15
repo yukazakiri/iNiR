@@ -66,7 +66,7 @@ For everything else, check [PACKAGES.md](PACKAGES.md). It's organized by categor
 ### 2. Clone the repo
 
 ```bash
-git clone https://github.com/snowarch/inir.git ~/.config/quickshell/ii
+git clone https://github.com/snowarch/inir.git ~/.config/quickshell/inir
 ```
 
 ### 3. Copy the configs

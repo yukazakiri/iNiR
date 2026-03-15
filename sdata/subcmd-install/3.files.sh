@@ -90,12 +90,12 @@ if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 case "${SKIP_QUICKSHELL}" in
   true) sleep 0;;
   *)
-    tui_info "Installing Quickshell ii config..."
+    tui_info "Installing Quickshell inir config..."
 
     # The ii QML code is in the root of this repo, not in dots/
-    # We copy it to ~/.config/quickshell/ii/
+    # We copy it to ~/.config/quickshell/inir/
     II_SOURCE="${REPO_ROOT}"
-    II_TARGET="${XDG_CONFIG_HOME}/quickshell/ii"
+    II_TARGET="${XDG_CONFIG_HOME}/quickshell/inir"
 
     v mkdir -p "$II_TARGET"
 
@@ -107,7 +107,7 @@ case "${SKIP_QUICKSHELL}" in
 
     # Generate manifest BEFORE syncing (to know what should exist)
     log_info "Generating file manifest..."
-    generate_manifest "$II_SOURCE" "${II_TARGET}/.ii-manifest.new"
+    generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest.new"
 
     # Copy all .qml files from root (auto-detect, no manual list needed)
     for qml_file in "${II_SOURCE}"/*.qml; do
@@ -125,19 +125,19 @@ case "${SKIP_QUICKSHELL}" in
     done
 
     # Finalize manifest
-    mv "${II_TARGET}/.ii-manifest.new" "${II_TARGET}/.ii-manifest"
+    mv "${II_TARGET}/.inir-manifest.new" "${II_TARGET}/.inir-manifest"
 
     # Cleanup orphan files (files that no longer exist in repo)
     if [[ "${IS_UPDATE}" == "true" ]]; then
       log_info "Cleaning up orphan files..."
-      cleanup_orphans "$II_TARGET" "${II_TARGET}/.ii-manifest"
+      cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"
     fi
 
     # Fix script permissions
     log_info "Setting script permissions..."
     find "$II_TARGET/scripts" \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} \; 2>/dev/null || true
 
-    log_success "Quickshell ii config installed"
+    log_success "Quickshell inir config installed"
 
     # Install Python packages now that requirements.txt is in place
     showfun install-python-packages
@@ -734,7 +734,7 @@ tui_info "Copying wallpapers..."
 # Copy bundled wallpapers to user's Pictures/Wallpapers (always, don't overwrite)
 #####################################################################################
 # Ensure II_TARGET is defined (in case SKIP_QUICKSHELL was set)
-II_TARGET="${II_TARGET:-${XDG_CONFIG_HOME}/quickshell/ii}"
+II_TARGET="${II_TARGET:-${XDG_CONFIG_HOME}/quickshell/inir}"
 USER_WALLPAPERS_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Wallpapers"
 if [[ -d "${II_TARGET}/assets/wallpapers" ]]; then
   mkdir -p "${USER_WALLPAPERS_DIR}"
@@ -839,7 +839,7 @@ fi
 #####################################################################################
 # Migrate: Generate Darkly.colors for existing users (Qt file dialogs fix)
 #####################################################################################
-DARKLY_COLORS_FILE="${HOME}/.local/share/color-schemes/Darkly.colors"
+DARKLY_COLORS_FILE="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Darkly.colors"
 if [[ ! -f "${DARKLY_COLORS_FILE}" ]]; then
   tui_info "Generating Darkly color scheme for Qt apps..."
 
@@ -879,15 +879,7 @@ if [[ -n "${II_TARGET}" && -d "${II_TARGET}" ]]; then
   if command -v git &>/dev/null && [[ -d "${REPO_ROOT}/.git" ]]; then
     REPO_COMMIT=$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null || echo "")
   fi
-  cat > "${II_TARGET}/version.json" << VEOF
-{
-  "version": "${REPO_VERSION:-0.0.0}",
-  "commit": "${REPO_COMMIT:-unknown}",
-  "repoPath": "${REPO_ROOT}",
-  "installedAt": "$(date -Iseconds)",
-  "method": "setup-install"
-}
-VEOF
+  write_version_info_json "${II_TARGET}/version.json" "${REPO_VERSION:-0.0.0}" "${REPO_COMMIT:-unknown}" "setup-install"
   log_success "Version tracking configured"
 fi
 
@@ -926,7 +918,7 @@ if ! ${quiet:-false}; then
   _VERIFY_ERRORS=0
   for _crit_file in "shell.qml" "GlobalStates.qml" "modules/common/Config.qml" \
                     "modules/common/Appearance.qml" "services/NiriService.qml"; do
-    if [[ -f "${II_TARGET:-${XDG_CONFIG_HOME}/quickshell/ii}/${_crit_file}" ]]; then
+    if [[ -f "${II_TARGET:-${XDG_CONFIG_HOME}/quickshell/inir}/${_crit_file}" ]]; then
       tui_verify_ok "${_crit_file}"
     else
       tui_verify_fail "${_crit_file}" "MISSING"
@@ -990,7 +982,7 @@ EOF
 
     echo -e "${STY_BLUE}${STY_BOLD}┌─ What was updated${STY_RST}"
     echo -e "${STY_BLUE}│${STY_RST}"
-    echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Quickshell ii synced to ~/.config/quickshell/ii/"
+    echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Quickshell inir synced to ~/.config/quickshell/inir/"
     echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Missing keybinds added to Niri config (if any)"
     echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Config migrations applied"
     echo -e "${STY_BLUE}│${STY_RST}"
@@ -1011,7 +1003,7 @@ EOF
 
     echo -e "${STY_BLUE}${STY_BOLD}┌─ What was installed${STY_RST}"
     echo -e "${STY_BLUE}│${STY_RST}"
-    echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Quickshell ii copied to ~/.config/quickshell/ii/"
+    echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Quickshell inir copied to ~/.config/quickshell/inir/"
     echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Niri config with ii keybindings"
     echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} GTK/Qt theming (Matugen + Kvantum + Darkly)"
     echo -e "${STY_BLUE}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Environment variables for ${DETECTED_SHELL:-your shell}"

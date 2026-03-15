@@ -102,8 +102,7 @@ Singleton {
         }
 
         function open(): void {
-            const prefix = Config.options?.search?.prefix?.action ?? "/"
-            GlobalStates.overviewOpen = true
+            Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "overview", "actionOpen"])
         }
     }
 
@@ -167,7 +166,7 @@ Singleton {
             category: "system",
             keywords: ["lock", "security", "screen"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "lock", "activate"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "lock", "activate"])
             }
         },
         {
@@ -178,7 +177,7 @@ Singleton {
             category: "system",
             keywords: ["power", "shutdown", "reboot", "logout", "suspend", "session"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "session", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "session", "open"])
             }
         },
         {
@@ -271,8 +270,8 @@ Singleton {
             category: "appearance",
             keywords: ["wallpaper", "background", "wall", "image", "grid"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "coverflowSelector", "close"])
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "coverflowSelector", "close"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "wallpaperSelector", "open"])
             }
         },
         {
@@ -283,8 +282,8 @@ Singleton {
             category: "appearance",
             keywords: ["wallpaper", "background", "wall", "coverflow", "carousel"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "close"])
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "coverflowSelector", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "wallpaperSelector", "close"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "coverflowSelector", "open"])
             }
         },
         {
@@ -355,7 +354,7 @@ Singleton {
             category: "tools",
             keywords: ["screenshot", "snip", "capture", "screen", "region"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "screenshot"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "region", "screenshot"])
             }
         },
         {
@@ -392,7 +391,7 @@ Singleton {
             category: "tools",
             keywords: ["clipboard", "paste", "history", "cliphist", "copy"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "clipboard", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "clipboard", "open"])
             }
         },
         {
@@ -476,7 +475,7 @@ Singleton {
             category: "tools",
             keywords: ["keyboard", "shortcuts", "cheatsheet", "keybinds", "hotkeys"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "cheatsheet", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "cheatsheet", "open"])
             }
         },
         {
@@ -500,7 +499,7 @@ Singleton {
             category: "media",
             keywords: ["play", "pause", "media", "music", "player", "mpris"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "mpris", "playPause"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "mpris", "playPause"])
             }
         },
         {
@@ -511,7 +510,7 @@ Singleton {
             category: "media",
             keywords: ["next", "skip", "track", "media", "forward"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "mpris", "next"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "mpris", "next"])
             }
         },
         {
@@ -522,7 +521,7 @@ Singleton {
             category: "media",
             keywords: ["previous", "back", "track", "media", "rewind"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "mpris", "previous"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "mpris", "previous"])
             }
         },
         {
@@ -648,7 +647,7 @@ Singleton {
             category: "settings",
             keywords: ["overview", "windows", "workspace"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "overview", "toggle"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "overview", "toggle"])
             }
         },
         {
@@ -659,7 +658,7 @@ Singleton {
             category: "settings",
             keywords: ["sidebar", "left", "panel"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "sidebarLeft", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "sidebarLeft", "open"])
             }
         },
         {
@@ -670,7 +669,7 @@ Singleton {
             category: "settings",
             keywords: ["sidebar", "right", "panel"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "sidebarRight", "open"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "sidebarRight", "open"])
             }
         },
         {
@@ -681,7 +680,7 @@ Singleton {
             category: "settings",
             keywords: ["osk", "keyboard", "onscreen", "virtual"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "osk", "toggle"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "osk", "toggle"])
             }
         },
         {
@@ -719,7 +718,7 @@ Singleton {
             category: "settings",
             keywords: ["family", "panel", "ii", "material", "layout"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "panelFamily", "set", "ii"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "panelFamily", "set", "ii"])
             }
         },
         {
@@ -730,7 +729,7 @@ Singleton {
             category: "settings",
             keywords: ["family", "panel", "waffle", "win11", "windows", "layout"],
             execute: () => {
-                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "panelFamily", "set", "waffle"])
+                Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "panelFamily", "set", "waffle"])
             }
         },
     ]
@@ -751,11 +750,8 @@ Singleton {
                         "-a", "Shell"])
                     return
                 }
-                const terminal = Config.options?.apps?.terminal ?? "kitty"
                 const pkg = args.trim()
-                const cmd = `if command -v yay &>/dev/null; then yay -S ${pkg}; elif command -v paru &>/dev/null; then paru -S ${pkg}; else sudo pacman -S ${pkg}; fi`
-                Quickshell.execDetached(["/usr/bin/bash", "-c",
-                    `${terminal} -e /usr/bin/bash -c '${cmd} ; echo "\\nPress Enter to close..." ; read'`])
+                PackageSearch.installPackage(pkg, true)
             }
         },
         {
@@ -772,10 +768,8 @@ Singleton {
                         "-a", "Shell"])
                     return
                 }
-                const terminal = Config.options?.apps?.terminal ?? "kitty"
                 const pkg = args.trim()
-                Quickshell.execDetached(["/usr/bin/bash", "-c",
-                    `${terminal} -e /usr/bin/bash -c 'sudo pacman -Rns ${pkg} ; echo "\\nPress Enter to close..." ; read'`])
+                PackageSearch.removePackage(pkg)
             }
         },
         {
@@ -785,12 +779,7 @@ Singleton {
             icon: "system_update_alt",
             category: "system",
             keywords: ["update", "upgrade", "system", "pacman", "yay", "paru"],
-            execute: () => {
-                const terminal = Config.options?.apps?.terminal ?? "kitty"
-                const cmd = `if command -v yay &>/dev/null; then yay; elif command -v paru &>/dev/null; then paru; else sudo pacman -Syu; fi`
-                Quickshell.execDetached(["/usr/bin/bash", "-c",
-                    `${terminal} -e /usr/bin/bash -c '${cmd} ; echo "\\nPress Enter to close..." ; read'`])
-            }
+            execute: () => { PackageSearch.updateSystem() }
         },
     ]
 

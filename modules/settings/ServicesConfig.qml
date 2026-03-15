@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
@@ -438,6 +439,7 @@ ContentPage {
                                     if (ShellUpdates.isUpdating) return Translation.tr("Updating…")
                                     if (ShellUpdates.isChecking) return Translation.tr("Checking for updates…")
                                     if (ShellUpdates.hasUpdate) return Translation.tr("Update available")
+                                    if (ShellUpdates.managedExternally) return "Managed externally"
                                     if (ShellUpdates.lastError.length > 0) return Translation.tr("Error")
                                     if (ShellUpdates.available) return Translation.tr("Up to date")
                                     return Translation.tr("Not available")
@@ -467,6 +469,14 @@ ContentPage {
                                     : ""
                                 font.pixelSize: Appearance.font.pixelSize.smaller
                                 color: Appearance.colors.colSubtext
+                            }
+
+                            StyledText {
+                                visible: ShellUpdates.managedExternally
+                                text: ShellUpdates.unavailableHint
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }
@@ -615,7 +625,7 @@ ContentPage {
                     colBackground: Appearance.colors.colSurfaceContainerLow
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colRipple: Appearance.colors.colLayer1Active
-                    enabled: !ShellUpdates.isChecking && !ShellUpdates.isUpdating
+                    enabled: !ShellUpdates.isChecking && !ShellUpdates.isUpdating && !ShellUpdates.managedExternally
                     opacity: enabled ? 1.0 : 0.5
                     onClicked: ShellUpdates.check()
 
@@ -650,7 +660,7 @@ ContentPage {
                             // Separate window mode (default): settings.qml is a separate qs process.
                             // Singletons are isolated per-process, so we must use IPC to reach
                             // the main shell's ShellUpdates.openOverlay() instead.
-                            Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "shellUpdate", "open"])
+                            Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "shellUpdate", "open"])
                         }
                     }
 
@@ -673,7 +683,7 @@ ContentPage {
                 RippleButton {
                     Layout.fillWidth: true
                     implicitHeight: 36
-                    visible: ShellUpdates.hasUpdate
+                    visible: ShellUpdates.hasUpdate && ShellUpdates.selfUpdateSupported
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.m3colors.m3primary
                     colBackgroundHover: Appearance.colors.colPrimaryHover

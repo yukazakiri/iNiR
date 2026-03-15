@@ -31,25 +31,35 @@ MouseArea {
     readonly property string currentSelectionTarget: Wallpapers.currentSelectionTarget()
     readonly property string currentSelectionPath: Wallpapers.currentWallpaperPathForTarget(currentSelectionTarget, selectedMonitor)
 
+    function syncDirectoryToCurrentSelection() {
+        const currentPath = FileUtils.trimFileProtocol(String(root.currentSelectionPath ?? ""))
+        const currentDir = FileUtils.parentDirectory(currentPath)
+        if (currentDir && currentDir.length > 0)
+            Wallpapers.setDirectory(currentDir)
+    }
+
     Component.onCompleted: {
         // Read target monitor from GlobalStates (set before opening, no timing issues)
         const gsTarget = GlobalStates.wallpaperSelectorTargetMonitor ?? ""
         if (gsTarget && WallpaperListener.screenNames.includes(gsTarget)) {
             _lockedTarget = gsTarget
-            return
+        } else {
+            // Fallback: check Config (for settings UI "Change" button via IPC)
+            const configTarget = Config.options?.wallpaperSelector?.targetMonitor ?? ""
+            if (configTarget && WallpaperListener.screenNames.includes(configTarget)) {
+                _lockedTarget = configTarget
+            } else if (CompositorService.isNiri) {
+                // Last resort: capture focused monitor (may be stale if overlay already took focus)
+                _capturedMonitor = NiriService.currentOutput ?? ""
+            } else if (CompositorService.isHyprland) {
+                _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
+            }
         }
-        // Fallback: check Config (for settings UI "Change" button via IPC)
-        const configTarget = Config.options?.wallpaperSelector?.targetMonitor ?? ""
-        if (configTarget && WallpaperListener.screenNames.includes(configTarget)) {
-            _lockedTarget = configTarget
-            return
-        }
-        // Last resort: capture focused monitor (may be stale if overlay already took focus)
-        if (CompositorService.isNiri) {
-            _capturedMonitor = NiriService.currentOutput ?? ""
-        } else if (CompositorService.isHyprland) {
-            _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
-        }
+        Qt.callLater(() => {
+            Wallpapers.searchQuery = ""
+            root.syncDirectoryToCurrentSelection()
+            root.updateThumbnails()
+        })
     }
 
     function updateThumbnails() {
@@ -568,8 +578,15 @@ MouseArea {
     Connections {
         target: GlobalStates
         function onWallpaperSelectorOpenChanged() {
-            if (GlobalStates.wallpaperSelectorOpen && monitorIsFocused) {
-                filterField.forceActiveFocus();
+            if (GlobalStates.wallpaperSelectorOpen) {
+                Wallpapers.searchQuery = ""
+                Qt.callLater(() => {
+                    root.syncDirectoryToCurrentSelection()
+                    root.updateThumbnails()
+                })
+                if (monitorIsFocused) {
+                    filterField.forceActiveFocus();
+                }
             }
         }
     }

@@ -35,6 +35,9 @@ Singleton {
     readonly property string fillMode: Config.options?.background?.fillMode ?? "fill"
     readonly property bool animationEnabled: Config.options?.background?.enableAnimation ?? true
     readonly property string panelFamily: Config.options?.panelFamily ?? "ii"
+    readonly property bool hideMainWallpaper: panelFamily === "waffle"
+        ? (Config.options?.waffles?.background?.backdrop?.hideWallpaper ?? false)
+        : (Config.options?.background?.backdrop?.hideWallpaper ?? false)
     readonly property bool waffleUsesMainWallpaper: Config.options?.waffles?.background?.useMainWallpaper ?? true
     readonly property string waffleWallpaperPath: Config.options?.waffles?.background?.wallpaperPath ?? ""
     readonly property bool multiMonitorEnabled: WallpaperListener.multiMonitorEnabled
@@ -47,6 +50,7 @@ Singleton {
     property string lastSyncSignature: ""
     property string lastError: ""
     property bool warnedMissing: false
+    property bool stoppedForNoOutputs: false
 
     readonly property bool available: clientAvailable && daemonAvailable
     readonly property bool active: enabled && available
@@ -166,6 +170,9 @@ Singleton {
     }
 
     function _desiredOutputMap() {
+        if (hideMainWallpaper)
+            return {}
+
         const result = {}
         for (const screen of Quickshell.screens) {
             const monitorName = WallpaperListener.getMonitorName(screen)
@@ -231,10 +238,12 @@ Singleton {
         const outputMap = _desiredOutputMap()
         const keys = Object.keys(outputMap)
         if (keys.length === 0) {
-            lastSyncSignature = ""
+            if (!stoppedForNoOutputs && !stopProc.running)
+                stopProc.running = true
             return
         }
 
+        stoppedForNoOutputs = false
         const signature = _signatureFor(outputMap)
         if (signature === lastSyncSignature && !lastError)
             return
@@ -272,6 +281,7 @@ Singleton {
         if (applyProc.running)
             applyProc.running = false
         lastError = ""
+        stoppedForNoOutputs = false
         applyProc.command = ["/usr/bin/bash", "-lc", lines.join("\n")]
         applyProc._pendingSignature = signature
         applyProc.running = true
@@ -321,6 +331,7 @@ Singleton {
         onExited: {
             root.lastSyncSignature = ""
             root.lastError = ""
+            root.stoppedForNoOutputs = true
         }
     }
 
@@ -338,6 +349,7 @@ Singleton {
     onWaffleWallpaperPathChanged: syncDebounce.restart()
     onEffectivePerMonitorChanged: syncDebounce.restart()
     onMultiMonitorEnabledChanged: syncDebounce.restart()
+    onHideMainWallpaperChanged: syncDebounce.restart()
     onTransitionTypeChanged: syncDebounce.restart()
     onTransitionDirectionChanged: syncDebounce.restart()
     onTransitionsEnabledChanged: syncDebounce.restart()

@@ -29,6 +29,61 @@ Singleton {
     // Debounce to avoid spamming package manager
     property int debounceMs: 300
 
+    function _safeTerminal(): string {
+        const configured = (Config.options?.apps?.terminal ?? "kitty").trim()
+        if (configured.length === 0)
+            return "kitty"
+        if (!/^[A-Za-z0-9._+-]+$/.test(configured))
+            return "kitty"
+        return configured
+    }
+
+    function _runTerminalScript(script: string, args): void {
+        const command = ["/usr/bin/bash", "-lc", script + "\nprintf \"\\nPress Enter to close...\"\nread", "bash", ...(args ?? [])]
+        const terminal = root._safeTerminal()
+        if (terminal === "wezterm") {
+            Quickshell.execDetached([terminal, "start", "--always-new-process", "--", ...command])
+            return
+        }
+        Quickshell.execDetached([terminal, "-e", ...command])
+    }
+
+    function isSafePackageName(name: string): bool {
+        const pkg = (name ?? "").trim()
+        return pkg.length > 0 && /^[A-Za-z0-9@._+-]+$/.test(pkg)
+    }
+
+    function installPackage(name: string, preferAurHelper: bool): bool {
+        const pkg = (name ?? "").trim()
+        if (!root.isSafePackageName(pkg)) {
+            Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Install Package"),
+                Translation.tr("Invalid package name"), "-a", "Shell"])
+            return false
+        }
+
+        const script = preferAurHelper
+            ? "if command -v yay &>/dev/null; then yay -S -- \"$1\"; elif command -v paru &>/dev/null; then paru -S -- \"$1\"; else sudo pacman -S -- \"$1\"; fi"
+            : "sudo pacman -S -- \"$1\""
+        root._runTerminalScript(script, [pkg])
+        return true
+    }
+
+    function removePackage(name: string): bool {
+        const pkg = (name ?? "").trim()
+        if (!root.isSafePackageName(pkg)) {
+            Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Remove Package"),
+                Translation.tr("Invalid package name"), "-a", "Shell"])
+            return false
+        }
+
+        root._runTerminalScript("sudo pacman -Rns -- \"$1\"", [pkg])
+        return true
+    }
+
+    function updateSystem(): void {
+        root._runTerminalScript("if command -v yay &>/dev/null; then yay; elif command -v paru &>/dev/null; then paru; else sudo pacman -Syu; fi", [])
+    }
+
     function search(q: string): void {
         root.query = q.trim()
         if (root.query === "") {
@@ -58,9 +113,9 @@ Singleton {
             root.searching = true
             root.error = ""
             _stdout = ""
-            // Use yay if available (includes AUR), fallback to pacman
-            _searchProc.command = ["/usr/bin/bash", "-c",
-                `if command -v yay &>/dev/null; then yay -Ss '${root.query}' 2>/dev/null | head -200; elif command -v paru &>/dev/null; then paru -Ss '${root.query}' 2>/dev/null | head -200; else pacman -Ss '${root.query}' 2>/dev/null | head -200; fi`
+            _searchProc.command = ["/usr/bin/bash", "-lc",
+                "if command -v yay &>/dev/null; then yay -Ss \"$1\" 2>/dev/null | head -200; elif command -v paru &>/dev/null; then paru -Ss \"$1\" 2>/dev/null | head -200; else pacman -Ss \"$1\" 2>/dev/null | head -200; fi",
+                "bash", root.query
             ]
             _searchProc.running = true
         }
@@ -151,8 +206,9 @@ Singleton {
         root.searching = true
         root.error = ""
         _stdout = ""
-        _installedProc.command = ["/usr/bin/bash", "-c",
-            `pacman -Qs '${root.query}' 2>/dev/null | head -100`
+        _installedProc.command = ["/usr/bin/bash", "-lc",
+            "pacman -Qs \"$1\" 2>/dev/null | head -100",
+            "bash", root.query
         ]
         _installedProc.running = true
     }

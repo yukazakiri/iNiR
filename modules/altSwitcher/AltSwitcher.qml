@@ -6,6 +6,7 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Wayland
@@ -20,6 +21,7 @@ Scope {
     readonly property var altSwitcherOptions: Config.options?.altSwitcher ?? {}
     readonly property string altPreset: altSwitcherOptions.preset ?? "default"
     readonly property bool altNoVisualUi: altSwitcherOptions.noVisualUi ?? false
+    readonly property bool effectiveNoVisualUi: altNoVisualUi && altPreset !== "skew"
     readonly property bool altMonochromeIcons: altSwitcherOptions.monochromeIcons ?? false
     readonly property bool altEnableAnimation: altSwitcherOptions.enableAnimation ?? true
     readonly property int altAnimationDurationMs: altSwitcherOptions.animationDurationMs ?? 200
@@ -45,12 +47,23 @@ Scope {
     readonly property int maxIconCacheSize: 100
     property bool useM3Layout: root.altUseM3Layout
     property bool centerPanel: root.altPanelAlignment === "center"
-    property bool compactStyle: root.altCompactStyle
+    property bool compactStyle: root.altCompactStyle && !root.listStyle && !root.skewStyle
     property bool listStyle: root.altPreset === "list"
+    property bool skewStyle: root.altPreset === "skew"
     property bool showOverviewWhileSwitching: root.altShowOverviewWhileSwitching
     property bool overviewOpenedByAltSwitcher: false
     // Pre-warm flag para evitar lag en primera apertura
     property bool _warmedUp: false
+    readonly property int skewSliceWidth: 132
+    readonly property int skewExpandedWidth: 560
+    readonly property int skewSliceHeight: 320
+    readonly property int skewOffset: 28
+    readonly property int skewSliceSpacing: -24
+    readonly property int skewVisibleCount: Math.min(7, Math.max(1, root.windowCount))
+    readonly property int skewPanelWidth: Math.min(
+        window.width - Appearance.sizes.hyprlandGapsOut * 4,
+        root.skewExpandedWidth + Math.max(0, root.skewVisibleCount - 1) * (root.skewSliceWidth + root.skewSliceSpacing) + Appearance.sizes.hyprlandGapsOut * 4
+    )
     
     readonly property int windowCount: itemSnapshot ? itemSnapshot.length : 0
     readonly property bool isHighLoad: windowCount > 15
@@ -384,7 +397,8 @@ Scope {
 
         Rectangle {
             id: panel
-            width: root.listStyle ? 420 : (root.compactStyle ? compactRow.implicitWidth + 40 : root.panelWidth)
+            width: root.skewStyle ? root.skewPanelWidth
+                : (root.listStyle ? 420 : (root.compactStyle ? compactRow.implicitWidth + 40 : root.panelWidth))
             height: root.compactStyle ? 100 : undefined
             color: "transparent"
             border.width: 0
@@ -392,7 +406,7 @@ Scope {
             states: [
                 State {
                     name: "right"
-                    when: !root.centerPanel && !root.compactStyle && !root.listStyle
+                    when: !root.centerPanel && !root.compactStyle && !root.listStyle && !root.skewStyle
                     AnchorChanges {
                         target: panel
                         anchors.right: parent.right
@@ -405,7 +419,7 @@ Scope {
                 },
                 State {
                     name: "center"
-                    when: root.centerPanel || root.compactStyle || root.listStyle
+                    when: root.centerPanel || root.compactStyle || root.listStyle || root.skewStyle
                     AnchorChanges {
                         target: panel
                         anchors.right: undefined
@@ -420,14 +434,16 @@ Scope {
             
             anchors.verticalCenter: parent.verticalCenter
 
-            implicitHeight: root.listStyle 
+            implicitHeight: root.skewStyle
+                ? Math.min(skewContent.implicitHeight + Appearance.sizes.hyprlandGapsOut * 2, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
+                : (root.listStyle 
                 ? Math.min(listContent.implicitHeight, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
                 : (root.compactStyle ? 100 : Math.min(contentColumn.implicitHeight + Appearance.sizes.hyprlandGapsOut * 2,
-                                      parent.height - Appearance.sizes.hyprlandGapsOut * 2))
+                                      parent.height - Appearance.sizes.hyprlandGapsOut * 2)))
 
             Rectangle {
                 id: panelBackground
-                visible: !root.compactStyle && !root.listStyle
+                visible: !root.compactStyle && !root.listStyle && !root.skewStyle
                 z: 0
                 anchors.fill: parent
                 radius: Appearance.angelEverywhere ? Appearance.angel.roundingLarge
@@ -473,18 +489,358 @@ Scope {
 
             StyledRectangularShadow {
                 target: root.compactStyle ? compactBackground : panelBackground
-                visible: !root.listStyle && (Appearance.angelEverywhere || (!Appearance.inirEverywhere && !Appearance.auroraEverywhere))
+                visible: !root.listStyle && !root.skewStyle && (Appearance.angelEverywhere || (!Appearance.inirEverywhere && !Appearance.auroraEverywhere))
             }
 
             MultiEffect {
                 z: 0.5
                 anchors.fill: panelBackground
                 source: panelBackground
-                visible: !root.compactStyle && !root.listStyle && !root.altUseM3Layout && Appearance.effectsEnabled && root.effectiveEnableBlurGlass && root.altBlurAmount > 0 && !root.isHighLoad
+                visible: !root.compactStyle && !root.listStyle && !root.skewStyle && !root.altUseM3Layout && Appearance.effectsEnabled && root.effectiveEnableBlurGlass && root.altBlurAmount > 0 && !root.isHighLoad
                 blurEnabled: true
                 blur: root.altBlurAmount
                 blurMax: 64
                 saturation: 1.0
+            }
+
+            Item {
+                id: skewContent
+                visible: root.skewStyle
+                z: 1
+                anchors.fill: parent
+                anchors.margins: Appearance.sizes.hyprlandGapsOut
+
+                readonly property var currentItem: {
+                    const idx = Math.max(0, listView.currentIndex)
+                    return root.itemSnapshot?.[idx] ?? null
+                }
+
+                implicitWidth: skewDeck.width
+                implicitHeight: skewDeck.height + skewLabel.height + Appearance.sizes.spacingNormal + 12
+
+                ListView {
+                    id: skewDeck
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(parent.width, root.skewPanelWidth - Appearance.sizes.hyprlandGapsOut * 2)
+                    height: root.skewSliceHeight
+                    currentIndex: listView.currentIndex
+                    orientation: ListView.Horizontal
+                    model: ScriptModel {
+                        values: root.itemSnapshot
+                    }
+                    spacing: root.skewSliceSpacing
+                    clip: false
+                    interactive: false
+                    boundsBehavior: Flickable.StopAtBounds
+                    cacheBuffer: root.skewExpandedWidth * 3
+                    highlightFollowsCurrentItem: true
+                    highlightMoveDuration: root.effectiveEnableAnimation ? root.altAnimationDurationMs : 0
+                    highlightRangeMode: ListView.StrictlyEnforceRange
+                    preferredHighlightBegin: (width - root.skewExpandedWidth) / 2
+                    preferredHighlightEnd: (width + root.skewExpandedWidth) / 2
+                    header: Item { width: Math.max(0, (skewDeck.width - root.skewExpandedWidth) / 2); height: 1 }
+                    footer: Item { width: Math.max(0, (skewDeck.width - root.skewExpandedWidth) / 2); height: 1 }
+
+                    delegate: Item {
+                        id: skewSlice
+                        required property var modelData
+                        required property int index
+                        width: ListView.isCurrentItem ? root.skewExpandedWidth : root.skewSliceWidth
+                        height: skewDeck.height
+                        z: ListView.isCurrentItem ? 100 : 50 - Math.min(Math.abs(index - listView.currentIndex), 50)
+                        scale: ListView.isCurrentItem ? 1.0 : 0.92
+                        opacity: ListView.isCurrentItem ? 1.0 : 0.8
+                        y: ListView.isCurrentItem ? 0 : 12
+
+                        transform: Rotation {
+                            origin.x: skewSlice.index < listView.currentIndex ? skewSlice.width : 0
+                            origin.y: skewSlice.height / 2
+                            axis.x: 0
+                            axis.y: 1
+                            axis.z: 0
+                            angle: ListView.isCurrentItem ? 0 : (skewSlice.index < listView.currentIndex ? 14 : -14)
+                        }
+
+                        property string previewUrl: ""
+
+                        function refreshPreview(): void {
+                            if (modelData?.id === undefined)
+                                return
+                            const url = WindowPreviewService.getPreviewUrl(modelData.id)
+                            if (url && url.length > 0)
+                                previewUrl = url
+                        }
+
+                        Behavior on width {
+                            enabled: root.effectiveEnableAnimation
+                            NumberAnimation {
+                                duration: root.altAnimationDurationMs
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        Behavior on scale {
+                            enabled: root.effectiveEnableAnimation
+                            NumberAnimation {
+                                duration: root.altAnimationDurationMs
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        Behavior on opacity {
+                            enabled: root.effectiveEnableAnimation
+                            NumberAnimation {
+                                duration: root.altAnimationDurationMs
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        Behavior on y {
+                            enabled: root.effectiveEnableAnimation
+                            NumberAnimation {
+                                duration: root.altAnimationDurationMs
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        Component.onCompleted: Qt.callLater(() => skewSlice.refreshPreview())
+
+                        Connections {
+                            target: WindowPreviewService
+                            function onPreviewUpdated(updatedId: int): void {
+                                if (updatedId === skewSlice.modelData?.id)
+                                    skewSlice.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
+                            }
+                            function onCaptureComplete(): void {
+                                skewSlice.refreshPreview()
+                            }
+                        }
+
+                        Item {
+                            id: skewSliceBody
+                            anchors.fill: parent
+                            layer.enabled: true
+                            layer.smooth: true
+                            layer.samples: 4
+                            layer.effect: MultiEffect {
+                                maskEnabled: true
+                                maskSource: ShaderEffectSource {
+                                    sourceItem: Item {
+                                        width: skewSliceBody.width
+                                        height: skewSliceBody.height
+                                        layer.enabled: true
+                                        layer.smooth: true
+                                        layer.samples: 8
+
+                                        Shape {
+                                            anchors.fill: parent
+                                            antialiasing: true
+                                            preferredRendererType: Shape.CurveRenderer
+
+                                            ShapePath {
+                                                fillColor: "white"
+                                                strokeColor: "transparent"
+                                                startX: root.skewOffset
+                                                startY: 0
+                                                PathLine { x: skewSlice.width; y: 0 }
+                                                PathLine { x: skewSlice.width - root.skewOffset; y: skewSlice.height }
+                                                PathLine { x: 0; y: skewSlice.height }
+                                                PathLine { x: root.skewOffset; y: 0 }
+                                            }
+                                        }
+                                    }
+                                }
+                                maskThresholdMin: 0.3
+                                maskSpreadAtMin: 0.3
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                gradient: Gradient {
+                                    GradientStop {
+                                        position: 0.0
+                                        color: Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
+                                            : Appearance.colors.colLayer1
+                                    }
+                                    GradientStop {
+                                        position: 1.0
+                                        color: Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer0Base
+                                            : Appearance.colors.colLayer0
+                                    }
+                                }
+                            }
+
+                            Image {
+                                id: previewImage
+                                anchors.fill: parent
+                                source: skewSlice.previewUrl
+                                fillMode: Image.PreserveAspectCrop
+                                smooth: true
+                                asynchronous: true
+                                cache: false
+                                visible: status === Image.Ready && source.toString().length > 0
+                                sourceSize.width: root.skewExpandedWidth
+                                sourceSize.height: root.skewSliceHeight
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: previewImage.visible ? Qt.rgba(0, 0, 0, ListView.isCurrentItem ? 0.06 : 0.22) : Qt.rgba(0, 0, 0, 0.04) }
+                                    GradientStop { position: 0.65; color: previewImage.visible ? Qt.rgba(0, 0, 0, ListView.isCurrentItem ? 0.12 : 0.34) : Qt.rgba(0, 0, 0, 0.18) }
+                                    GradientStop { position: 1.0; color: previewImage.visible ? Qt.rgba(0, 0, 0, ListView.isCurrentItem ? 0.34 : 0.58) : Qt.rgba(0, 0, 0, 0.30) }
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.left: parent.left
+                                anchors.topMargin: 14
+                                anchors.leftMargin: root.skewOffset + 10
+                                width: 42
+                                height: 42
+                                radius: Appearance.rounding.normal
+                                color: ColorUtils.transparentize(
+                                    Appearance.inirEverywhere ? Appearance.inir.colLayer0 : Appearance.colors.colLayer0,
+                                    0.14
+                                )
+                                border.width: 1
+                                border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
+
+                                IconImage {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    source: skewSlice.modelData?.icon || ""
+                                }
+                            }
+
+                            IconImage {
+                                anchors.centerIn: parent
+                                width: ListView.isCurrentItem ? 74 : 44
+                                height: width
+                                source: skewSlice.modelData?.icon || ""
+                                visible: !previewImage.visible
+                            }
+
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.rightMargin: root.skewOffset + 10
+                                anchors.bottomMargin: 10
+                                visible: (skewSlice.modelData?.workspaceIdx ?? 0) > 0
+                                width: wsBadgeText.implicitWidth + 12
+                                height: 24
+                                radius: Appearance.rounding.small
+                                color: ColorUtils.transparentize(
+                                    Appearance.inirEverywhere ? Appearance.inir.colLayer0 : Appearance.colors.colLayer0,
+                                    0.12
+                                )
+                                border.width: 1
+                                border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
+
+                                StyledText {
+                                    id: wsBadgeText
+                                    anchors.centerIn: parent
+                                    text: "WS " + (skewSlice.modelData?.workspaceIdx ?? "")
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.weight: Font.DemiBold
+                                    color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer0
+                                }
+                            }
+                        }
+
+                        Shape {
+                            anchors.fill: parent
+                            antialiasing: true
+                            preferredRendererType: Shape.CurveRenderer
+
+                            ShapePath {
+                                fillColor: "transparent"
+                                strokeColor: ListView.isCurrentItem
+                                    ? (Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
+                                    : (Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border)
+                                strokeWidth: ListView.isCurrentItem ? 3 : 1
+                                startX: root.skewOffset
+                                startY: 0
+                                PathLine { x: skewSlice.width; y: 0 }
+                                PathLine { x: skewSlice.width - root.skewOffset; y: skewSlice.height }
+                                PathLine { x: 0; y: skewSlice.height }
+                                PathLine { x: root.skewOffset; y: 0 }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                listView.currentIndex = index
+                                if (skewSlice.modelData?.id !== undefined)
+                                    NiriService.focusWindow(skewSlice.modelData.id)
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: skewLabel
+                    anchors.top: skewDeck.bottom
+                    anchors.topMargin: Appearance.sizes.spacingNormal
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(parent.width, Math.max(260, skewLabelRow.implicitWidth + 28))
+                    height: 52
+                    radius: Appearance.rounding.large
+                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                        : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
+                        : Appearance.colors.colLayer1
+                    border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+                        : Appearance.inirEverywhere || Appearance.auroraEverywhere ? 1 : 0
+                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
+                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                        : Appearance.colors.colLayer0Border
+
+                    RowLayout {
+                        id: skewLabelRow
+                        anchors.fill: parent
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        spacing: 10
+
+                        IconImage {
+                            Layout.alignment: Qt.AlignVCenter
+                            width: 22
+                            height: 22
+                            source: skewContent.currentItem?.icon || ""
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: skewContent.currentItem?.appName ?? skewContent.currentItem?.title ?? "Window"
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                                font.weight: Font.DemiBold
+                                color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: skewContent.currentItem?.title ?? ""
+                                visible: text !== "" && text !== (skewContent.currentItem?.appName ?? "")
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
             }
 
             Row {
@@ -814,7 +1170,7 @@ Scope {
 
             ColumnLayout {
                 id: contentColumn
-                visible: !root.compactStyle && !root.listStyle
+                visible: !root.compactStyle && !root.listStyle && !root.skewStyle
                 z: 1
                 anchors.fill: parent
                 anchors.margins: Appearance.sizes.hyprlandGapsOut
@@ -1091,6 +1447,8 @@ Scope {
 
     function showPanel() {
         rebuildSnapshot()
+        if (CompositorService.isNiri && root.skewStyle)
+            Qt.callLater(() => WindowPreviewService.captureForTaskView())
         panelVisible = true
         if (animationsEnabled && !centerPanel && !compactStyle) {
             const dur = currentAnimDuration()
@@ -1157,6 +1515,15 @@ Scope {
     }
 
     function activateCurrent() {
+        if (root.skewStyle) {
+            const idx = listView.currentIndex
+            if (idx >= 0 && idx < (itemSnapshot?.length ?? 0)) {
+                const item = itemSnapshot[idx]
+                if (item?.id !== undefined)
+                    NiriService.focusWindow(item.id)
+            }
+            return
+        }
         if (listView.currentItem && listView.currentItem.activate) {
             listView.currentItem.activate()
         }
@@ -1201,7 +1568,7 @@ Scope {
         id: noUiSnapshotUpdateTimer
         interval: GameMode.active ? 10000 : 3000
         repeat: true
-        running: root.altNoVisualUi && !GlobalStates.altSwitcherOpen
+        running: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen
         onTriggered: {
             if (GameMode.active) return
             
@@ -1216,30 +1583,48 @@ Scope {
         }
     }
 
-    // Only handle IPC when Material ii family is active
-    property bool isActive: Config.options?.panelFamily !== "waffle"
+    readonly property bool waffleFamilyActive: (Config.options?.panelFamily ?? "ii") === "waffle"
+
+    function routeToWaffle(functionName: string): void {
+        Quickshell.execDetached(["/usr/bin/qs", "-c", "inir", "ipc", "call", "waffleAltSwitcher", functionName])
+    }
 
     IpcHandler {
         target: "altSwitcher"
-        enabled: root.isActive
 
         function open(): void {
+            if (root.waffleFamilyActive) {
+                root.routeToWaffle("open")
+                return
+            }
             ensureOpen()
             autoHideTimer.restart()
         }
 
         function close(): void {
+            if (root.waffleFamilyActive) {
+                root.routeToWaffle("close")
+                return
+            }
             GlobalStates.altSwitcherOpen = false
         }
 
         function toggle(): void {
+            if (root.waffleFamilyActive) {
+                root.routeToWaffle("toggle")
+                return
+            }
             GlobalStates.altSwitcherOpen = !GlobalStates.altSwitcherOpen
             if (GlobalStates.altSwitcherOpen)
                 autoHideTimer.restart()
         }
 
         function next(): void {
-            if (root.altNoVisualUi) {
+            if (root.waffleFamilyActive) {
+                root.routeToWaffle("next")
+                return
+            }
+            if (root.effectiveNoVisualUi) {
                 autoHideTimer.stop()
                 GlobalStates.altSwitcherOpen = false
 
@@ -1271,7 +1656,11 @@ Scope {
         }
 
         function previous(): void {
-            if (root.altNoVisualUi) {
+            if (root.waffleFamilyActive) {
+                root.routeToWaffle("previous")
+                return
+            }
+            if (root.effectiveNoVisualUi) {
                 autoHideTimer.stop()
                 GlobalStates.altSwitcherOpen = false
 

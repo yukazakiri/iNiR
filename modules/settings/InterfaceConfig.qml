@@ -639,9 +639,12 @@ ContentPage {
 
         SettingsGroup {
             SettingsSwitch {
+                enabled: (Config.options?.altSwitcher?.preset ?? "default") !== "skew"
                 buttonIcon: "visibility_off"
                 text: Translation.tr("No visual UI (cycle windows only)")
-                checked: Config.options?.altSwitcher?.noVisualUi ?? false
+                checked: (Config.options?.altSwitcher?.preset ?? "default") === "skew"
+                    ? false
+                    : (Config.options?.altSwitcher?.noVisualUi ?? false)
                 onCheckedChanged: Config.setNestedValue("altSwitcher.noVisualUi", checked)
                 StyledToolTip {
                     text: Translation.tr("Use Alt+Tab to switch windows without showing the switcher overlay")
@@ -756,17 +759,22 @@ ContentPage {
             ConfigSelectionArray {
                 options: [
                     { displayName: Translation.tr("Default (sidebar)"), icon: "side_navigation", value: "default" },
-                    { displayName: Translation.tr("List (centered)"), icon: "list", value: "list" }
+                    { displayName: Translation.tr("List (centered)"), icon: "list", value: "list" },
+                    { displayName: Translation.tr("Skew previews"), icon: "view_in_ar", value: "skew" }
                 ]
                 currentValue: Config.options?.altSwitcher?.preset ?? "default"
-                onSelected: (newValue) => Config.options.altSwitcher.preset = newValue
+                onSelected: (newValue) => {
+                    Config.setNestedValue("altSwitcher.preset", newValue)
+                    Config.setNestedValue("altSwitcher.noVisualUi", false)
+                }
             }
 
             ContentSubsection {
                 title: Translation.tr("Layout & alignment")
 
                 SettingsSwitch {
-                    enabled: Config.options?.altSwitcher?.preset !== "list"
+                    enabled: (Config.options?.altSwitcher?.preset ?? "default") !== "list"
+                        && (Config.options?.altSwitcher?.preset ?? "default") !== "skew"
                     buttonIcon: "view_compact"
                     text: Translation.tr("Compact horizontal style (icons only)")
                     checked: Config.options?.altSwitcher?.compactStyle ?? false
@@ -777,7 +785,9 @@ ContentPage {
                 }
 
                 ConfigSelectionArray {
-                    enabled: !Config.options?.altSwitcher?.compactStyle && Config.options?.altSwitcher?.preset !== "list"
+                    enabled: !(Config.options?.altSwitcher?.compactStyle ?? false)
+                        && (Config.options?.altSwitcher?.preset ?? "default") !== "list"
+                        && (Config.options?.altSwitcher?.preset ?? "default") !== "skew"
                     currentValue: Config.options?.altSwitcher?.panelAlignment ?? "right"
                     onSelected: newValue => Config.setNestedValue("altSwitcher.panelAlignment", newValue)
                     options: [
@@ -787,7 +797,9 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    enabled: !Config.options?.altSwitcher?.compactStyle && Config.options?.altSwitcher?.preset !== "list"
+                    enabled: !(Config.options?.altSwitcher?.compactStyle ?? false)
+                        && (Config.options?.altSwitcher?.preset ?? "default") !== "list"
+                        && (Config.options?.altSwitcher?.preset ?? "default") !== "skew"
                     buttonIcon: "styler"
                     text: Translation.tr("Use Material 3 card layout")
                     checked: Config.options?.altSwitcher?.useM3Layout ?? false

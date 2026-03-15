@@ -472,7 +472,7 @@ Item {
                     } else if (CompositorService.isNiri) {
                         Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"]);
                     }
-                    Quickshell.reload(true);
+                    Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")]);
                 }
                 StyledToolTip {
                     position: "left"
@@ -524,7 +524,7 @@ Item {
                     console.log("[SidebarRight] Opening new settings window via IPC");
                     GlobalStates.sidebarRightOpen = false;
                     Qt.callLater(() => {
-                        Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]);
+                        Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "settings", "open"]);
                     })
                 }
                 StyledToolTip {

@@ -9,7 +9,7 @@
 Running `./setup` without arguments launches an interactive menu with all available commands. The menu provides:
 
 - Visual command selection
-- Current version and update status
+- Current version, install mode, and update status
 - Pending migrations indicator
 - Health checks (shell running, Niri detected)
 - Snapshot availability
@@ -46,6 +46,13 @@ What happens:
 
 Your user configs (`config.json`, `config.kdl`) are never touched.
 
+If `setup` detects that the active iNiR installation is externally managed, `./setup update` does **not** pull or sync repo files into the runtime. In that case it:
+
+- Shows the detected install mode
+- Shows the package update command when metadata provides one
+- Leaves the shell payload unchanged
+- Still applies required migrations if any are pending
+
 ## Doctor
 
 ```bash
@@ -60,6 +67,8 @@ Diagnoses and **automatically fixes** common issues:
 - File manifest
 - Starts shell if not running
 
+For externally managed installs, `doctor` can rebuild `~/.config/illogical-impulse/version.json` from the runtime metadata already present under `~/.config/quickshell/inir/version.json`. It also skips the repo-sync manifest requirement when the install is package-managed.
+
 ## Rollback
 
 ```bash
@@ -67,6 +76,8 @@ Diagnoses and **automatically fixes** common issues:
 ```
 
 Restore a previous snapshot if something breaks after an update. Shows available snapshots with dates and lets you choose which one to restore.
+
+For externally managed installs, `rollback` does not try to restore repo-managed snapshots or reset the checkout. It stops early and points you back to the package manager for shell payload changes.
 
 ## Migrate
 
@@ -107,6 +118,7 @@ Useful when you want to see what you've changed or restore defaults after custom
 | `./setup` | Interactive menu |
 | `./setup install` | Full installation |
 | `./setup update` | Check remote, pull, sync, restart |
+| `./setup status` | Show install mode, update strategy, and health |
 | `./setup migrate` | Review and apply config migrations |
 | `./setup doctor` | Diagnose and auto-fix |
 | `./setup rollback` | Restore previous snapshot |
@@ -115,18 +127,34 @@ Useful when you want to see what you've changed or restore defaults after custom
 
 Options: `-y` (skip prompts), `-q` (quiet), `-h` (help)
 
+## Status
+
+```bash
+./setup status
+```
+
+Shows:
+
+- Installed version and commit
+- Install mode
+- Update strategy
+- Repo path when relevant
+- Health checks and snapshot availability
+
+For externally managed installs, `status` also shows the detected package update command and makes it explicit that repo-sync updates are disabled for that installation mode.
+
 ## What Gets Installed
 
 ### Core Files
 
 | Source | Destination |
 |--------|-------------|
-| QML code | `~/.config/quickshell/ii/` |
+| QML code | `~/.config/quickshell/inir/` |
 | User config | `~/.config/illogical-impulse/config.json` |
 | State files | `~/.local/state/quickshell/user/` |
-| Cache | `~/.cache/quickshell/ii/` |
-| Super daemon | `~/.local/bin/ii_super_overview_daemon.py` |
-| Daemon service | `~/.config/systemd/user/ii-super-overview.service` |
+| Cache | `~/.cache/quickshell/inir/` |
+| Super daemon | `~/.local/bin/inir_super_overview_daemon.py` |
+| Daemon service | `~/.config/systemd/user/inir-super-overview.service` |
 
 ### Compositor & Themes
 
@@ -144,6 +172,7 @@ Options: `-y` (skip prompts), `-q` (quiet), `-h` (help)
 
 - First install: Existing configs are backed up to `~/inir-backup/`
 - Updates: Your configs are never touched, only QML code is synced
+- Package-managed installs: `./setup update` defers shell payload updates to the package manager instead of syncing from the current repo checkout
 - Shared configs: Only installed if they don't exist or you approve overwrite
 
 ## Migrations
@@ -171,6 +200,7 @@ The uninstall script intelligently removes iNiR while preserving shared resource
 - Asks before removing shared configs (Niri, GTK, themes)
 - Detects if you're in a Niri session (preserves compositor config)
 - Detects other Quickshell configs (preserves shared resources)
+- Detects externally managed shell payloads and warns that package removal is separate
 - Lists installed packages with removal recommendations
 - Shows commands to revert system changes (groups, modules)
 
@@ -188,17 +218,19 @@ Asks before removing each shared config. Recommended for most users.
 
 Removes only iNiR-exclusive files, keeps all shared configs and packages.
 
+If the shell payload is externally managed, `uninstall` removes the user-side iNiR config/data it owns but does **not** remove the package-managed payload itself. The command warns about that explicitly.
+
 ### Files Removed Automatically
 
 The following are removed without prompting (iNiR-exclusive):
 
 ```
-~/.config/quickshell/ii/                         # Shell configuration
+~/.config/quickshell/inir/                       # Shell configuration
 ~/.config/illogical-impulse/                     # User preferences
 ~/.local/state/quickshell/user/                  # Notifications, todo
-~/.cache/quickshell/ii/                          # Cache
-~/.local/bin/ii_super_overview_daemon.py         # Super daemon
-~/.config/systemd/user/ii-super-overview.service # Daemon service
+~/.cache/quickshell/inir/                        # Cache
+~/.local/bin/inir_super_overview_daemon.py       # Super daemon
+~/.config/systemd/user/inir-super-overview.service # Daemon service
 ~/.config/vesktop/themes/system24.theme.css      # Vesktop theme
 ~/.config/vesktop/themes/ii-colors.css           # Vesktop colors
 ```
@@ -218,7 +250,7 @@ These may be used by other applications. The script asks before removing:
 | `~/.config/gtk-3.0/gtk.css` | Optional | Ask |
 | `~/.config/gtk-4.0/gtk.css` | Optional | Ask |
 | `~/.config/fontconfig/` | Essential | Keep |
-| `~/.local/share/color-schemes/Darkly.colors` | iNiR default | Remove |
+| `${XDG_DATA_HOME:-~/.local/share}/color-schemes/Darkly.colors` | iNiR default | Remove |
 
 ### Installed Packages
 
@@ -254,7 +286,7 @@ Backups are saved to:
 
 To restore from backup:
 ```bash
-cp -r ~/.local/share/inir-uninstall-backup-*/quickshell-ii ~/.config/quickshell/ii
+cp -r ~/.local/share/inir-uninstall-backup-*/quickshell-inir ~/.config/quickshell/inir
 cp -r ~/.local/share/inir-uninstall-backup-*/illogical-impulse ~/.config/illogical-impulse
 ```
 
@@ -264,16 +296,16 @@ If the automated script fails or is unavailable:
 
 ```bash
 # Stop services
-qs kill -c ii
-systemctl --user disable --now ii-super-overview.service 2>/dev/null
+qs kill -c inir
+systemctl --user disable --now inir-super-overview.service 2>/dev/null
 
 # Remove iNiR-exclusive files
-rm -rf ~/.config/quickshell/ii
+rm -rf ~/.config/quickshell/inir
 rm -rf ~/.config/illogical-impulse
 rm -rf ~/.local/state/quickshell/user
-rm -rf ~/.cache/quickshell/ii
-rm -f ~/.local/bin/ii_super_overview_daemon.py
-rm -f ~/.config/systemd/user/ii-super-overview.service
+rm -rf ~/.cache/quickshell/inir
+rm -f ~/.local/bin/inir_super_overview_daemon.py
+rm -f ~/.config/systemd/user/inir-super-overview.service
 rm -f ~/.config/vesktop/themes/system24.theme.css
 rm -f ~/.config/vesktop/themes/ii-colors.css
 rm -f ~/.config/Vesktop/themes/system24.theme.css
@@ -288,7 +320,7 @@ rm -f ~/.config/Vesktop/themes/ii-colors.css
 # rm -f ~/.config/dolphinrc
 # rm -f ~/.config/gtk-3.0/gtk.css
 # rm -f ~/.config/gtk-4.0/gtk.css
-# rm -f ~/.local/share/color-schemes/Darkly.colors
+# rm -f ${XDG_DATA_HOME:-~/.local/share}/color-schemes/Darkly.colors
 
 # Remove Quickshell shared resources (only if no other QS configs)
 # rm -rf ~/.local/state/quickshell/.venv

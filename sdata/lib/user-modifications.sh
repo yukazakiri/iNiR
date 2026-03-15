@@ -270,7 +270,7 @@ handle_user_modifications() {
                 tui_dim "    $PRESERVED_MODS_DIR"
                 echo ""
                 tui_info "To restore a file after update:"
-                tui_dim "    cp $PRESERVED_MODS_DIR/<path> ~/.config/quickshell/ii/<path>"
+                tui_dim "    cp $PRESERVED_MODS_DIR/<path> ~/.config/quickshell/inir/<path>"
                 return 0
                 ;;
             "View Changes")

@@ -167,12 +167,23 @@ show_help() {
 show_version_info() {
     local installed_ver=$(get_installed_version)
     local installed_commit=$(get_installed_commit)
+    local installed_mode=$(get_installed_install_mode)
+    local update_strategy=$(get_installed_update_strategy)
     local repo_ver=$(get_repo_version)
     local repo_commit=$(get_repo_commit)
 
     echo ""
     tui_status_line "Installed:" "$installed_ver ($installed_commit)" "ok"
-    tui_status_line "Available:" "$repo_ver ($repo_commit)" ""
+    tui_status_line "Mode:" "$installed_mode" ""
+    tui_status_line "Updates:" "$update_strategy" ""
+
+    if [[ "$update_strategy" == "package-manager" ]]; then
+        local update_hint
+        update_hint=$(get_installed_package_update_hint)
+        [[ -n "$update_hint" ]] && tui_status_line "Command:" "$update_hint" ""
+    else
+        tui_status_line "Available:" "$repo_ver ($repo_commit)" ""
+    fi
 
     # Check for pending migrations
     local pending=$(count_pending_migrations 2>/dev/null || echo "0")
@@ -181,7 +192,7 @@ show_version_info() {
     fi
 
     # Check for updates
-    if [[ "$installed_commit" != "$repo_commit" ]]; then
+    if [[ "$update_strategy" != "package-manager" && "$installed_commit" != "$repo_commit" ]]; then
         echo ""
         tui_warn "Update available"
     fi
@@ -236,6 +247,10 @@ tui_menu() {
 show_status() {
     local installed_ver=$(get_installed_version)
     local installed_commit=$(get_installed_commit)
+    local installed_mode=$(get_installed_install_mode)
+    local update_strategy=$(get_installed_update_strategy)
+    local installed_repo_path=$(get_installed_repo_path)
+    local update_hint=$(get_installed_package_update_hint)
     local repo_ver=$(get_repo_version)
     local repo_commit=$(get_repo_commit)
 
@@ -244,14 +259,28 @@ show_status() {
     tui_table_header "Property" "Value" 14 36
     tui_table_row "Version" "$installed_ver" 14 36
     tui_table_row "Commit" "$installed_commit" 14 36
-    tui_table_row "Repo Version" "$repo_ver" 14 36
-    tui_table_row "Repo Commit" "$repo_commit" 14 36
+    tui_table_row "Install Mode" "$installed_mode" 14 36
+    tui_table_row "Updates" "$update_strategy" 14 36
+    [[ -n "$installed_repo_path" ]] && tui_table_row "Repo Path" "$installed_repo_path" 14 36
+    if [[ "$update_strategy" == "package-manager" ]]; then
+        [[ -n "$update_hint" ]] && tui_table_row "Update Cmd" "$update_hint" 14 36
+        tui_table_row "Workspace Ver" "$repo_ver" 14 36
+        tui_table_row "Workspace SHA" "$repo_commit" 14 36
+    else
+        tui_table_row "Repo Version" "$repo_ver" 14 36
+        tui_table_row "Repo Commit" "$repo_commit" 14 36
+    fi
     tui_table_footer 14 36
+
+    if [[ "$update_strategy" == "package-manager" ]]; then
+        echo ""
+        tui_info "This installation is externally managed. './setup update' will not sync repo files into the runtime."
+    fi
 
     tui_title "Health Checks"
 
     # Check shell status
-    if pgrep -f "qs.*-c.*ii" &>/dev/null; then
+    if pgrep -f "qs.*-c.*inir" &>/dev/null; then
         tui_check_ok "Shell is running"
     else
         tui_check_warn "Shell is not running"
@@ -513,7 +542,7 @@ run_my_changes() {
 # Helper: Restore all files from a user-mods backup
 restore_all_user_mods() {
     local backup_path="$1"
-    local target="${XDG_CONFIG_HOME}/quickshell/ii"
+    local target="${XDG_CONFIG_HOME}/quickshell/inir"
     local restored=0
 
     # Restore modified files
@@ -545,13 +574,13 @@ restore_all_user_mods() {
 
     echo ""
     tui_success "Restored $restored file(s)"
-    tui_info "Restart the shell to apply changes: qs kill -c ii; qs -c ii"
+    tui_info "Restart the shell to apply changes: qs kill -c inir; qs -c inir"
 }
 
 # Helper: Restore a single file from user-mods backup
 restore_single_user_mod() {
     local backup_path="$1"
-    local target="${XDG_CONFIG_HOME}/quickshell/ii"
+    local target="${XDG_CONFIG_HOME}/quickshell/inir"
 
     # Build list of files
     local files=()
@@ -606,6 +635,39 @@ run_update() {
     echo ""
     tui_title "Checking for updates..."
     echo ""
+
+    local installed_mode=$(get_installed_install_mode)
+    local installed_strategy=$(get_installed_update_strategy)
+    local package_name=$(get_installed_package_name)
+    local update_hint=$(get_installed_package_update_hint)
+
+    if [[ "$installed_strategy" == "package-manager" ]]; then
+        tui_warn "This iNiR installation is package-managed"
+        tui_status_line "Install Mode:" "$installed_mode" ""
+        [[ -n "$package_name" ]] && tui_status_line "Package:" "$package_name" ""
+        if [[ -n "$update_hint" ]]; then
+            tui_info "Update the shell payload with: $update_hint"
+        else
+            tui_info "Update the shell payload with your package manager."
+        fi
+
+        local pending=$(count_pending_migrations 2>/dev/null || echo "0")
+        if [[ "$pending" -gt 0 ]]; then
+            echo ""
+            run_migrations_auto
+            pending=$(count_pending_migrations 2>/dev/null || echo "0")
+            if [[ "$pending" -gt 0 ]]; then
+                tui_warn "$pending optional migration(s) available"
+                if $ask && tui_confirm "Review and apply now?"; then
+                    run_migrations_interactive
+                fi
+            fi
+        fi
+
+        echo ""
+        tui_success "Package-managed installation left unchanged"
+        return 0
+    fi
 
     # After a git pull, the setup script re-execs itself so that updated library
     # code (doctor, migrations, etc.) is loaded fresh. _II_POST_PULL signals that
@@ -683,7 +745,7 @@ run_update() {
     tui_info "Syncing iNiR..."
 
     II_SOURCE="${REPO_ROOT}"
-    II_TARGET="${XDG_CONFIG_HOME}/quickshell/ii"
+    II_TARGET="${XDG_CONFIG_HOME}/quickshell/inir"
 
     # Check if source and target are the same (dev setup)
     local src_real=$(realpath "$II_SOURCE" 2>/dev/null || echo "$II_SOURCE")
@@ -692,14 +754,14 @@ run_update() {
     if [[ "$src_real" != "$tgt_real" ]]; then
         # Check for user modifications before syncing
         PRESERVED_MODS_DIR=""
-        if [[ -f "${II_TARGET}/.ii-manifest" ]] && manifest_has_checksums "${II_TARGET}/.ii-manifest"; then
+        if [[ -f "${II_TARGET}/.inir-manifest" ]] && manifest_has_checksums "${II_TARGET}/.inir-manifest"; then
             echo ""
             tui_info "Checking for local modifications..."
 
             local modified_files_str
             local added_files_str
-            modified_files_str=$(detect_user_modifications "$II_TARGET" "${II_TARGET}/.ii-manifest")
-            added_files_str=$(detect_user_additions "$II_TARGET" "${II_TARGET}/.ii-manifest")
+            modified_files_str=$(detect_user_modifications "$II_TARGET" "${II_TARGET}/.inir-manifest")
+            added_files_str=$(detect_user_additions "$II_TARGET" "${II_TARGET}/.inir-manifest")
 
             local mod_count=0
             local add_count=0
@@ -746,13 +808,17 @@ run_update() {
     fi
 
     # Generate manifest
-    generate_manifest "$II_SOURCE" "${II_TARGET}/.ii-manifest"
+    generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"
 
     # Fix permissions
     find "$II_TARGET/scripts" \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} \; 2>/dev/null || true
 
     # Update version
     set_installed_version "$repo_ver" "$repo_commit" "update"
+
+    if [[ -d "$II_TARGET" ]]; then
+        write_version_info_json "${II_TARGET}/version.json" "$repo_ver" "$repo_commit" "setup-update"
+    fi
 
     tui_success "Files synced"
 
@@ -861,15 +927,15 @@ MATUGEN_SDDM_EOF
     echo ""
     if [[ -n "$NIRI_SOCKET" ]] || [[ -n "$WAYLAND_DISPLAY" ]]; then
         tui_info "Restarting shell..."
-        qs kill -c ii 2>/dev/null || true
+        qs kill -c inir 2>/dev/null || true
         sleep 1
-        nohup qs -c ii >/dev/null 2>&1 &
+        nohup qs -c inir >/dev/null 2>&1 &
         disown
         tui_success "Shell restarted"
     else
         tui_warn "Not in graphical session - shell restart skipped"
         tui_info "The shell will use new files on next restart"
-        tui_info "Or run: qs kill -c ii && qs -c ii"
+        tui_info "Or run: qs kill -c inir && qs -c inir"
     fi
 
     # Post-update: check for missing dependencies and offer to install them

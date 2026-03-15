@@ -124,19 +124,11 @@ Item {
     }
 
     function _executePackageActionStatic(pkg, isRemove): void {
-        const terminal = Config.options?.apps?.terminal ?? "kitty"
-        const name = pkg.name
-        if (isRemove) {
-            Quickshell.execDetached(["/usr/bin/bash", "-c",
-                `${terminal} -e /usr/bin/bash -c 'sudo pacman -Rns ${name} ; echo "\\nPress Enter to close..." ; read'`])
-        } else {
-            // Detect AUR helper: prefer yay, then paru, fallback to sudo pacman
-            const helper = pkg.isAur
-                ? "if command -v yay &>/dev/null; then yay -S " + name + "; elif command -v paru &>/dev/null; then paru -S " + name + "; else echo 'No AUR helper found'; fi"
-                : "sudo pacman -S " + name
-            Quickshell.execDetached(["/usr/bin/bash", "-c",
-                `${terminal} -e /usr/bin/bash -c '${helper} ; echo "\\nPress Enter to close..." ; read'`])
-        }
+        const name = pkg?.name ?? ""
+        if (isRemove)
+            PackageSearch.removePackage(name)
+        else
+            PackageSearch.installPackage(name, pkg?.isAur ?? false)
     }
 
     ColumnLayout {

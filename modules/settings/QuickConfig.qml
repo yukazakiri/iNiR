@@ -277,7 +277,7 @@ ContentPage {
                                 if (Config.options?.background?.multiMonitor?.enable && multiMonitorPanel.selectedMonitor) {
                                     Config.setNestedValue("wallpaperSelector.targetMonitor", multiMonitorPanel.selectedMonitor)
                                 }
-                                Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"]);
+                                Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"]);
                             }
                         }
                     }
@@ -1198,7 +1198,7 @@ ContentPage {
                                         if (mon) {
                                             Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
                                             Config.setNestedValue("wallpaperSelector.targetMonitor", mon)
-                                            Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"])
+                                            Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"])
                                         }
                                     }
                                 }
@@ -1268,7 +1268,7 @@ ContentPage {
                                     visible: multiMonitorPanel.backdropEnabled
                                     onClicked: {
                                         Config.setNestedValue("wallpaperSelector.selectionTarget", "backdrop")
-                                        Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "wallpaperSelector", "toggle"])
+                                        Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "wallpaperSelector", "toggle"])
                                     }
                                     StyledToolTip {
                                         text: Translation.tr("Change the backdrop wallpaper (used for overview/blur)")
@@ -1425,9 +1425,7 @@ ContentPage {
                     ConfigSelectionArray {
                         currentValue: Config.options?.background?.backdrop?.hideWallpaper ? 1 : 0
                         onSelected: newValue => {
-                            if (!Config.options.background) Config.options.background = ({});
-                            if (!Config.options.background.backdrop) Config.options.background.backdrop = ({});
-                            Config.options.background.backdrop.hideWallpaper = (newValue === 1);
+                            Config.setNestedValue("background.backdrop.hideWallpaper", newValue === 1);
                         }
                         options: [
                             {
@@ -1532,7 +1530,7 @@ ContentPage {
                     buttonRadius: Appearance.rounding.small
                     materialIcon: "refresh"
                     mainText: Translation.tr("Reload shell")
-                    onClicked: Quickshell.execDetached(["/usr/bin/setsid", "/usr/bin/fish", "-c", "qs kill -c ii; sleep 0.3; qs -c ii"])
+                    onClicked: Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")])
                 }
 
                 RippleButtonWithIcon {
@@ -1548,7 +1546,7 @@ ContentPage {
                     buttonRadius: Appearance.rounding.small
                     materialIcon: "keyboard"
                     mainText: Translation.tr("Shortcuts")
-                    onClicked: Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "cheatsheet", "toggle"])
+                    onClicked: Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "cheatsheet", "toggle"])
                 }
             }
 

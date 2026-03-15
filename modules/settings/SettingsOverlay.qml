@@ -946,7 +946,7 @@ Scope {
                             buttonRadius: Appearance.rounding.full
                             implicitWidth: 36
                             implicitHeight: 36
-                            onClicked: Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "lock", "activate"])
+                            onClicked: Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "lock", "activate"])
                             contentItem: MaterialSymbol {
                                 anchors.centerIn: parent
                                 horizontalAlignment: Text.AlignHCenter

@@ -22,15 +22,16 @@ RowLayout {
     }
 
     enum SearchPrefixType { Action, App, Clipboard, Emojis, Math, ShellCommand, WebSearch, DefaultSearch }
+    readonly property var searchPrefixes: Config.options?.search?.prefix ?? {}
 
     property var searchPrefixType: {
-        if (root.searchingText.startsWith(Config.options.search.prefix.action)) return SearchBar.SearchPrefixType.Action;
-        if (root.searchingText.startsWith(Config.options.search.prefix.app)) return SearchBar.SearchPrefixType.App;
-        if (root.searchingText.startsWith(Config.options.search.prefix.clipboard)) return SearchBar.SearchPrefixType.Clipboard;
-        if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) return SearchBar.SearchPrefixType.Emojis;
-        if (root.searchingText.startsWith(Config.options.search.prefix.math)) return SearchBar.SearchPrefixType.Math;
-        if (root.searchingText.startsWith(Config.options.search.prefix.shellCommand)) return SearchBar.SearchPrefixType.ShellCommand;
-        if (root.searchingText.startsWith(Config.options.search.prefix.webSearch)) return SearchBar.SearchPrefixType.WebSearch;
+        if (root.searchingText.startsWith(root.searchPrefixes.action ?? "/")) return SearchBar.SearchPrefixType.Action;
+        if (root.searchingText.startsWith(root.searchPrefixes.app ?? ">")) return SearchBar.SearchPrefixType.App;
+        if (root.searchingText.startsWith(root.searchPrefixes.clipboard ?? ";")) return SearchBar.SearchPrefixType.Clipboard;
+        if (root.searchingText.startsWith(root.searchPrefixes.emojis ?? ":")) return SearchBar.SearchPrefixType.Emojis;
+        if (root.searchingText.startsWith(root.searchPrefixes.math ?? "=")) return SearchBar.SearchPrefixType.Math;
+        if (root.searchingText.startsWith(root.searchPrefixes.shellCommand ?? "$")) return SearchBar.SearchPrefixType.ShellCommand;
+        if (root.searchingText.startsWith(root.searchPrefixes.webSearch ?? "?")) return SearchBar.SearchPrefixType.WebSearch;
         return SearchBar.SearchPrefixType.DefaultSearch;
     }
     
@@ -118,7 +119,7 @@ RowLayout {
         onClicked: {
             GlobalStates.overviewOpen = false;
             // Use IPC to trigger region search (works for both Hyprland and Niri)
-            Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "googleLens"]);
+            Quickshell.execDetached(["/usr/bin/qs", "-p", Quickshell.shellPath("shell.qml"), "ipc", "call", "region", "googleLens"]);
         }
         text: "image_search"
         StyledToolTip {
