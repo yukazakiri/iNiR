@@ -58,7 +58,7 @@ def blend(c1: str, c2: str, factor: float = 0.5) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Template - UI + Terminal colors only (no syntax/plugin highlights)
+# Template - Full theme with 30% primary blend on syntax colors
 # Uses guibg=NONE for transparency so terminal background shows through
 # ---------------------------------------------------------------------------
 
@@ -157,6 +157,151 @@ hi MatchParen   guifg={surface}           guibg={tertiary}        gui=bold
 hi ColorColumn  guibg=NONE                                              gui=NONE
 hi QuickFixLine guibg=NONE                                              gui=NONE
 hi WildMenu     guifg={on_primary}        guibg={primary}         gui=bold
+
+" ── Default Syntax (blended 30% with primary) ──────────────────────────────
+hi Comment      guifg={syntax_comment}                            gui=italic
+hi Constant     guifg={syntax_constant}                           gui=NONE
+hi String       guifg={syntax_string}                             gui=NONE
+hi Character    guifg={syntax_character}                          gui=NONE
+hi Number       guifg={syntax_number}                             gui=NONE
+hi Boolean      guifg={syntax_boolean}                            gui=bold
+hi Float        guifg={syntax_float}                             gui=NONE
+hi Identifier   guifg={syntax_identifier}                         gui=NONE
+hi Function     guifg={syntax_function}                           gui=NONE
+hi Statement    guifg={syntax_statement}                         gui=bold
+hi Conditional  guifg={syntax_conditional}                       gui=bold
+hi Repeat       guifg={syntax_repeat}                            gui=bold
+hi Label        guifg={syntax_label}                             gui=bold
+hi Operator     guifg={syntax_operator}                           gui=NONE
+hi Keyword      guifg={syntax_keyword}                           gui=bold
+hi Exception    guifg={syntax_exception}                          gui=bold
+hi PreProc      guifg={syntax_preproc}                           gui=NONE
+hi Include      guifg={syntax_include}                           gui=NONE
+hi Define       guifg={syntax_define}                           gui=NONE
+hi Macro        guifg={syntax_macro}                             gui=NONE
+hi PreCondit    guifg={syntax_precondit}                         gui=NONE
+hi Type         guifg={syntax_type}                             gui=NONE
+hi StorageClass guifg={syntax_storageclass}                      gui=bold
+hi Structure    guifg={syntax_structure}                         gui=bold
+hi Typedef      guifg={syntax_typedef}                           gui=bold
+hi Special      guifg={syntax_special}                           gui=NONE
+hi SpecialChar  guifg={syntax_specialchar}                        gui=NONE
+hi Tag          guifg={syntax_tag}                             gui=NONE
+hi Delimiter    guifg={syntax_delimiter}                         gui=NONE
+hi SpecialComment guifg={syntax_specialcomment}                  gui=italic,bold
+hi Debug        guifg={syntax_debug}                             gui=NONE
+hi Underlined   guifg={syntax_underlined}                        gui=underline
+hi Ignore       guifg={syntax_ignore}                           gui=NONE
+hi Error        guifg={error}             guibg=NONE            gui=bold,underline
+hi Todo         guifg={syntax_todo}           guibg={tertiary}        gui=bold
+
+" ── Treesitter (link to base syntax groups) ────────────────────────────────
+hi! link @comment            Comment
+hi! link @comment.documentation Comment
+hi! link @variable           Identifier
+hi! link @variable.builtin   Special
+hi! link @constant           Constant
+hi! link @constant.builtin   Boolean
+hi! link @constant.macro     Define
+hi! link @string             String
+hi! link @string.escape      SpecialChar
+hi! link @string.special     SpecialChar
+hi! link @character          Character
+hi! link @number             Number
+hi! link @float              Float
+hi! link @boolean            Boolean
+hi! link @function           Function
+hi! link @function.builtin   Special
+hi! link @function.macro     Macro
+hi! link @method             Function
+hi! link @constructor        Function
+hi! link @parameter          Identifier
+hi! link @keyword            Keyword
+hi! link @keyword.function   Keyword
+hi! link @keyword.operator   Operator
+hi! link @keyword.return     Statement
+hi! link @conditional        Conditional
+hi! link @repeat             Repeat
+hi! link @exception          Exception
+hi! link @type               Type
+hi! link @type.builtin       Type
+hi! link @type.definition    Typedef
+hi! link @storageclass       StorageClass
+hi! link @namespace          PreProc
+hi! link @include            Include
+hi! link @operator           Operator
+hi! link @punctuation.bracket Delimiter
+hi! link @punctuation.delimiter Delimiter
+hi! link @punctuation.special Special
+hi! link @label              Label
+hi! link @tag                Tag
+hi! link @tag.attribute      Identifier
+hi! link @tag.delimiter      Delimiter
+hi! link @text.title         Title
+hi! link @text.uri           Underlined
+hi! link @text.emphasis      Italic
+hi! link @text.strong        Bold
+hi! link @text.literal       String
+hi! link @text.reference     Constant
+
+" ── LSP semantic tokens ───────────────────────────────────────────────────
+hi! link @lsp.type.class     Type
+hi! link @lsp.type.enum      Type
+hi! link @lsp.type.function  Function
+hi! link @lsp.type.interface Type
+hi! link @lsp.type.keyword   Keyword
+hi! link @lsp.type.macro     Macro
+hi! link @lsp.type.method    Function
+hi! link @lsp.type.namespace PreProc
+hi! link @lsp.type.parameter Identifier
+hi! link @lsp.type.property  Identifier
+hi! link @lsp.type.string    String
+hi! link @lsp.type.type      Type
+hi! link @lsp.type.variable  Identifier
+hi! link @lsp.mod.deprecated DiagnosticUnderlineWarn
+hi! link @lsp.mod.readonly   Constant
+
+" ── Git signs (gitsigns.nvim) ────────────────────────────────────────────
+hi GitSignsAdd    guifg={term2}  guibg=NONE  gui=NONE
+hi GitSignsChange guifg={term3}  guibg=NONE  gui=NONE
+hi GitSignsDelete guifg={term1}  guibg=NONE  gui=NONE
+
+" ── Telescope (telescope.nvim) ────────────────────────────────────────────
+hi TelescopeBorder         guifg={outline_variant}  guibg=NONE  gui=NONE
+hi TelescopeNormal         guifg={on_surface}        guibg=NONE
+hi TelescopePromptNormal   guifg={on_surface}        guibg=NONE
+hi TelescopeResultsNormal  guifg={on_surface}        guibg=NONE
+hi TelescopePreviewNormal  guifg={on_surface}        guibg=NONE
+hi TelescopeSelection      guifg={on_primary_container} guibg={primary_container}
+hi TelescopeMatching       guifg={primary}                       gui=bold
+hi TelescopePromptPrefix   guifg={primary}                       gui=bold
+
+" ── Which-key (which-key.nvim) ────────────────────────────────────────────
+hi WhichKey          guifg={primary}                             gui=bold
+hi WhichKeyGroup     guifg={secondary}                           gui=bold
+hi WhichKeyDesc      guifg={on_surface}                          gui=NONE
+hi WhichKeySeparator guifg={outline}                             gui=NONE
+hi WhichKeyFloat     guibg=NONE                                   gui=NONE
+
+" ── nvim-cmp ───────────────────────────────────────────────────────────────
+hi CmpItemAbbrMatch       guifg={primary}                        gui=bold
+hi CmpItemAbbrMatchFuzzy  guifg={tertiary}                       gui=bold
+hi CmpItemKindText        guifg={on_surface_variant}             gui=NONE
+hi CmpItemKindFunction    guifg={term4}                          gui=NONE
+hi CmpItemKindMethod      guifg={term4}                          gui=NONE
+hi CmpItemKindVariable    guifg={on_surface}                     gui=NONE
+hi CmpItemKindKeyword     guifg={term5}                          gui=NONE
+hi CmpItemKindSnippet     guifg={tertiary}                       gui=NONE
+hi CmpItemKindModule      guifg={term6}                          gui=NONE
+hi CmpItemKindClass       guifg={term3}                          gui=NONE
+hi CmpItemKindInterface   guifg={term3}                          gui=NONE
+hi CmpItemKindField       guifg={on_surface}                     gui=NONE
+hi CmpItemKindProperty    guifg={on_surface}                     gui=NONE
+hi CmpItemKindEnum        guifg={term3}                          gui=NONE
+hi CmpItemKindUnit        guifg={term5}                          gui=NONE
+hi CmpItemKindValue       guifg={term5}                          gui=NONE
+hi CmpItemKindConstructor guifg={term4}                          gui=NONE
+hi CmpItemKindOperator    guifg={on_surface_variant}             gui=NONE
 
 " ── Italic / Bold helpers ─────────────────────────────────────────────────
 hi Italic  gui=italic
@@ -281,6 +426,43 @@ def generate_neovim_theme(scss_path: str, output_dir: str | None = None) -> str:
     # ANSI terminal colors
     term = {i: colors.get(f"term{i}", "#888888") for i in range(16)}
 
+    # Default syntax colors (base vim colors blended 30% with primary)
+    # Using a warm palette that works well with most languages
+    syntax_comment = blend(outline, primary, 0.30)
+    syntax_constant = blend(term[5], primary, 0.30)  # magenta-ish
+    syntax_string = blend(term[2], primary, 0.30)  # green-ish
+    syntax_character = blend(term[2], primary, 0.30)
+    syntax_number = blend(term[5], primary, 0.30)
+    syntax_boolean = blend(term[5], primary, 0.30)
+    syntax_float = blend(term[5], primary, 0.30)
+    syntax_identifier = blend(on_surface, primary, 0.30)
+    syntax_function = blend(term[4], primary, 0.30)  # blue-ish
+    syntax_statement = blend(term[1], primary, 0.30)  # red-ish
+    syntax_conditional = blend(term[1], primary, 0.30)
+    syntax_repeat = blend(term[1], primary, 0.30)
+    syntax_label = blend(term[1], primary, 0.30)
+    syntax_operator = blend(on_surface_variant, primary, 0.30)
+    syntax_keyword = blend(term[5], primary, 0.30)  # magenta-ish
+    syntax_exception = blend(error, primary, 0.30)
+    syntax_preproc = blend(term[6], primary, 0.30)  # cyan-ish
+    syntax_include = blend(term[6], primary, 0.30)
+    syntax_define = blend(term[6], primary, 0.30)
+    syntax_macro = blend(term[6], primary, 0.30)
+    syntax_precondit = blend(term[6], primary, 0.30)
+    syntax_type = blend(term[3], primary, 0.30)  # yellow-ish
+    syntax_storageclass = blend(term[3], primary, 0.30)
+    syntax_structure = blend(term[3], primary, 0.30)
+    syntax_typedef = blend(term[3], primary, 0.30)
+    syntax_special = blend(tertiary, primary, 0.30)
+    syntax_specialchar = blend(tertiary, primary, 0.30)
+    syntax_tag = blend(primary, primary, 0.30)
+    syntax_delimiter = blend(on_surface_variant, primary, 0.30)
+    syntax_specialcomment = blend(outline, primary, 0.45)
+    syntax_debug = blend(error, primary, 0.30)
+    syntax_underlined = blend(primary, primary, 0.30)
+    syntax_ignore = blend(outline, primary, 0.30)
+    syntax_todo = blend(tertiary, primary, 0.30)
+
     mapping = {
         "background_mode": background_mode,
         "primary": primary,
@@ -299,6 +481,41 @@ def generate_neovim_theme(scss_path: str, output_dir: str | None = None) -> str:
         "outline": outline,
         "outline_variant": outline_variant,
         "error": error,
+        # Syntax colors with 30% primary blend
+        "syntax_comment": syntax_comment,
+        "syntax_constant": syntax_constant,
+        "syntax_string": syntax_string,
+        "syntax_character": syntax_character,
+        "syntax_number": syntax_number,
+        "syntax_boolean": syntax_boolean,
+        "syntax_float": syntax_float,
+        "syntax_identifier": syntax_identifier,
+        "syntax_function": syntax_function,
+        "syntax_statement": syntax_statement,
+        "syntax_conditional": syntax_conditional,
+        "syntax_repeat": syntax_repeat,
+        "syntax_label": syntax_label,
+        "syntax_operator": syntax_operator,
+        "syntax_keyword": syntax_keyword,
+        "syntax_exception": syntax_exception,
+        "syntax_preproc": syntax_preproc,
+        "syntax_include": syntax_include,
+        "syntax_define": syntax_define,
+        "syntax_macro": syntax_macro,
+        "syntax_precondit": syntax_precondit,
+        "syntax_type": syntax_type,
+        "syntax_storageclass": syntax_storageclass,
+        "syntax_structure": syntax_structure,
+        "syntax_typedef": syntax_typedef,
+        "syntax_special": syntax_special,
+        "syntax_specialchar": syntax_specialchar,
+        "syntax_tag": syntax_tag,
+        "syntax_delimiter": syntax_delimiter,
+        "syntax_specialcomment": syntax_specialcomment,
+        "syntax_debug": syntax_debug,
+        "syntax_underlined": syntax_underlined,
+        "syntax_ignore": syntax_ignore,
+        "syntax_todo": syntax_todo,
         **{f"term{i}": term[i] for i in range(16)},
     }
 
