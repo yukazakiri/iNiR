@@ -412,11 +412,53 @@ else
   apply_chrome &
 fi
 
+apply_neovim() {
+  local log_file="$STATE_DIR/user/generated/code_editor_themes.log"
+  local scss_file="$STATE_DIR/user/generated/material_colors.scss"
+  local generator="$SCRIPT_DIR/neovim/theme_generator.py"
+
+  if [ ! -f "$scss_file" ]; then
+    echo "[neovim] material_colors.scss not found. Skipping." >> "$log_file" 2>/dev/null
+    return
+  fi
+
+  if [ ! -f "$generator" ]; then
+    echo "[neovim] theme_generator.py not found ($generator). Skipping." >> "$log_file" 2>/dev/null
+    return
+  fi
+
+  local python_cmd="python3"
+  local _ac_venv
+  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+  else
+    _ac_venv="$HOME/.local/state/quickshell/.venv"
+  fi
+  local venv_python="$_ac_venv/bin/python3"
+  if [[ -x "$venv_python" ]]; then
+    python_cmd="$venv_python"
+  fi
+
+  "$python_cmd" "$generator" "$scss_file" >> "$log_file" 2>&1
+}
+
 # Apply Spotify theme via Spicetify (opt-in)
 if [ -f "$CONFIG_FILE" ]; then
   enable_spicetify=$(jq -r '.appearance.wallpaperTheming.enableSpicetify // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   if [ "$enable_spicetify" = "true" ] && command -v spicetify &>/dev/null; then
     apply_spicetify &
+  fi
+fi
+
+# Apply Neovim colorscheme (matugen.vim) and reload running nvim instances
+if [ -f "$CONFIG_FILE" ]; then
+  enable_neovim=$(jq -r '.appearance.wallpaperTheming.enableNeovim // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+  if [ "$enable_neovim" = "true" ] && command -v nvim &>/dev/null; then
+    apply_neovim &
+  fi
+else
+  if command -v nvim &>/dev/null; then
+    apply_neovim &
   fi
 fi
 

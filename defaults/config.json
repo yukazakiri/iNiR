@@ -147,6 +147,7 @@
                 "yazi": true,
                 "omp": true
             },
+            "enableNeovim": true,
             "enableOpenCode": true,
             "vscodeEditors": {
                 "code": true,
