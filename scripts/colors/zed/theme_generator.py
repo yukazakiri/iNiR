@@ -481,7 +481,7 @@ def generate_zed_config(colors, scss_path, output_path):
 
         # Force a strong saturation bump for syntax so it's always readable
         # Mix a percentage of the theme's primary color into the vibrant syntax colors
-        mix_ratio = 0.25
+        mix_ratio = 0.40
         syn_red = mix_colors(saturate(term1, 2.0), primary, mix_ratio)
         syn_green = mix_colors(saturate(term2, 2.0), primary, mix_ratio)
         syn_yellow = mix_colors(saturate(term3, 2.0), primary, mix_ratio)
@@ -926,7 +926,7 @@ def generate_zed_config(colors, scss_path, output_path):
 
         # Force a strong saturation bump and slightly darken for light theme legibility
         # Mix a percentage of the theme's primary color into the vibrant syntax colors
-        mix_ratio = 0.25
+        mix_ratio = 0.40
         syn_red = darken(mix_colors(saturate(term1, 2.0), primary, mix_ratio), 0.8)
         syn_green = darken(mix_colors(saturate(term2, 2.0), primary, mix_ratio), 0.8)
         syn_yellow = darken(mix_colors(saturate(term3, 2.0), primary, mix_ratio), 0.8)
