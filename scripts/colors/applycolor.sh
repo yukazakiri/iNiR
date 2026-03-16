@@ -118,6 +118,9 @@ apply_terminal_configs() {
   local go_src="$SCRIPT_DIR/generate_terminal_configs.go"
 
   if [[ -x "$go_bin" ]]; then
+    if [[ -f "$go_src" && "$go_src" -nt "$go_bin" ]] && command -v go &>/dev/null; then
+      go build -o "$go_bin" "$go_src" >> "$log_file" 2>&1
+    fi
     echo "[terminal-colors] Generating configs for: ${enabled_terminals[*]}" >> "$log_file" 2>/dev/null
     "$go_bin" \
       --scss "$STATE_DIR/user/generated/material_colors.scss" \
@@ -246,6 +249,9 @@ apply_code_editors() {
     local zed_rc=1
 
     if [ -x "$zed_bin" ]; then
+      if [[ -f "$zed_go" && "$zed_go" -nt "$zed_bin" ]] && command -v go &>/dev/null; then
+        go build -o "$zed_bin" "$zed_go" >> "$log_file" 2>&1
+      fi
       "$zed_bin" --scss "$STATE_DIR/user/generated/material_colors.scss" --out "$zed_out" >> "$log_file" 2>&1
       zed_rc=$?
     elif command -v go &>/dev/null && [ -f "$zed_go" ]; then

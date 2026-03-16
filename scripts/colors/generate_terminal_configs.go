@@ -17,6 +17,7 @@ import (
 func main() {
 	args := os.Args[1:]
 	parsed := parseArgs(args)
+	exitCode := 0
 
 	if parsed.scssPath == "" {
 		parsed.scssPath = expandPath("~/.local/state/quickshell/user/generated/material_colors.scss")
@@ -77,13 +78,18 @@ func main() {
 		err := runZedGenerator(parsed.scssPath, filepath.Join(home, ".config/zed/themes/ii-theme.json"))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			exitCode = 1
 		}
 	}
 
 	if parsed.vscode {
 		if err := runVSCodeGenerator(parsed.scssPath, parsed.vscodeForks); err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			exitCode = 1
 		}
+	}
+	if exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }
 
@@ -1664,6 +1670,25 @@ func runVSCodeGenerator(scssPath string, forks []string) error {
 	pyPath := filepath.Join(scriptDir, "vscode", "theme_generator.py")
 	if !fileExists(pyPath) {
 		fallback := filepath.Join(scriptDir, "scripts", "colors", "vscode", "theme_generator.py")
+		if fileExists(fallback) {
+			pyPath = fallback
+		}
+	}
+	if !fileExists(pyPath) {
+		if cwd, err := os.Getwd(); err == nil {
+			fallback := filepath.Join(cwd, "scripts", "colors", "vscode", "theme_generator.py")
+			if fileExists(fallback) {
+				pyPath = fallback
+			}
+		}
+	}
+	if !fileExists(pyPath) {
+		configHome := os.Getenv("XDG_CONFIG_HOME")
+		if configHome == "" {
+			home, _ := os.UserHomeDir()
+			configHome = filepath.Join(home, ".config")
+		}
+		fallback := filepath.Join(configHome, "quickshell", "ii", "scripts", "colors", "vscode", "theme_generator.py")
 		if fileExists(fallback) {
 			pyPath = fallback
 		}
