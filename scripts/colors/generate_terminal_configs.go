@@ -1003,7 +1003,6 @@ bright_white = '%s'
 		}
 
 		if strings.Contains(content, "[palettes.ii]") {
-			pattern := regexp.MustCompile(`(?s)\[palettes\.ii\].*?(?=\n\[|\z)`)
 			paletteBlock := strings.Split(strings.TrimSpace(config), "\n")
 			paletteStart := 0
 			for i, line := range paletteBlock {
@@ -1013,10 +1012,22 @@ bright_white = '%s'
 				}
 			}
 			paletteContent := strings.Join(paletteBlock[paletteStart:], "\n")
-			newContent := pattern.ReplaceAllString(content, paletteContent)
-			if newContent != content {
-				_ = os.WriteFile(starshipConf, []byte(newContent), 0o644)
-				fmt.Println("  → Updated ii palette in starship.toml")
+			if !strings.HasSuffix(paletteContent, "\n") {
+				paletteContent += "\n"
+			}
+
+			start := strings.Index(content, "[palettes.ii]")
+			if start >= 0 {
+				next := strings.Index(content[start+1:], "\n[")
+				end := len(content)
+				if next >= 0 {
+					end = start + 1 + next
+				}
+				newContent := content[:start] + paletteContent + content[end:]
+				if newContent != content {
+					_ = os.WriteFile(starshipConf, []byte(newContent), 0o644)
+					fmt.Println("  → Updated ii palette in starship.toml")
+				}
 			}
 		} else {
 			f, _ := os.OpenFile(starshipConf, os.O_APPEND|os.O_WRONLY, 0o644)
