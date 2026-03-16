@@ -91,7 +91,7 @@ apply_terminal_configs() {
   fi
 
   # Single source of truth for all supported targets.
-  # Mirrors TERMINAL_REGISTRY in generate_terminal_configs.py.
+  # Mirrors TERMINAL_REGISTRY in generate_terminal_configs.go.
   # To add a new target: add it here + add generate_X_config() and registry entry in the Python script.
   local all_supported=(kitty alacritty foot wezterm ghostty konsole starship omp btop lazygit yazi)
 
@@ -114,29 +114,33 @@ apply_terminal_configs() {
     return
   fi
 
-  # Run the Python script to generate configs
-  local python_cmd="python3"
-  local _ac_venv
-  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
-    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
-  else
-    _ac_venv="$HOME/.local/state/quickshell/.venv"
-  fi
-  local venv_python="$_ac_venv/bin/python3"
-  if [[ -x "$venv_python" ]]; then
-    python_cmd="$venv_python"
-  fi
+  local go_bin="$XDG_CACHE_HOME/inir/generate_terminal_configs"
+  local go_src="$SCRIPT_DIR/generate_terminal_configs.go"
 
-  if command -v "$python_cmd" &>/dev/null || [[ -x "$python_cmd" ]]; then
+  if [[ -x "$go_bin" ]]; then
     echo "[terminal-colors] Generating configs for: ${enabled_terminals[*]}" >> "$log_file" 2>/dev/null
-    "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
+    "$go_bin" \
       --scss "$STATE_DIR/user/generated/material_colors.scss" \
       --terminals "${enabled_terminals[@]}" >> "$log_file" 2>&1
 
     # Reload running terminals so colors update in real-time
     reload_terminal_colors "${enabled_terminals[@]}" >> "$log_file" 2>&1 &
+  elif command -v go &>/dev/null && [[ -f "$go_src" ]]; then
+    mkdir -p "$(dirname "$go_bin")" 2>/dev/null
+    go build -o "$go_bin" "$go_src" >> "$log_file" 2>&1
+    if [ $? -eq 0 ]; then
+      echo "[terminal-colors] Generating configs for: ${enabled_terminals[*]}" >> "$log_file" 2>/dev/null
+      "$go_bin" \
+        --scss "$STATE_DIR/user/generated/material_colors.scss" \
+        --terminals "${enabled_terminals[@]}" >> "$log_file" 2>&1
+
+      # Reload running terminals so colors update in real-time
+      reload_terminal_colors "${enabled_terminals[@]}" >> "$log_file" 2>&1 &
+    else
+      echo "[terminal-colors] ERROR: Failed to build Go terminal generator." >> "$log_file" 2>/dev/null
+    fi
   else
-    echo "[terminal-colors] ERROR: Python not found ($python_cmd). Cannot generate terminal configs." >> "$log_file" 2>/dev/null
+    echo "[terminal-colors] ERROR: Go not found and terminal generator binary missing." >> "$log_file" 2>/dev/null
   fi
 }
 

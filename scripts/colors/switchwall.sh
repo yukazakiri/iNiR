@@ -251,17 +251,17 @@ for output in $outputs; do
 done
 LAUNCHER_EOF
     chmod +x "$launcher_script"
-    
+
     # Execute launcher in a completely detached way using at if available, otherwise nohup
     if command -v at >/dev/null 2>&1; then
         echo "$launcher_script '$video_path' $outputs" | at now 2>/dev/null
     else
         (nohup "$launcher_script" "$video_path" $outputs > /dev/null 2>&1 &)
     fi
-    
+
     # Small delay to let the launcher start
     sleep 0.3
-    
+
     # Clean up launcher script after a delay
     (sleep 5 && rm -f "$launcher_script") &
 }
@@ -650,11 +650,11 @@ switch() {
         term_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.60' "$SHELL_CONFIG_FILE")
         term_harmony=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.harmony // 0.40' "$SHELL_CONFIG_FILE")
         term_bg_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.backgroundBrightness // 0.50' "$SHELL_CONFIG_FILE")
-        
+
         # Legacy props for backwards compatibility
         harmonize_threshold=$(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.harmonizeThreshold // 100' "$SHELL_CONFIG_FILE")
         soften_colors=$(jq -r '.appearance.softenColors' "$SHELL_CONFIG_FILE")
-        
+
         # Pass new parameters to Python script
         [[ "$term_saturation" != "null" && -n "$term_saturation" ]] && generate_colors_material_args+=(--term_saturation "$term_saturation")
         [[ "$term_brightness" != "null" && -n "$term_brightness" ]] && generate_colors_material_args+=(--term_brightness "$term_brightness")
@@ -666,21 +666,27 @@ switch() {
 
     # Use user's matugen config (installed to ~/.config/matugen/ during setup)
     matugen --config "$MATUGEN_DIR/config.toml" "${matugen_args[@]}"
-    if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
-        _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
-    else
-        _ii_venv="$HOME/.local/state/quickshell/.venv"
-    fi
-    source "$_ii_venv/bin/activate" 2>/dev/null || true
-    _ii_python="$_ii_venv/bin/python3"
-    [[ ! -x "$_ii_python" ]] && _ii_python="python3"
-
     _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp"
     _json_tmp="$STATE_DIR/user/generated/colors.json.tmp"
     _json_out="$STATE_DIR/user/generated/colors.json"
-    if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
-        --json-output "$_json_tmp" \
-        > "$_scss_tmp" 2>/dev/null && [[ -s "$_scss_tmp" ]]; then
+    _go_bin="$XDG_CACHE_HOME/inir/generate_colors_material"
+    _go_src="$SCRIPT_DIR/generate_colors_material.go"
+
+    if [[ -x "$_go_bin" ]]; then
+        "$_go_bin" "${generate_colors_material_args[@]}" \
+            --json-output "$_json_tmp" \
+            > "$_scss_tmp" 2>/dev/null
+    elif command -v go &>/dev/null && [[ -f "$_go_src" ]]; then
+        mkdir -p "$(dirname "$_go_bin")" 2>/dev/null
+        go build -o "$_go_bin" "$_go_src" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            "$_go_bin" "${generate_colors_material_args[@]}" \
+                --json-output "$_json_tmp" \
+                > "$_scss_tmp" 2>/dev/null
+        fi
+    fi
+
+    if [[ -s "$_scss_tmp" ]]; then
         mv "$_scss_tmp" "$STATE_DIR/user/generated/material_colors.scss"
         if [[ -s "$_json_tmp" ]]; then
             mv "$_json_tmp" "$_json_out"
@@ -689,10 +695,19 @@ switch() {
             echo "[switchwall] Warning: colors.json generation failed, keeping previous JSON" >&2
         fi
     else
-        echo "[switchwall] Warning: generate_colors_material.py failed, keeping previous SCSS" >&2
+        echo "[switchwall] Warning: generate_colors_material failed, keeping previous SCSS" >&2
         rm -f "$_scss_tmp"
         rm -f "$_json_tmp"
     fi
+
+    if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+        _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+    else
+        _ii_venv="$HOME/.local/state/quickshell/.venv"
+    fi
+    source "$_ii_venv/bin/activate" 2>/dev/null || true
+    _ii_python="$_ii_venv/bin/python3"
+    [[ ! -x "$_ii_python" ]] && _ii_python="python3"
 
     # Generate Vesktop theme if enabled (only when app theming is on)
     if [ "$enable_apps_shell" != "false" ]; then

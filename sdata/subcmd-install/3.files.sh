@@ -807,16 +807,21 @@ if [[ "${INSTALL_FIRSTRUN}" == true && -n "${DEFAULT_WALLPAPER}" && -f "${DEFAUL
 
       # Generate material_colors.scss from colors.json (needed by applycolor.sh chain)
       # NOTE: no `local` here — this block is at top-level (sourced file), not inside a function
-      _init_python_cmd="${ILLOGICAL_IMPULSE_VIRTUAL_ENV}/bin/python3"
-      _init_gen_material="${II_TARGET}/scripts/colors/generate_colors_material.py"
+      _init_gen_material="${II_TARGET}/scripts/colors/generate_colors_material.go"
       _init_colors_json="${XDG_STATE_HOME}/quickshell/user/generated/colors.json"
       _init_scss_file="${XDG_STATE_HOME}/quickshell/user/generated/material_colors.scss"
       if [[ -f "$_init_gen_material" && -f "$_init_colors_json" ]]; then
-        _init_py=""
-        [[ -x "$_init_python_cmd" ]] && _init_py="$_init_python_cmd" || { command -v python3 &>/dev/null && _init_py="python3"; }
-        if [[ -n "$_init_py" ]]; then
-          "$_init_py" "$_init_gen_material" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$_init_scss_file" 2>/dev/null || true
+        _init_go_bin="${XDG_CACHE_HOME}/inir/generate_colors_material"
+        if [[ -x "$_init_go_bin" ]]; then
+          "$_init_go_bin" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$_init_scss_file" 2>/dev/null || true
           [[ -s "$_init_scss_file" ]] && log_success "Material colors SCSS generated"
+        elif command -v go >/dev/null 2>&1; then
+          mkdir -p "$(dirname "$_init_go_bin")"
+          go build -o "$_init_go_bin" "$_init_gen_material" 2>/dev/null || true
+          if [[ -x "$_init_go_bin" ]]; then
+            "$_init_go_bin" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$_init_scss_file" 2>/dev/null || true
+            [[ -s "$_init_scss_file" ]] && log_success "Material colors SCSS generated"
+          fi
         fi
       fi
 
