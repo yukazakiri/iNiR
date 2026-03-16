@@ -228,24 +228,6 @@ apply_code_editors() {
     return
   fi
 
-  # Get Python command
-  local python_cmd="python3"
-  local _ac_venv
-  if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
-    _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
-  else
-    _ac_venv="$HOME/.local/state/quickshell/.venv"
-  fi
-  local venv_python="$_ac_venv/bin/python3"
-  if [[ -x "$venv_python" ]]; then
-    python_cmd="$venv_python"
-  fi
-
-  if ! command -v "$python_cmd" &>/dev/null && [[ ! -x "$python_cmd" ]]; then
-    echo "[code-editors] ERROR: Python not found ($python_cmd). Cannot generate themes." >> "$log_file" 2>/dev/null
-    return
-  fi
-
   # Check if Zed is installed and enabled
   local enable_zed="true"
   if [ -f "$CONFIG_FILE" ]; then
@@ -254,11 +236,29 @@ apply_code_editors() {
 
   if [[ "$enable_zed" == "true" ]] && { command -v zed &>/dev/null || command -v zeditor &>/dev/null; }; then
     echo "[code-editors] Generating Zed theme..." | tee -a "$log_file" 2>/dev/null
-    "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
-      --scss "$STATE_DIR/user/generated/material_colors.scss" \
-      --zed >> "$log_file" 2>&1
+    local zed_out="$HOME/.config/zed/themes/ii-theme.json"
+    local zed_go="$SCRIPT_DIR/zed/theme_generator.go"
+    local zed_bin="$XDG_CACHE_HOME/inir/zed_theme_generator"
+    local zed_rc=1
 
-    if [ $? -eq 0 ]; then
+    if [ -x "$zed_bin" ]; then
+      "$zed_bin" --scss "$STATE_DIR/user/generated/material_colors.scss" --out "$zed_out" >> "$log_file" 2>&1
+      zed_rc=$?
+    elif command -v go &>/dev/null && [ -f "$zed_go" ]; then
+      mkdir -p "$(dirname "$zed_bin")" 2>/dev/null
+      go build -o "$zed_bin" "$zed_go" >> "$log_file" 2>&1
+      if [ $? -eq 0 ]; then
+        "$zed_bin" --scss "$STATE_DIR/user/generated/material_colors.scss" --out "$zed_out" >> "$log_file" 2>&1
+        zed_rc=$?
+      else
+        zed_rc=1
+      fi
+    else
+      echo "[code-editors] ERROR: Go not found and Zed generator binary missing. Cannot generate Zed theme." >> "$log_file" 2>/dev/null
+      zed_rc=1
+    fi
+
+    if [ $zed_rc -eq 0 ]; then
       echo "[code-editors] Zed theme generated (Zed auto-reloads on file change)" >> "$log_file" 2>/dev/null
     else
       echo "[code-editors] ERROR: Failed to generate Zed theme" >> "$log_file" 2>/dev/null
@@ -272,13 +272,31 @@ apply_code_editors() {
   fi
 
   if [[ "$enable_vscode" == "true" ]]; then
+    # Get Python command (VSCode generation still uses Python)
+    local python_cmd="python3"
+    local _ac_venv
+    if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+      _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+    else
+      _ac_venv="$HOME/.local/state/quickshell/.venv"
+    fi
+    local venv_python="$_ac_venv/bin/python3"
+    if [[ -x "$venv_python" ]]; then
+      python_cmd="$venv_python"
+    fi
+
+    if ! command -v "$python_cmd" &>/dev/null && [[ ! -x "$python_cmd" ]]; then
+      echo "[code-editors] ERROR: Python not found ($python_cmd). Cannot generate VSCode themes." >> "$log_file" 2>/dev/null
+      return
+    fi
+
     # Build list of enabled forks from config
     local enabled_forks=()
     if [ -f "$CONFIG_FILE" ]; then
       # Read individual fork settings, default to true if not specified
       local editors_config
       editors_config=$(jq -r '.appearance.wallpaperTheming.vscodeEditors // {}' "$CONFIG_FILE" 2>/dev/null || echo "{}")
-      
+
       # Map config keys to script fork keys
       [[ $(echo "$editors_config" | jq -r '.code // true') == "true" ]] && [[ -d "$HOME/.config/Code" ]] && enabled_forks+=("code")
       [[ $(echo "$editors_config" | jq -r '.codium // true') == "true" ]] && [[ -d "$HOME/.config/VSCodium" ]] && enabled_forks+=("codium")
