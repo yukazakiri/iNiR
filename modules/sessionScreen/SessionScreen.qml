@@ -56,14 +56,18 @@ Scope {
 
     Loader {
         id: sessionLoader
-        active: GlobalStates.sessionOpen || _sessionClosing
+        active: true
 
         property bool _sessionClosing: false
 
         Connections {
             target: GlobalStates
             function onSessionOpenChanged() {
-                if (!GlobalStates.sessionOpen) {
+                if (GlobalStates.sessionOpen) {
+                    _sessionCloseTimer.stop()
+                    sessionLoader._sessionClosing = false
+                    SessionWarnings.refresh()
+                } else {
                     sessionLoader._sessionClosing = true
                     _sessionCloseTimer.restart()
                 }
@@ -75,10 +79,6 @@ Scope {
             interval: 250
             onTriggered: sessionLoader._sessionClosing = false
         }
-        onActiveChanged: {
-            if (sessionLoader.active) SessionWarnings.refresh();
-        }
-
         Connections {
             target: GlobalStates
             function onScreenLockedChanged() {
@@ -90,7 +90,7 @@ Scope {
 
         sourceComponent: PanelWindow { // Session menu
             id: sessionRoot
-            visible: sessionLoader.active
+            visible: GlobalStates.sessionOpen || sessionLoader._sessionClosing
             property string subtitle
             
             function hide() {
@@ -100,7 +100,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {

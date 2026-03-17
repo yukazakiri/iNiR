@@ -75,8 +75,9 @@ RowLayout {
             id: searchWidthBehavior
             enabled: root.animateWidth
             NumberAnimation {
-                duration: 250
-                easing.type: Easing.OutQuart
+                duration: Appearance.animation.elementResize.duration
+                easing.type: Appearance.animation.elementResize.type
+                easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
             }
         }
 
@@ -94,21 +95,22 @@ RowLayout {
                     actionModeView.focusFirstItem()
                     event.accepted = true
                 }
+            } else if (event.key === Qt.Key_Down && appResults?.visible && appResults.count > 0) {
+                appResults.stepSelection(1)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Up && appResults?.visible && appResults.count > 0) {
+                appResults.stepSelection(-1)
+                event.accepted = true
             }
         }
 
         onAccepted: {
-            // In action mode, delegate to ActionModeView
             if (actionModeView?.visible) {
-                actionModeView.focusFirstItem()
+                actionModeView.executeCurrentOrFirst()
                 return
             }
             if (appResults.count > 0) {
-                // Get the first visible delegate and trigger its click
-                let firstItem = appResults.itemAtIndex(0);
-                if (firstItem && firstItem.clicked) {
-                    firstItem.clicked();
-                }
+                appResults.activateCurrentOrFirst()
             }
         }
     }

@@ -24,6 +24,7 @@ Item {
     id: root
     property string query: ""
     property int selectedCategoryIndex: 0
+    property real availableHeight: Number.POSITIVE_INFINITY
 
     readonly property var categoryList: [
         { id: "all",        label: Translation.tr("All"),        icon: "apps" },
@@ -114,13 +115,69 @@ Item {
     signal returnToSearch()
 
     implicitWidth: mainColumn.implicitWidth
-    implicitHeight: mainColumn.implicitHeight
+    readonly property real reservedHeight: categoryTabBar.implicitHeight
+        + (packageHints.visible ? packageHints.implicitHeight : 0)
+        + categoryTabBar.Layout.topMargin
+        + categoryTabBar.Layout.bottomMargin
+        + packageHints.Layout.topMargin
+        + packageHints.Layout.bottomMargin
+        + actionList.topMargin
+        + actionList.bottomMargin
+        + mainColumn.spacing * 3
+        + 12
+    readonly property real maxListHeight: Math.max(160, availableHeight - reservedHeight)
+    implicitHeight: Math.min(mainColumn.implicitHeight, availableHeight)
 
     function focusFirstItem(): void {
         if (actionList.count > 0) {
             actionList.currentIndex = 0
             actionList.forceActiveFocus()
         }
+    }
+
+    function stepSelection(step): bool {
+        if (actionList.count <= 0)
+            return false
+
+        const baseIndex = actionList.currentIndex >= 0 ? actionList.currentIndex : (step > 0 ? -1 : 0)
+        const targetIndex = Math.max(0, Math.min(baseIndex + step, actionList.count - 1))
+        actionList.currentIndex = targetIndex
+        return true
+    }
+
+    function syncCurrentActionItem(shouldFocus): void {
+        if (actionList.count <= 0)
+            return
+
+        const targetIndex = actionList.currentIndex >= 0 ? Math.min(actionList.currentIndex, actionList.count - 1) : 0
+        actionList.currentIndex = targetIndex
+
+        if (!shouldFocus)
+            return
+
+        actionList.forceActiveFocus()
+    }
+
+    function executeCurrentOrFirst(): void {
+        if (actionList.count <= 0)
+            return
+
+        const targetIndex = actionList.currentIndex >= 0 ? actionList.currentIndex : 0
+        actionList.currentIndex = targetIndex
+        if (!actionList.activeFocus)
+            actionList.forceActiveFocus()
+
+        const item = actionList.itemAtIndex(targetIndex)
+        if (item && item.clicked) {
+            item.clicked()
+            return
+        }
+
+        Qt.callLater(() => {
+            const delayedItem = actionList.itemAtIndex(targetIndex)
+            if (delayedItem && delayedItem.clicked)
+                delayedItem.clicked()
+        })
     }
 
     function _executePackageActionStatic(pkg, isRemove): void {
@@ -138,16 +195,18 @@ Item {
             left: parent.left
             right: parent.right
         }
-        spacing: 0
+        spacing: 8
 
         // ── Category Tab Bar (uses existing SecondaryTabBar widget) ──
         SecondaryTabBar {
             id: categoryTabBar
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 8
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
+            Layout.bottomMargin: 4
+            width: Math.min(implicitWidth, Math.max(0, root.width - 24))
             indicatorPadding: 12
+            bottomBorderVisible: false
+            wheelNavigationEnabled: false
             currentIndex: root.selectedCategoryIndex
             onCurrentIndexChanged: root.selectedCategoryIndex = currentIndex
 
@@ -157,17 +216,18 @@ Item {
                     buttonText: modelData.label
                     buttonIcon: modelData.icon
                     selected: categoryTabBar.currentIndex === index
+                    width: implicitWidth
                 }
             }
         }
 
         // ── Package command hints ──
         RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            Layout.topMargin: 6
-            Layout.bottomMargin: 2
+            id: packageHints
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 8
+            Layout.bottomMargin: 4
+            width: Math.min(implicitWidth, Math.max(0, root.width - 40))
             spacing: 16
             visible: root.query === "" || root.query.length <= 3
 
@@ -200,21 +260,68 @@ Item {
         ListView {
             id: actionList
             Layout.fillWidth: true
-            implicitHeight: Math.min(520, contentHeight + topMargin + bottomMargin)
+            implicitHeight: Math.min(root.maxListHeight, contentHeight + topMargin + bottomMargin)
             clip: true
-            topMargin: 6
-            bottomMargin: 6
+            topMargin: 10
+            bottomMargin: 8
             spacing: 2
             highlightMoveDuration: 100
             focus: true
 
             model: root.displayItems
 
+            function stepCurrentSelection(step) {
+                return root.stepSelection(step)
+            }
+
+            function focusCurrentOrFirst() {
+                root.syncCurrentActionItem(true)
+            }
+
+            function activateCurrentOrFirst() {
+                root.executeCurrentOrFirst()
+            }
+
             Connections {
                 target: root
                 function onQueryChanged() {
                     if (actionList.count > 0)
                         actionList.currentIndex = 0
+                }
+                function onSelectedCategoryIndexChanged() {
+                    if (actionList.count > 0)
+                        actionList.currentIndex = 0
+                }
+            }
+
+            onActiveFocusChanged: {
+                if (activeFocus && count > 0 && currentIndex < 0)
+                    currentIndex = 0
+            }
+
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    activateCurrentOrFirst()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Down) {
+                    stepCurrentSelection(1)
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Up) {
+                    if (currentIndex > 0) {
+                        stepCurrentSelection(-1)
+                    } else {
+                        root.returnToSearch()
+                    }
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Right) {
+                    root.selectedCategoryIndex = (root.selectedCategoryIndex + 1) % root.categoryList.length
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Backtab || event.key === Qt.Key_Left) {
+                    root.selectedCategoryIndex = (root.selectedCategoryIndex - 1 + root.categoryList.length) % root.categoryList.length
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Escape) {
+                    GlobalStates.overviewOpen = false
+                    event.accepted = true
                 }
             }
 
@@ -225,6 +332,30 @@ Item {
                 property bool isAction: entry?.type === "action"
                 property bool isPackage: entry?.type === "package"
                 property bool keyboardDown: false
+                readonly property bool isCurrentItem: ListView.isCurrentItem
+                readonly property bool isHighlighted: delegateBtn.isCurrentItem
+                readonly property color normalTextColor: Appearance.angelEverywhere ? Appearance.angel.colText
+                    : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+                readonly property color selectedTextColor: Appearance.angelEverywhere ? Appearance.angel.colText
+                    : Appearance.inirEverywhere ? Appearance.inir.colText
+                    : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer1
+                    : Appearance.colors.colOnPrimaryContainer
+                readonly property color descriptionTextColor: delegateBtn.isHighlighted
+                    ? (Appearance.angelEverywhere ? Appearance.angel.colText
+                        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
+                        : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer1
+                        : Appearance.colors.colOnPrimaryContainer)
+                    : (Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext)
+                readonly property color selectedBackgroundColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                    : Appearance.colors.colPrimaryContainer
+                readonly property color hoverBackgroundColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                    : Appearance.colors.colLayer2Hover
+                readonly property color pressedBackgroundColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
+                    : Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive : Appearance.colors.colPrimaryContainerActive
 
                 anchors.left: parent?.left
                 anchors.right: parent?.right
@@ -239,18 +370,11 @@ Item {
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                     : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.normal
                 colBackground: (delegateBtn.down || delegateBtn.keyboardDown)
-                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive : Appearance.colors.colPrimaryContainerActive)
-                    : ((delegateBtn.hovered || delegateBtn.focus)
-                        ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                            : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                            : Appearance.colors.colPrimaryContainer)
-                        : "transparent")
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colPrimaryContainer
+                    ? delegateBtn.pressedBackgroundColor
+                    : (delegateBtn.isHighlighted
+                        ? delegateBtn.selectedBackgroundColor
+                        : (delegateBtn.hovered ? delegateBtn.hoverBackgroundColor : "transparent"))
+                colBackgroundHover: delegateBtn.hoverBackgroundColor
                 colRipple: Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive : Appearance.colors.colPrimaryContainerActive
 
                 background {
@@ -276,32 +400,6 @@ Item {
                     }
                 }
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        delegateBtn.keyboardDown = true
-                        delegateBtn.clicked()
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Right) {
-                        root.selectedCategoryIndex = (root.selectedCategoryIndex + 1) % root.categoryList.length
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Backtab || event.key === Qt.Key_Left) {
-                        root.selectedCategoryIndex = (root.selectedCategoryIndex - 1 + root.categoryList.length) % root.categoryList.length
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Up && actionList.currentIndex === 0) {
-                        root.returnToSearch()
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Escape) {
-                        GlobalStates.overviewOpen = false
-                        event.accepted = true
-                    }
-                }
-                Keys.onReleased: (event) => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        delegateBtn.keyboardDown = false
-                        event.accepted = true
-                    }
-                }
-
                 RowLayout {
                     id: delegateRow
                     spacing: 10
@@ -313,6 +411,7 @@ Item {
                     Rectangle {
                         implicitWidth: 35
                         implicitHeight: 35
+                        scale: delegateBtn.isHighlighted ? 1 : 0.96
                         radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
                             : Appearance.rounding.full
@@ -320,7 +419,7 @@ Item {
                             if (isPackage && entry.pkg?.installed)
                                 return ColorUtils.transparentize(
                                     Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary, 0.3)
-                            return delegateBtn.focus
+                            return delegateBtn.isHighlighted
                                 ? (Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
                                 : (Appearance.inirEverywhere ? Appearance.inir.colLayer2
                                     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
@@ -330,7 +429,20 @@ Item {
 
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
-                            ColorAnimation { duration: 150 }
+                            ColorAnimation {
+                                duration: Appearance.animation.elementMoveFast.duration
+                                easing.type: Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                            }
+                        }
+
+                        Behavior on scale {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation {
+                                duration: Appearance.animation.elementResize.duration
+                                easing.type: Appearance.animation.elementResize.type
+                                easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
+                            }
                         }
 
                         MaterialSymbol {
@@ -341,9 +453,17 @@ Item {
                             color: {
                                 if (isPackage && entry.pkg?.installed)
                                     return Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
-                                return delegateBtn.focus
-                                    ? (Appearance.inirEverywhere ? Appearance.inir.colOnPrimary : Appearance.colors.colOnPrimary)
-                                    : Appearance.m3colors.m3onSurface
+                                return delegateBtn.isHighlighted
+                                    ? delegateBtn.selectedTextColor
+                                    : delegateBtn.normalTextColor
+                            }
+                            Behavior on color {
+                                enabled: Appearance.animationsEnabled
+                                ColorAnimation {
+                                    duration: Appearance.animation.elementMoveFast.duration
+                                    easing.type: Appearance.animation.elementMoveFast.type
+                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                }
                             }
                         }
                     }
@@ -359,15 +479,24 @@ Item {
                             visible: root.selectedCategory === "all" && root.query !== "" && isAction
                             text: entry?.category ?? ""
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
+                            color: delegateBtn.descriptionTextColor
                         }
 
                         StyledText {
                             Layout.fillWidth: true
                             text: entry?.name ?? ""
                             font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.m3colors.m3onSurface
+                            font.weight: delegateBtn.isHighlighted ? Font.DemiBold : Font.Medium
+                            color: delegateBtn.isHighlighted ? delegateBtn.selectedTextColor : delegateBtn.normalTextColor
                             elide: Text.ElideRight
+                            Behavior on color {
+                                enabled: Appearance.animationsEnabled
+                                ColorAnimation {
+                                    duration: Appearance.animation.elementMoveFast.duration
+                                    easing.type: Appearance.animation.elementMoveFast.type
+                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                }
+                            }
                         }
 
                         StyledText {
@@ -375,8 +504,9 @@ Item {
                             visible: text !== ""
                             text: entry?.description ?? ""
                             font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colSubtext
+                            color: delegateBtn.descriptionTextColor
                             elide: Text.ElideRight
+                            opacity: delegateBtn.isHighlighted ? 0.98 : 0.82
                         }
                     }
 
@@ -435,12 +565,21 @@ Item {
                     // Action hint on hover/focus
                     StyledText {
                         Layout.fillWidth: false
-                        visible: delegateBtn.hovered || delegateBtn.focus
+                        visible: delegateBtn.hovered || delegateBtn.isHighlighted
                         text: isAction
                             ? (entry?.action?.verb ?? Translation.tr("Run"))
                             : (root.isPackageRemove ? Translation.tr("Remove") : Translation.tr("Install"))
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colOnPrimaryContainer
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        color: delegateBtn.isHighlighted ? delegateBtn.selectedTextColor : delegateBtn.normalTextColor
+                        Behavior on color {
+                            enabled: Appearance.animationsEnabled
+                            ColorAnimation {
+                                duration: Appearance.animation.elementMoveFast.duration
+                                easing.type: Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                            }
+                        }
                     }
                 }
             }
@@ -493,8 +632,8 @@ Item {
         // ── Keyboard hints footer ──
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: 4
-            Layout.bottomMargin: 6
+            Layout.topMargin: 8
+            Layout.bottomMargin: 8
             Layout.leftMargin: 20
             Layout.rightMargin: 20
             spacing: 16
@@ -523,7 +662,7 @@ Item {
                             text: modelData.key
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.family: Appearance.font.family.monospace
-                            color: Appearance.m3colors.m3onSurface
+                            color: Appearance.colors.colOnLayer1
                         }
                     }
                     StyledText {

@@ -73,7 +73,7 @@ Scope {
                     const v = (ov && ov.scrimDim !== undefined) ? ov.scrimDim : 35
                     const clamped = Math.max(0, Math.min(100, v))
                     const a = clamped / 100
-                    return ColorUtils.transparentize(Appearance.m3colors.m3background, 1 - a)
+                    return ColorUtils.transparentize(Appearance.colors.colLayer0Base, 1 - a)
                 }
                 opacity: GlobalStates.overviewOpen ? 1 : 0
                 visible: opacity > 0.001
@@ -291,6 +291,13 @@ Scope {
                     id: searchWidget
                     anchors.horizontalCenter: parent.horizontalCenter
                     searchingText: root.searchingText
+                    availableHeight: Math.max(
+                        220,
+                        root.height
+                            - columnLayout.anchors.topMargin
+                            - columnLayout.anchors.bottomMargin
+                            - Appearance.sizes.elevationMargin * 2
+                    )
                     onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
                 }
 

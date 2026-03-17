@@ -55,14 +55,15 @@ Scope {
     // Pre-warm flag para evitar lag en primera apertura
     property bool _warmedUp: false
     // Slice geometry constants (scaled for better fit)
-    readonly property int skewSliceWidth: 120
-    readonly property int skewExpandedWidth: 800
-    readonly property int skewSliceHeight: 380
-    readonly property int skewOffset: 30
-    readonly property int skewSliceSpacing: -20
+    readonly property int skewSliceWidth: 135
+    readonly property int skewExpandedWidth: 924
+    readonly property int skewSliceHeight: 520
+    readonly property int skewOffset: 35
+    readonly property int skewSliceSpacing: -22
     readonly property int skewVisibleCount: 12
-    readonly property int skewCardWidth: 1100
+    readonly property int skewCardWidth: 1600
     readonly property int skewCardHeight: root.skewSliceHeight + 40
+    readonly property int skewPanelWidth: root.skewCardWidth
     property bool skewCardVisible: false
     
     readonly property int windowCount: itemSnapshot ? itemSnapshot.length : 0
@@ -429,10 +430,16 @@ Scope {
                     else
                         root.activateCurrent()
                     event.accepted = true
-                } else if (event.key === Qt.Key_Down || event.key === Qt.Key_J) {
+                } else if (event.key === Qt.Key_Tab) {
+                    if (event.modifiers & Qt.ShiftModifier)
+                        root.previousItem()
+                    else
+                        root.nextItem()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down || event.key === Qt.Key_J) {
                     root.nextItem()
                     event.accepted = true
-                } else if (event.key === Qt.Key_Up || event.key === Qt.Key_K) {
+                } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Up || event.key === Qt.Key_K) {
                     root.previousItem()
                     event.accepted = true
                 }
@@ -605,7 +612,7 @@ Scope {
                 flickDeceleration: 1500
                 maximumFlickVelocity: 3000
                 boundsBehavior: Flickable.StopAtBounds
-                cacheBuffer: root.skewExpandedWidth * 4
+                cacheBuffer: root.skewExpandedWidth * 2
                 visible: root.skewStyle && root.skewCardVisible
 
                 highlightFollowsCurrentItem: true
@@ -797,7 +804,7 @@ Scope {
                                 color: skewSlice.isCurrent ? Appearance.colors.colPrimary : Qt.rgba(Appearance.colors.colTertiary.r, Appearance.colors.colTertiary.g, Appearance.colors.colTertiary.b, 0.5)
                                 Behavior on iconSize { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
                                 Behavior on color { ColorAnimation { duration: 200 } }
-                                visible: !previewImage.visible && !skewSlice.modelData?.icon
+                                visible: !skewSlice.modelData?.icon
                             }
                             
                             IconImage {
@@ -807,8 +814,10 @@ Scope {
                                 width: skewSlice.isCurrent ? 96 : 48
                                 height: width
                                 source: skewSlice.modelData?.icon || ""
-                                visible: !previewImage.visible && skewSlice.modelData?.icon
+                                opacity: previewImage.visible ? 0.7 : 1.0
+                                visible: !!skewSlice.modelData?.icon
                                 Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+                                Behavior on opacity { NumberAnimation { duration: 200 } }
                             }
                         }
 
