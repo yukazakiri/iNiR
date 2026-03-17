@@ -23,6 +23,11 @@ Scope {
             "name": Translation.tr("Elements"),
             "component": "CheatsheetPeriodicTable.qml"
         },
+        {
+            "icon": "code",
+            "name": Translation.tr("Neovim"),
+            "component": "CheatsheetNeovim.qml"
+        },
     ]
 
     property bool cheatsheetOpen: false
