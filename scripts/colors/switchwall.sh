@@ -24,12 +24,29 @@ if ! command -v matugen &>/dev/null; then
     exit 1
 fi
 
+resolve_default_asset() {
+    local rel_path="$1"
+    local from_config="$CONFIG_DIR/defaults/$rel_path"
+    local from_repo="$SCRIPT_DIR/../../defaults/$rel_path"
+
+    if [[ -f "$from_config" ]]; then
+        echo "$from_config"
+        return
+    fi
+    if [[ -f "$from_repo" ]]; then
+        echo "$from_repo"
+        return
+    fi
+    echo ""
+}
+
 repair_matugen_colors_template() {
     local user_template="$MATUGEN_DIR/templates/colors.json"
-    local default_template="$CONFIG_DIR/defaults/matugen/templates/colors.json"
+    local default_template
+    default_template=$(resolve_default_asset "matugen/templates/colors.json")
 
     # If user template is missing, restore from project defaults.
-    if [[ ! -f "$user_template" && -f "$default_template" ]]; then
+    if [[ ! -f "$user_template" && -n "$default_template" && -f "$default_template" ]]; then
         mkdir -p "$MATUGEN_DIR/templates"
         cp "$default_template" "$user_template"
         return
@@ -38,18 +55,36 @@ repair_matugen_colors_template() {
     # Some broken installs ended up with commented tertiary lines in this template.
     # Matugen then writes invalid JSON (comments included), breaking shell theming.
     if [[ -f "$user_template" ]] && grep -qE '^\s*//\s*"tertiary"' "$user_template"; then
-        if [[ -f "$default_template" ]]; then
+        if [[ -n "$default_template" && -f "$default_template" ]]; then
             cp "$default_template" "$user_template"
             echo "[switchwall.sh] Repaired invalid matugen colors template from defaults"
         fi
     fi
 }
 
+ensure_matugen_config() {
+    local matugen_cfg="$MATUGEN_DIR/config.toml"
+    if [[ -f "$matugen_cfg" ]]; then
+        return
+    fi
+
+    local default_cfg
+    default_cfg=$(resolve_default_asset "matugen/config.toml")
+    if [[ -n "$default_cfg" && -f "$default_cfg" ]]; then
+        mkdir -p "$MATUGEN_DIR"
+        cp "$default_cfg" "$matugen_cfg"
+        echo "[switchwall.sh] Installed matugen config from defaults"
+    else
+        echo "[switchwall.sh] Warning: default matugen config not found; matugen may fail" >&2
+    fi
+}
+
 ensure_vicinae_template() {
     local user_template="$MATUGEN_DIR/templates/vicinae.toml"
-    local default_template="$CONFIG_DIR/defaults/matugen/templates/vicinae.toml"
+    local default_template
+    default_template=$(resolve_default_asset "matugen/templates/vicinae.toml")
 
-    if [[ ! -f "$user_template" && -f "$default_template" ]]; then
+    if [[ ! -f "$user_template" && -n "$default_template" && -f "$default_template" ]]; then
         mkdir -p "$MATUGEN_DIR/templates"
         cp "$default_template" "$user_template"
         echo "[switchwall.sh] Installed Vicinae matugen template"
@@ -143,6 +178,7 @@ handle_kde_material_you_colors() {
 
 pre_process() {
     local mode_flag="$1"
+    ensure_matugen_config
     repair_matugen_colors_template
     ensure_vicinae_template
     ensure_vicinae_config_block
@@ -727,7 +763,10 @@ switch() {
     fi
 
     # Use user's matugen config (installed to ~/.config/matugen/ during setup)
-    matugen --config "$MATUGEN_DIR/config.toml" "${matugen_args[@]}"
+    if ! matugen --config "$MATUGEN_DIR/config.toml" "${matugen_args[@]}"; then
+        echo "[switchwall.sh] Matugen failed; Vicinae theme will not generate" >&2
+        return
+    fi
     apply_vicinae_theme
     if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
         _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
