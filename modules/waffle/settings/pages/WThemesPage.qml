@@ -563,7 +563,7 @@ WSettingsPage {
         }
 
         WSettingsSwitch {
-            label: Translation.tr("Vesktop/Discord theming")
+            label: Translation.tr("Discord Clients (Vesktop, Legcord, Equicord)")
             icon: "people"
             description: Translation.tr("Generate Discord theme from wallpaper colors")
             checked: Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true

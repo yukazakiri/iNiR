@@ -56,6 +56,10 @@ def _resolve_output_files(env_var: str, default_path: Path) -> list[Path]:
     candidates = [
         Path(f"~/.config/vesktop/themes/{basename}").expanduser(),
         Path(f"~/.config/Vesktop/themes/{basename}").expanduser(),
+        Path(f"~/.config/legcord/themes/{basename}").expanduser(),
+        Path(f"~/.config/Legcord/themes/{basename}").expanduser(),
+        Path(f"~/.config/equicord/themes/{basename}").expanduser(),
+        Path(f"~/.config/Equicord/themes/{basename}").expanduser(),
     ]
 
     existing_dirs = [p for p in candidates if p.parent.exists()]
@@ -64,8 +68,9 @@ def _resolve_output_files(env_var: str, default_path: Path) -> list[Path]:
 
     return [default_path]
 
+
 # Template for the full theme file
-THEME_TEMPLATE = '''/**
+THEME_TEMPLATE = """/**
  * @name iNiR Material
  * @description Material Design Discord theme with Material You colors.
  * @author refact0r (system24 base), iNiR (Material adaptation)
@@ -126,9 +131,9 @@ body {{
 {palette_css}
 
 /* Material Design System */
-'''
+"""
 
-MIDNIGHT_THEME_TEMPLATE = '''/**
+MIDNIGHT_THEME_TEMPLATE = """/**
  * @name ii-midnight
  * @description dank-discord / midnight style theme using iNiR Material You colors.
  * @author iNiR (Material palette injection)
@@ -160,7 +165,7 @@ MIDNIGHT_THEME_TEMPLATE = '''/**
     --border-light: var(--border);
     --button-border: var(--border);
 }}
-'''
+"""
 
 
 def _ensure_parent(path: Path) -> None:
@@ -180,7 +185,8 @@ def _load_colors() -> Dict[str, str]:
 
 def _hex_to_rgb(color: str) -> Tuple[int, int, int]:
     color = color.lstrip("#")
-    return tuple(int(color[i : i + 2], 16) for i in range(0, 6, 2))
+    r, g, b = (int(color[i : i + 2], 16) for i in range(0, 6, 2))
+    return r, g, b
 
 
 def _rgb_to_hex(rgb) -> str:
@@ -306,7 +312,7 @@ def _build_palette(colors: Dict[str, str]) -> Dict[str, str]:
 
     # === BASE COLOR LADDERS ===
     # These are used throughout system24 for various UI elements
-    
+
     def make_ladder(base: str) -> list:
         """Create 5-step color ladder from base color."""
         return [
@@ -371,7 +377,7 @@ def _write_palette(palette: Dict[str, str]) -> None:
     system24_outputs = _resolve_output_files("SYSTEM24_PALETTE_CSS", OUTPUT_FILE)
     midnight_outputs = _resolve_output_files("MIDNIGHT_DMS_CSS", MIDNIGHT_OUTPUT_FILE)
 
-    for out in (system24_outputs + midnight_outputs):
+    for out in system24_outputs + midnight_outputs:
         _ensure_parent(out)
 
     system24_content = THEME_TEMPLATE.format(palette_css=palette_css)

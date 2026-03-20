@@ -419,6 +419,10 @@ fi
 if [[ -d "dots/.config/vesktop/themes" ]]; then
   mkdir -p "${XDG_CONFIG_HOME}/vesktop/themes"
   mkdir -p "${XDG_CONFIG_HOME}/Vesktop/themes"
+  mkdir -p "${XDG_CONFIG_HOME}/legcord/themes"
+  mkdir -p "${XDG_CONFIG_HOME}/Legcord/themes"
+  mkdir -p "${XDG_CONFIG_HOME}/equicord/themes"
+  mkdir -p "${XDG_CONFIG_HOME}/Equicord/themes"
 
   # Migrate: Remove old theme files from previous versions
   OLD_VESKTOP_THEMES=(
@@ -438,10 +442,26 @@ if [[ -d "dots/.config/vesktop/themes" ]]; then
       rm -f "${XDG_CONFIG_HOME}/Vesktop/themes/${old_theme}"
       log_success "Removed old Vesktop theme: ${old_theme} (Vesktop/)"
     fi
+    if [[ -f "${XDG_CONFIG_HOME}/legcord/themes/${old_theme}" ]]; then
+      rm -f "${XDG_CONFIG_HOME}/legcord/themes/${old_theme}"
+    fi
+    if [[ -f "${XDG_CONFIG_HOME}/Legcord/themes/${old_theme}" ]]; then
+      rm -f "${XDG_CONFIG_HOME}/Legcord/themes/${old_theme}"
+    fi
+    if [[ -f "${XDG_CONFIG_HOME}/equicord/themes/${old_theme}" ]]; then
+      rm -f "${XDG_CONFIG_HOME}/equicord/themes/${old_theme}"
+    fi
+    if [[ -f "${XDG_CONFIG_HOME}/Equicord/themes/${old_theme}" ]]; then
+      rm -f "${XDG_CONFIG_HOME}/Equicord/themes/${old_theme}"
+    fi
   done
 
   install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/vesktop/themes"
   install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Vesktop/themes"
+  install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/legcord/themes"
+  install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Legcord/themes"
+  install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/equicord/themes"
+  install_dir "dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Equicord/themes"
   log_success "Vesktop Material You theme installed"
 
   # Best-effort verification (helps diagnose "update didn't apply" reports)

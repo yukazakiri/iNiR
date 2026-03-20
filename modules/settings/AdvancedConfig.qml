@@ -59,14 +59,14 @@ ContentPage {
             }
             SettingsSwitch {
                 buttonIcon: "chat"
-                text: Translation.tr("Vesktop/Discord")
+                text: Translation.tr("Discord Clients (Vesktop, Legcord, Equicord)")
                 checked: Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true
                 onCheckedChanged: {
                     Config.setNestedValue("appearance.wallpaperTheming.enableVesktop", checked)
                     colorRegenTimer.restart()
                 }
                 StyledToolTip {
-                    text: Translation.tr("Generate Discord theme from wallpaper colors (requires Vesktop with system24 theme)")
+                    text: Translation.tr("Generate Discord theme from wallpaper colors (requires system24 theme installed)")
                 }
             }
             SettingsSwitch {

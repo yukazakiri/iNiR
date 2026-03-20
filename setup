@@ -792,13 +792,17 @@ MATUGEN_SDDM_EOF
         fi
     fi
 
-    # Update Vesktop themes (themes live outside quickshell/ii tree)
+    # Update Vesktop/Legcord/Equicord themes (themes live outside quickshell/ii tree)
     if [[ -d "${REPO_ROOT}/dots/.config/vesktop/themes" ]]; then
         echo ""
-        tui_info "Updating Vesktop themes..."
+        tui_info "Updating Discord client themes..."
 
         mkdir -p "${XDG_CONFIG_HOME}/vesktop/themes"
         mkdir -p "${XDG_CONFIG_HOME}/Vesktop/themes"
+        mkdir -p "${XDG_CONFIG_HOME}/legcord/themes"
+        mkdir -p "${XDG_CONFIG_HOME}/Legcord/themes"
+        mkdir -p "${XDG_CONFIG_HOME}/equicord/themes"
+        mkdir -p "${XDG_CONFIG_HOME}/Equicord/themes"
 
         OLD_VESKTOP_THEMES=(
             "midnight-ii.theme.css"
@@ -811,12 +815,20 @@ MATUGEN_SDDM_EOF
         for old_theme in "${OLD_VESKTOP_THEMES[@]}"; do
             [[ -f "${XDG_CONFIG_HOME}/vesktop/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/vesktop/themes/${old_theme}"
             [[ -f "${XDG_CONFIG_HOME}/Vesktop/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/Vesktop/themes/${old_theme}"
+            [[ -f "${XDG_CONFIG_HOME}/legcord/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/legcord/themes/${old_theme}"
+            [[ -f "${XDG_CONFIG_HOME}/Legcord/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/Legcord/themes/${old_theme}"
+            [[ -f "${XDG_CONFIG_HOME}/equicord/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/equicord/themes/${old_theme}"
+            [[ -f "${XDG_CONFIG_HOME}/Equicord/themes/${old_theme}" ]] && rm -f "${XDG_CONFIG_HOME}/Equicord/themes/${old_theme}"
         done
 
         install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/vesktop/themes"
         install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Vesktop/themes"
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/legcord/themes"
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Legcord/themes"
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/equicord/themes"
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_CONFIG_HOME}/Equicord/themes"
 
-        tui_success "Vesktop themes updated"
+        tui_success "Discord client themes updated"
     fi
 
     # Migrations

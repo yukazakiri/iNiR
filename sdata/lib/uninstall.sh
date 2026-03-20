@@ -25,6 +25,14 @@ declare -A INIR_ONLY_PATHS=(
     ["${XDG_CONFIG_HOME}/vesktop/themes/ii-colors.css"]="iNiR Vesktop colors"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/system24.theme.css"]="iNiR Vesktop theme (alt)"
     ["${XDG_CONFIG_HOME}/Vesktop/themes/ii-colors.css"]="iNiR Vesktop colors (alt)"
+    ["${XDG_CONFIG_HOME}/legcord/themes/system24.theme.css"]="iNiR Legcord theme"
+    ["${XDG_CONFIG_HOME}/legcord/themes/ii-colors.css"]="iNiR Legcord colors"
+    ["${XDG_CONFIG_HOME}/Legcord/themes/system24.theme.css"]="iNiR Legcord theme (alt)"
+    ["${XDG_CONFIG_HOME}/Legcord/themes/ii-colors.css"]="iNiR Legcord colors (alt)"
+    ["${XDG_CONFIG_HOME}/equicord/themes/system24.theme.css"]="iNiR Equicord theme"
+    ["${XDG_CONFIG_HOME}/equicord/themes/ii-colors.css"]="iNiR Equicord colors"
+    ["${XDG_CONFIG_HOME}/Equicord/themes/system24.theme.css"]="iNiR Equicord theme (alt)"
+    ["${XDG_CONFIG_HOME}/Equicord/themes/ii-colors.css"]="iNiR Equicord colors (alt)"
     ["${HOME}/.local/bin/sync-pixel-sddm.py"]="iNiR SDDM theme sync helper"
 )
 
