@@ -5,6 +5,24 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-03-20
+
+### Added
+- **Per-monitor workspaces (Niri)**: Each bar can show workspaces for its own monitor (`bar.workspaces.perMonitor`).
+- **Waffle quick actions switches**: Individual toggles for Files/Terminal/Settings/Wallpaper/Screenshot/Screen Record/Session in the Widgets panel.
+
+### Changed
+- **Dark mode toggles**: Routed through `MaterialThemeLoader` to ensure a reliable `colors.json` reload after switching.
+- **Style selection**: No longer forces `appearance.transparency.enable` when selecting styles.
+
+### Fixed
+- **Cloudflare WARP toggle**: Periodic status polling to stay in sync.
+- **EasyEffects sink control**: Volume/mute resolves to the physical sink when EasyEffects is the default sink.
+- **Wallpaper transitions**: New wallpaper changes fast-forward an in-progress transition; background widget placement is debounced.
+- **VS Code Material Code theming**: Respects `appearance.wallpaperTheming.enableVSCode`.
+- **Waffle user avatar**: More reliable fallback loading.
+- **Waffle settings UI**: Improved loading indicator and multiple polish fixes.
+
 ## [2.13.2] - 2026-03-13
 
 ### Added
