@@ -798,7 +798,7 @@ Scope {
                                 text: skewSlice.modelData?.icon ? "" : "?"
                                 property int iconSize: skewSlice.isCurrent ? 96 : 48
                                 font.pixelSize: iconSize
-                                font.family: Appearance.font.family.mono
+                                font.family: Appearance.font.family.monospace
                                 opacity: previewImage.visible ? 0.7 : 1.0
                                 Behavior on opacity { NumberAnimation { duration: 200 } }
                                 color: skewSlice.isCurrent ? Appearance.colors.colPrimary : Qt.rgba(Appearance.colors.colTertiary.r, Appearance.colors.colTertiary.g, Appearance.colors.colTertiary.b, 0.5)

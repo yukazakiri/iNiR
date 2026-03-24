@@ -1021,8 +1021,7 @@
         "showItemId": false,
         "invertPinnedItems": true,
         "pinnedItems": [],
-        "filterPassive": true,
-        "extraProblematicApps": []
+        "filterPassive": true
     },
     "shellUpdates": {
         "enabled": true,
@@ -1065,7 +1064,6 @@
             "useMostRecentFirst": true,
             "thumbnailWidth": 280,
             "thumbnailHeight": 180,
-            "listWidth": 500,
             "scrimOpacity": 0.4,
             "showOverviewWhileSwitching": false,
             "monochromeIcons": false,
@@ -1155,9 +1153,6 @@
                     "digital": {
                         "animateChange": true
                     }
-                },
-                "weather": {
-                    "enable": false
                 }
             }
         },

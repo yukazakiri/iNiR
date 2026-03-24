@@ -445,6 +445,7 @@ Singleton {
                 property string volumeMixer: `~/.config/quickshell/inir/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
                 property string discord: "discord" // Shell command to launch Discord client
                 property string update: "kitty -e sudo pacman -Syu" // Command to run system updates
+                property string manageUser: "kcmshell6 kcm_users" // User account management
             }
 
             property JsonObject background: JsonObject {

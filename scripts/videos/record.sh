@@ -315,7 +315,7 @@ start_recording_command() {
 }
 
 # Try to get save path from config, fallback to XDG Videos
-CONFIG_FILE="$HOME/.config/illogical-impulse/config.json"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
 SAVE_PATH=""
 QUALITY_PRESET="balanced"
 VIDEO_CODEC=""
