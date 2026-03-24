@@ -54,8 +54,8 @@ check_dependencies() {
         "fuzzel:fuzzel"
         "awww:awww"
         "hyprpicker:hyprpicker"
-        "songrec:SongRec"
-        "trans:translate-shell"
+        "playerctl:playerctl"
+        "notify-send:libnotify"
     )
     
     # Optional but recommended
@@ -69,6 +69,8 @@ check_dependencies() {
         "brightnessctl:brightnessctl"
         "slurp:slurp"
         "wf-recorder:wf-recorder"
+        "ffmpeg:ffmpeg"
+        "swappy:swappy"
         "tesseract:tesseract"
         "blueman-manager:Blueman"
         "kwriteconfig6:KConfig"
@@ -79,7 +81,8 @@ check_dependencies() {
         "swaylock:swaylock"
         "swayidle:swayidle"
         "wlsunset:wlsunset"
-        "dunstify:dunst"
+        "songrec:SongRec"
+        "trans:translate-shell"
     )
     
     # Check required commands
@@ -269,6 +272,198 @@ check_python_packages() {
     else
         doctor_fail "uv not installed, cannot check Python packages"
     fi
+}
+
+check_fonts() {
+    # Font families required by the shell at runtime.
+    # Derived from Appearance.qml font.family.* and Looks.qml font.family.*.
+    #
+    # Format: "fc-list query pattern : display name : criticality"
+    #   criticality: critical  = shell UI is broken without it (icons unreadable)
+    #                important = significant visual degradation
+    #                optional  = nice-to-have, fallback acceptable
+
+    local critical_fonts=(
+        "Material Symbols Rounded:Material Symbols Rounded:critical"
+        "JetBrainsMono Nerd:JetBrainsMono Nerd Font:critical"
+    )
+
+    local important_fonts=(
+        "Roboto Flex:Roboto Flex:important"
+        "Rubik:Rubik:important"
+        "Space Grotesk:Space Grotesk:important"
+        "Readex Pro:Readex Pro:important"
+    )
+
+    local optional_fonts=(
+        "Material Symbols Outlined:Material Symbols Outlined:optional"
+        "Gabarito:Gabarito:optional"
+        "Geist:Geist:optional"
+        "Oxanium:Oxanium:optional"
+        "Noto Color Emoji:Noto Color Emoji:optional"
+    )
+
+    if ! command -v fc-list &>/dev/null; then
+        doctor_fail "fontconfig not installed (cannot verify fonts)"
+        return 1
+    fi
+
+    local fc_cache
+    fc_cache="$(fc-list : family 2>/dev/null)"
+
+    local missing_critical=()
+    local missing_important=()
+    local missing_optional=()
+
+    _font_installed() {
+        echo "$fc_cache" | grep -qi "$1"
+    }
+
+    for entry in "${critical_fonts[@]}"; do
+        local pattern="${entry%%:*}"
+        local rest="${entry#*:}"
+        local display="${rest%%:*}"
+        _font_installed "$pattern" || missing_critical+=("$display")
+    done
+
+    for entry in "${important_fonts[@]}"; do
+        local pattern="${entry%%:*}"
+        local rest="${entry#*:}"
+        local display="${rest%%:*}"
+        _font_installed "$pattern" || missing_important+=("$display")
+    done
+
+    for entry in "${optional_fonts[@]}"; do
+        local pattern="${entry%%:*}"
+        local rest="${entry#*:}"
+        local display="${rest%%:*}"
+        _font_installed "$pattern" || missing_optional+=("$display")
+    done
+
+    local total_missing=$(( ${#missing_critical[@]} + ${#missing_important[@]} ))
+
+    if [[ $total_missing -eq 0 && ${#missing_optional[@]} -eq 0 ]]; then
+        doctor_pass "All fonts installed"
+        return 0
+    fi
+
+    if [[ ${#missing_optional[@]} -gt 0 && $total_missing -eq 0 ]]; then
+        tui_warn "Optional fonts missing: ${missing_optional[*]}"
+        doctor_pass "Required fonts OK"
+        return 0
+    fi
+
+    # Try to auto-fix before reporting failures
+    local can_fix=false
+    if declare -F install-material-symbols-rounded &>/dev/null; then
+        can_fix=true
+    fi
+
+    if $can_fix && [[ $total_missing -gt 0 ]]; then
+        local fixed=0
+
+        for font in "${missing_critical[@]}" "${missing_important[@]}"; do
+            case "$font" in
+                "Material Symbols Rounded")
+                    install-material-symbols-rounded &>/dev/null && ((fixed++)) || true ;;
+                "Material Symbols Outlined")
+                    install-material-symbols-outlined &>/dev/null && ((fixed++)) || true ;;
+                "JetBrainsMono Nerd Font")
+                    install-jetbrains-mono-nerd &>/dev/null && ((fixed++)) || true ;;
+                "Roboto Flex")
+                    _try_install_font_package "ttf-roboto-flex" "Roboto Flex" && ((fixed++)) || true ;;
+                "Rubik")
+                    install-rubik-font &>/dev/null && ((fixed++)) || true ;;
+                "Space Grotesk")
+                    install-space-grotesk &>/dev/null && ((fixed++)) || true ;;
+                "Readex Pro")
+                    _try_install_font_package "ttf-readex-pro" "Readex Pro" && ((fixed++)) || true ;;
+            esac
+        done
+
+        if [[ $fixed -gt 0 ]]; then
+            fc-cache -f ~/.local/share/fonts 2>/dev/null || true
+            doctor_fix "Installed $fixed font(s)"
+        fi
+    fi
+
+    # Re-check all fonts after fix attempt
+    fc_cache="$(fc-list : family 2>/dev/null)"
+    local still_critical=()
+    local still_important=()
+
+    for entry in "${critical_fonts[@]}"; do
+        local pattern="${entry%%:*}"
+        local rest="${entry#*:}"
+        local display="${rest%%:*}"
+        _font_installed "$pattern" || still_critical+=("$display")
+    done
+
+    for entry in "${important_fonts[@]}"; do
+        local pattern="${entry%%:*}"
+        local rest="${entry#*:}"
+        local display="${rest%%:*}"
+        _font_installed "$pattern" || still_important+=("$display")
+    done
+
+    if [[ ${#still_critical[@]} -gt 0 ]]; then
+        doctor_fail "CRITICAL fonts missing: ${still_critical[*]}"
+        echo -e "    ${STY_FAINT}Shell icons will be broken without these${STY_RST}"
+    fi
+
+    if [[ ${#still_important[@]} -gt 0 ]]; then
+        doctor_fail "Important fonts missing: ${still_important[*]}"
+        echo -e "    ${STY_FAINT}Install manually or run: ./setup install${STY_RST}"
+    fi
+
+    if [[ ${#still_critical[@]} -eq 0 && ${#still_important[@]} -eq 0 ]]; then
+        doctor_pass "All required fonts OK"
+    fi
+
+    if [[ ${#missing_optional[@]} -gt 0 ]]; then
+        tui_warn "Optional fonts missing: ${missing_optional[*]}"
+    fi
+}
+
+_try_install_font_package() {
+    local pkg_name="$1"
+    local display_name="$2"
+
+    if [[ "${OS_GROUP_ID:-unknown}" == "arch" ]]; then
+        local helper=""
+        command -v yay &>/dev/null && helper="yay"
+        command -v paru &>/dev/null && helper="paru"
+        if [[ -n "$helper" ]]; then
+            $helper -S --noconfirm --needed "$pkg_name" &>/dev/null && return 0
+        fi
+    fi
+
+    local font_dir="${HOME}/.local/share/fonts"
+    mkdir -p "$font_dir"
+
+    case "$display_name" in
+        "Roboto Flex")
+            local tmp="/tmp/roboto-flex-$$"
+            mkdir -p "$tmp"
+            if curl -fsSL -o "$tmp/roboto-flex.zip" \
+                "https://github.com/googlefonts/roboto-flex/releases/download/3.200/roboto-flex-fonts.zip" 2>/dev/null; then
+                unzip -o -j "$tmp/roboto-flex.zip" "roboto-flex-fonts/fonts/variable/*.ttf" -d "$font_dir" >/dev/null 2>&1
+                rm -rf "$tmp"
+                return 0
+            fi
+            rm -rf "$tmp"
+            ;;
+        "Readex Pro")
+            curl -fsSL -o "$font_dir/ReadexPro.ttf" \
+                "https://github.com/google/fonts/raw/main/ofl/readexpro/ReadexPro%5BHEXP%2Cwght%5D.ttf" 2>/dev/null && return 0
+            ;;
+        "Gabarito")
+            curl -fsSL -o "$font_dir/Gabarito.ttf" \
+                "https://github.com/google/fonts/raw/main/ofl/gabarito/Gabarito%5Bwght%5D.ttf" 2>/dev/null && return 0
+            ;;
+    esac
+
+    return 1
 }
 
 check_niri_running() {
@@ -611,7 +806,7 @@ check_niri_config() {
 ###############################################################################
 
 run_doctor_with_fixes() {
-    local total_steps=16
+    local total_steps=17
     doctor_passed=0
     doctor_failed=0
     doctor_fixed=0
@@ -637,49 +832,52 @@ run_doctor_with_fixes() {
         esac
     fi
     
-    tui_step 2 $total_steps "Checking critical files"
+    tui_step 2 $total_steps "Checking fonts"
+    check_fonts
+    
+    tui_step 3 $total_steps "Checking critical files"
     check_critical_files
     
-    tui_step 3 $total_steps "Checking script permissions"
+    tui_step 4 $total_steps "Checking script permissions"
     check_script_permissions
     
-    tui_step 4 $total_steps "Checking user config"
+    tui_step 5 $total_steps "Checking user config"
     check_user_config
     
-    tui_step 5 $total_steps "Checking state directories"
+    tui_step 6 $total_steps "Checking state directories"
     check_state_directories
     
-    tui_step 6 $total_steps "Checking version tracking"
+    tui_step 7 $total_steps "Checking version tracking"
     check_version_tracking
     
-    tui_step 7 $total_steps "Checking file manifest"
+    tui_step 8 $total_steps "Checking file manifest"
     check_manifest
     
-    tui_step 8 $total_steps "Checking Niri compositor"
+    tui_step 9 $total_steps "Checking Niri compositor"
     check_niri_running
     
-    tui_step 9 $total_steps "Checking Python packages"
+    tui_step 10 $total_steps "Checking Python packages"
     check_python_packages
     
-    tui_step 10 $total_steps "Checking Quickshell"
+    tui_step 11 $total_steps "Checking Quickshell"
     check_quickshell_loads
     
-    tui_step 11 $total_steps "Checking theme colors"
+    tui_step 12 $total_steps "Checking theme colors"
     check_matugen_colors
     
-    tui_step 12 $total_steps "Checking Qt theming"
+    tui_step 13 $total_steps "Checking Qt theming"
     check_qt_theming
     
-    tui_step 13 $total_steps "Checking conflicting services"
+    tui_step 14 $total_steps "Checking conflicting services"
     check_conflicting_services
     
-    tui_step 14 $total_steps "Checking wallpaper health"
+    tui_step 15 $total_steps "Checking wallpaper health"
     check_wallpaper_health
     
-    tui_step 15 $total_steps "Checking environment variables"
+    tui_step 16 $total_steps "Checking environment variables"
     check_environment_vars
     
-    tui_step 16 $total_steps "Checking Niri config"
+    tui_step 17 $total_steps "Checking Niri config"
     check_niri_config
     
     echo ""
