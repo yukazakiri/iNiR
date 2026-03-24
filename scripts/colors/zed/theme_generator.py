@@ -10,6 +10,27 @@ import re
 import sys
 from pathlib import Path
 
+# --- GLOBAL CONFIGURATION ---
+# If True, uses the standard vivid syntax colors below.
+# If False, falls back to using the terminal colors from material_colors.scss
+USE_DEFAULT_VIVID_SYNTAX = True
+
+# The percentage of the theme's primary color to blend into the syntax colors (0.0 to 1.0)
+# Default is 0.30 (30% blend)
+SYNTAX_MIX_RATIO = 0.30
+
+# Base vibrant syntax colors (used if USE_DEFAULT_VIVID_SYNTAX is True)
+DEFAULT_SYNTAX_COLORS = {
+    "red": "#f7768e",
+    "green": "#9ece6a",
+    "yellow": "#e0af68",
+    "blue": "#7aa2f7",
+    "magenta": "#bb9af7",
+    "cyan": "#7dcfff",
+}
+# ---------------------------
+
+
 
 def generate_zed_config(colors, scss_path, output_path):
     """Generate Zed editor theme from Material You colors and SCSS terminal colors."""
@@ -470,23 +491,29 @@ def generate_zed_config(colors, scss_path, output_path):
         def darken(color, factor=0.85):
             return adjust_lightness(color, factor)
 
-        # Use terminal colors for guaranteed hue variance on syntax tokens
-        term1 = term_colors.get("term1", error)
-        term2 = term_colors.get("term2", tertiary)
-        term3 = term_colors.get("term3", tertiary)
-        term4 = term_colors.get("term4", primary)
-        term5 = term_colors.get("term5", secondary)
-        term6 = term_colors.get("term6", secondary)
+        if USE_DEFAULT_VIVID_SYNTAX:
+            base_red = DEFAULT_SYNTAX_COLORS["red"]
+            base_green = DEFAULT_SYNTAX_COLORS["green"]
+            base_yellow = DEFAULT_SYNTAX_COLORS["yellow"]
+            base_blue = DEFAULT_SYNTAX_COLORS["blue"]
+            base_magenta = DEFAULT_SYNTAX_COLORS["magenta"]
+            base_cyan = DEFAULT_SYNTAX_COLORS["cyan"]
+        else:
+            base_red = term_colors.get("term1", error)
+            base_green = term_colors.get("term2", tertiary)
+            base_yellow = term_colors.get("term3", tertiary)
+            base_blue = term_colors.get("term4", primary)
+            base_magenta = term_colors.get("term5", secondary)
+            base_cyan = term_colors.get("term6", secondary)
 
         # Force a strong saturation bump for syntax so it's always readable
         # Mix a percentage of the theme's primary color into the vibrant syntax colors
-        mix_ratio = 0.40
-        syn_red = mix_colors(saturate(term1, 2.0), primary, mix_ratio)
-        syn_green = mix_colors(saturate(term2, 2.0), primary, mix_ratio)
-        syn_yellow = mix_colors(saturate(term3, 2.0), primary, mix_ratio)
-        syn_blue = mix_colors(saturate(term4, 2.0), primary, mix_ratio)
-        syn_magenta = mix_colors(saturate(term5, 2.0), primary, mix_ratio)
-        syn_cyan = mix_colors(saturate(term6, 2.0), primary, mix_ratio)
+        syn_red = mix_colors(saturate(base_red, 2.0), primary, SYNTAX_MIX_RATIO)
+        syn_green = mix_colors(saturate(base_green, 2.0), primary, SYNTAX_MIX_RATIO)
+        syn_yellow = mix_colors(saturate(base_yellow, 2.0), primary, SYNTAX_MIX_RATIO)
+        syn_blue = mix_colors(saturate(base_blue, 2.0), primary, SYNTAX_MIX_RATIO)
+        syn_magenta = mix_colors(saturate(base_magenta, 2.0), primary, SYNTAX_MIX_RATIO)
+        syn_cyan = mix_colors(saturate(base_cyan, 2.0), primary, SYNTAX_MIX_RATIO)
 
         theme["syntax"] = {
             "attribute": {
@@ -921,23 +948,29 @@ def generate_zed_config(colors, scss_path, output_path):
             for color in player_colors
         ]
 
-        # Use terminal colors for guaranteed hue variance on syntax tokens
-        term1 = term_colors.get("term1", error)
-        term2 = term_colors.get("term2", tertiary)
-        term3 = term_colors.get("term3", tertiary)
-        term4 = term_colors.get("term4", primary)
-        term5 = term_colors.get("term5", secondary)
-        term6 = term_colors.get("term6", secondary)
+        if USE_DEFAULT_VIVID_SYNTAX:
+            base_red = DEFAULT_SYNTAX_COLORS["red"]
+            base_green = DEFAULT_SYNTAX_COLORS["green"]
+            base_yellow = DEFAULT_SYNTAX_COLORS["yellow"]
+            base_blue = DEFAULT_SYNTAX_COLORS["blue"]
+            base_magenta = DEFAULT_SYNTAX_COLORS["magenta"]
+            base_cyan = DEFAULT_SYNTAX_COLORS["cyan"]
+        else:
+            base_red = term_colors.get("term1", error)
+            base_green = term_colors.get("term2", tertiary)
+            base_yellow = term_colors.get("term3", tertiary)
+            base_blue = term_colors.get("term4", primary)
+            base_magenta = term_colors.get("term5", secondary)
+            base_cyan = term_colors.get("term6", secondary)
 
         # Force a strong saturation bump and slightly darken for light theme legibility
         # Mix a percentage of the theme's primary color into the vibrant syntax colors
-        mix_ratio = 0.40
-        syn_red = darken(mix_colors(saturate(term1, 2.0), primary, mix_ratio), 0.8)
-        syn_green = darken(mix_colors(saturate(term2, 2.0), primary, mix_ratio), 0.8)
-        syn_yellow = darken(mix_colors(saturate(term3, 2.0), primary, mix_ratio), 0.8)
-        syn_blue = darken(mix_colors(saturate(term4, 2.0), primary, mix_ratio), 0.8)
-        syn_magenta = darken(mix_colors(saturate(term5, 2.0), primary, mix_ratio), 0.8)
-        syn_cyan = darken(mix_colors(saturate(term6, 2.0), primary, mix_ratio), 0.8)
+        syn_red = darken(mix_colors(saturate(base_red, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
+        syn_green = darken(mix_colors(saturate(base_green, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
+        syn_yellow = darken(mix_colors(saturate(base_yellow, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
+        syn_blue = darken(mix_colors(saturate(base_blue, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
+        syn_magenta = darken(mix_colors(saturate(base_magenta, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
+        syn_cyan = darken(mix_colors(saturate(base_cyan, 2.0), primary, SYNTAX_MIX_RATIO), 0.8)
 
         light_theme["syntax"] = {
             "attribute": {
