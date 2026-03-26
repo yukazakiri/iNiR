@@ -5,6 +5,29 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - 2026-03-26
+
+### Added
+- **AUR-ready Arch packaging**: Complete PKGBUILD ecosystem (`inir-shell-git`, `inir-shell`, `inir-meta`) with 51 dependencies and 37 optional dependencies, `.SRCINFO` generation, and AUR publish workflow. Installs runtime to `/usr/share/quickshell/inir/` with package-managed metadata.
+- **Compositor/Niri settings page**: New settings page with scrollable tiling presets, gaps, window rules, decoration, and animation controls.
+- **Target-driven palette generation**: Theming pipeline supports target-driven Material You palette extraction for more precise color matching.
+- **Font verification in doctor**: `setup doctor` now checks for critical fonts (Material Symbols, Roboto Flex, JetBrains Mono NF, Oxanium) and offers automatic installation.
+- **Centralized app command execution**: App launcher routes all launch commands through a unified execution path with compositor-aware dispatching.
+- **Expanded Niri controls in settings**: Tools surface split with additional Niri-specific compositor controls.
+- **Qt/Quickshell ABI mismatch detection**: Three-layer detection (startup check, restart guard, doctor probe) prevents crashes from Qt↔Quickshell version incompatibility.
+
+### Changed
+- **Hardened shell transitions**: Improved family transition animation stability and runtime robustness.
+- **Hardened doctor/metadata fallback**: Doctor diagnostics and runtime metadata discovery use safer fallback paths and handle missing metadata gracefully.
+- **Restart loop prevention**: Launcher detects rapid crash loops and stops respawning after a configurable threshold instead of spinning indefinitely.
+- **Repository hygiene**: AI-driven guidance documents and module architecture docs removed from version tracking; gitignore updated for agent artifacts.
+
+### Fixed
+- **Close-window double-close race**: `Mod+Q` no longer fires duplicate close commands on Niri.
+- **Font token alignment**: Corrected font token references and config schema synchronization across Appearance and settings surfaces.
+- **XDG path safety**: Hardened XDG path construction in distribution and setup scripts.
+- **Dead code cleanup**: Removed unused code paths and stale references found during comprehensive audit.
+
 ## [2.15.0] - 2026-03-23
 
 ### Added
