@@ -2,6 +2,14 @@
 import argparse
 import math
 import json
+import os
+import re
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    tomllib = None
 from PIL import Image
 from materialyoucolor.quantize import QuantizeCelebi
 from materialyoucolor.score.score import Score
@@ -115,6 +123,18 @@ parser.add_argument(
 parser.add_argument(
     "--meta-output", type=str, default=None, help="file path to write theme-meta.json"
 )
+parser.add_argument(
+    "--render-templates",
+    type=str,
+    default=None,
+    help="directory containing templates/ and templates.json (renders GTK/fuzzel/etc.)",
+)
+parser.add_argument(
+    "--color-strength",
+    type=float,
+    default=1.0,
+    help="multiplier for wallpaper-derived accent chroma (1.0 = default)",
+)
 args = parser.parse_args()
 
 rgba_to_hex = lambda rgba: "#{:02X}{:02X}{:02X}".format(rgba[0], rgba[1], rgba[2])
@@ -160,6 +180,25 @@ def boost_chroma_tone(argb: int, chroma: float = 1, tone: float = 1) -> int:
     return Hct.from_hct(hct.hue, hct.chroma * chroma, hct.tone * tone).to_int()
 
 
+def ensure_min_chroma(argb: int, min_chroma: float = 40) -> int:
+    """Ensure a color has minimum chroma for visual distinctiveness."""
+    hct = Hct.from_int(argb)
+    if hct.chroma < min_chroma:
+        return Hct.from_hct(hct.hue, min_chroma, hct.tone).to_int()
+    return argb
+
+
+def scale_chroma(argb: int, factor: float, maximum: float | None = None) -> int:
+    """Scale chroma while preserving hue/tone for stronger or calmer accent colors."""
+    if abs(factor - 1.0) < 1e-6:
+        return argb
+    hct = Hct.from_int(argb)
+    new_chroma = max(0.0, hct.chroma * factor)
+    if maximum is not None:
+        new_chroma = min(maximum, new_chroma)
+    return Hct.from_hct(hct.hue, new_chroma, hct.tone).to_int()
+
+
 darkmode = args.mode == "dark"
 transparent = args.transparency == "transparent"
 
@@ -177,6 +216,7 @@ if args.path is not None:
         image = image.resize((wsize_new, hsize_new), Image.Resampling.BICUBIC)
     colors = QuantizeCelebi(list(image.getdata()), 128)
     argb = Score.score(colors)[0]
+    argb = scale_chroma(argb, args.color_strength, 96)
 
     if args.cache is not None:
         with open(args.cache, "w") as file:
@@ -187,6 +227,7 @@ if args.path is not None:
             args.scheme = "neutral"
 elif args.color is not None:
     argb = hex_to_argb(args.color)
+    argb = scale_chroma(argb, args.color_strength, 96)
     hct = Hct.from_int(argb)
 
 if args.scheme == "scheme-fruit-salad":
@@ -346,17 +387,19 @@ if args.termscheme is not None:
             # Apply user saturation (reduced for grays)
             harmonized = boost_chroma_tone(harmonized, user_saturation * 1.2, 1)
         else:
-            # Regular semantic colors
+            # Regular semantic colors — gentle harmonization preserves hue identity
             harmonized = harmonize(
                 hex_to_argb(val),
                 primary_color_argb,
-                args.harmonize_threshold * 0.7,
+                args.harmonize_threshold * 0.12,
                 user_harmony,
             )
             # Apply user saturation and brightness
             # Brightness affects tone: higher = lighter in dark mode, darker in light mode
-            tone_mult = 1 + ((user_brightness - 0.5) * 0.4 * (1 if darkmode else -1))
-            harmonized = boost_chroma_tone(harmonized, user_saturation * 1.5, tone_mult)
+            tone_mult = 1 + ((user_brightness - 0.5) * 0.8 * (1 if darkmode else -1))
+            harmonized = boost_chroma_tone(harmonized, user_saturation * 2.0, tone_mult)
+            # Ensure minimum chroma for visual distinctiveness
+            harmonized = ensure_min_chroma(harmonized, 40)
 
         # Apply additional softening if requested
         if args.soften and args.scheme not in [
@@ -503,6 +546,7 @@ theme_meta = {
     "term_saturation": args.term_saturation,
     "term_brightness": args.term_brightness,
     "term_bg_brightness": args.term_bg_brightness,
+    "color_strength": args.color_strength,
     "blend_bg_fg": args.blend_bg_fg,
     "generated_by": "generate_colors_material.py",
 }
@@ -522,3 +566,215 @@ if args.terminal_output:
 if args.meta_output:
     with open(args.meta_output, "w") as f:
         json.dump(theme_meta, f, indent=2)
+
+# ---------------------------------------------------------------------------
+# Template rendering for iNiR's unified theming pipeline
+# ---------------------------------------------------------------------------
+if args.render_templates:
+    template_dir = args.render_templates
+    manifest_path = os.path.join(template_dir, "templates.json")
+    legacy_config_path = os.path.join(template_dir, "config.toml")
+
+    template_entries = []
+
+    if os.path.isfile(manifest_path):
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
+
+        templates_base = os.path.join(template_dir, "templates")
+        for entry in manifest.get("templates", []):
+            template_entries.append(
+                {
+                    "name": entry.get("name", "template"),
+                    "template_path": os.path.join(templates_base, entry["input"]),
+                    "output_path": os.path.expanduser(entry["output"]),
+                }
+            )
+    elif os.path.isfile(legacy_config_path):
+        if tomllib is None:
+            print(
+                "[render-templates] Legacy config.toml found but tomllib is unavailable, skipping",
+                file=sys.stderr,
+            )
+        else:
+            with open(legacy_config_path, "rb") as f:
+                legacy_config = tomllib.load(f)
+
+            for name, entry in (legacy_config.get("templates") or {}).items():
+                if not isinstance(entry, dict):
+                    continue
+
+                input_path = entry.get("input_path")
+                output_path = entry.get("output_path")
+                if not input_path or not output_path:
+                    continue
+                if input_path == "/dev/null" or output_path == "/dev/null":
+                    continue
+
+                resolved_input = os.path.expanduser(input_path)
+                if not os.path.isfile(resolved_input) and "/templates/" in input_path:
+                    rel_input = input_path.split("/templates/", 1)[1].lstrip("/")
+                    candidate = os.path.join(template_dir, "templates", rel_input)
+                    if os.path.isfile(candidate):
+                        resolved_input = candidate
+
+                template_entries.append(
+                    {
+                        "name": name,
+                        "template_path": resolved_input,
+                        "output_path": os.path.expanduser(output_path),
+                    }
+                )
+    else:
+        print(
+            f"[render-templates] Missing {manifest_path} and {legacy_config_path}, skipping template rendering",
+            file=sys.stderr,
+        )
+
+    if not template_entries:
+        # Nothing to render — either no manifest found or all entries were
+        # invalid.  Color generation already succeeded, so exit cleanly.
+        sys.exit(0)
+
+    # Build both dark and light palettes so templates can use either variant.
+    # The main `material_colors` dict was generated for the *current* mode;
+    # we also need the opposite mode for templates like GTK4 that embed both.
+    def _generate_palette(is_dark):
+        s = Scheme(hct, is_dark, 0.0)
+        palette = {}
+        for c in vars(MaterialDynamicColors).keys():
+            cn = getattr(MaterialDynamicColors, c)
+            if hasattr(cn, "get_hct"):
+                g = cn.get_hct(s)
+                if args.soften and args.scheme not in [
+                    "scheme-tonal-spot",
+                    "scheme-neutral",
+                    "scheme-monochrome",
+                ]:
+                    g = Hct.from_hct(g.hue, g.chroma * 0.60, g.tone)
+                palette[c] = rgba_to_hex(g.to_rgba())
+        # source_color is the seed itself
+        palette["source_color"] = argb_to_hex(argb)
+        return palette
+
+    dark_palette = _generate_palette(True)
+    light_palette = _generate_palette(False)
+    default_palette = dark_palette if darkmode else light_palette
+
+    # Build the nested `colors` namespace expected by the compatibility templates:
+    #   colors.<token>.dark.hex          → "#rrggbb"
+    #   colors.<token>.dark.hex_stripped  → "rrggbb"
+    #   colors.<token>.light.hex
+    #   colors.<token>.default.hex       → follows current mode
+    class _Hex:
+        """Tiny wrapper so `hex` / `hex_stripped` resolve as attributes."""
+
+        __slots__ = ("hex", "hex_stripped")
+
+        def __init__(self, hexval):
+            self.hex = hexval
+            self.hex_stripped = hexval.lstrip("#")
+
+    class _Token:
+        __slots__ = ("dark", "light", "default")
+
+        def __init__(self, dk, lt, df):
+            self.dark = _Hex(dk)
+            self.light = _Hex(lt)
+            self.default = _Hex(df)
+
+    # Collect every token name that appears in either palette
+    all_tokens = set(dark_palette.keys()) | set(light_palette.keys())
+    colors_ns = {}
+
+    def _camel_to_snake(name):
+        """Convert camelCase to snake_case for compatibility template aliases."""
+        return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name).lower()
+
+    for tok in all_tokens:
+        dk = dark_palette.get(tok, "#000000")
+        lt = light_palette.get(tok, "#000000")
+        df = default_palette.get(tok, "#000000")
+        token_obj = _Token(dk, lt, df)
+        # Register under both camelCase and snake_case keys
+        colors_ns[tok] = token_obj
+        snake = _camel_to_snake(tok)
+        if snake != tok:
+            colors_ns[snake] = token_obj
+
+    # Regex to resolve {{colors.TOKEN.MODE.PROP}} and {{image}}
+    _VAR_RE = re.compile(r"\{\{\s*(.*?)\s*\}\}")
+
+    def _resolve(match):
+        expr = match.group(1)
+        if expr == "image":
+            return args.path or ""
+        parts = expr.split(".")
+        # Expected: colors.<token>.<mode>.<prop>
+        if len(parts) == 4 and parts[0] == "colors":
+            _, token, mode, prop = parts
+            tok_obj = colors_ns.get(token)
+            if tok_obj is None:
+                # Try camelCase → snake_case and vice-versa
+                # Compatibility templates use snake_case token names.
+                print(
+                    f"[render-templates] WARNING: unresolved token '{token}' in {{{{colors.{token}.{mode}.{prop}}}}}",
+                    file=sys.stderr,
+                )
+                return match.group(0)  # leave unresolved
+            mode_obj = getattr(tok_obj, mode, None)
+            if mode_obj is None:
+                print(
+                    f"[render-templates] WARNING: unresolved mode '{mode}' for token '{token}' in {{{{colors.{token}.{mode}.{prop}}}}}",
+                    file=sys.stderr,
+                )
+                return match.group(0)
+            val = getattr(mode_obj, prop, None)
+            if val is None:
+                print(
+                    f"[render-templates] WARNING: unresolved prop '{prop}' for token '{token}.{mode}' in {{{{colors.{token}.{mode}.{prop}}}}}",
+                    file=sys.stderr,
+                )
+                return match.group(0)
+            return val
+        return match.group(0)  # leave unknown expressions untouched
+
+    rendered_count = 0
+
+    for entry in template_entries:
+        tpl_path = entry["template_path"]
+        out_path = entry["output_path"]
+
+        if not os.path.isfile(tpl_path):
+            print(
+                f"[render-templates] Skipping missing template: {tpl_path}",
+                file=sys.stderr,
+            )
+            continue
+
+        with open(tpl_path, "r") as f:
+            content = f.read()
+
+        rendered = _VAR_RE.sub(_resolve, content)
+
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        with open(out_path, "w") as f:
+            f.write(rendered)
+        rendered_count += 1
+
+    if rendered_count > 0:
+        print(
+            f"[render-templates] Rendered {rendered_count} template(s)", file=sys.stderr
+        )
+
+    # SDDM sync post-hook: run only if script and theme exist
+    sddm_sync = os.path.expanduser("~/.local/bin/sync-pixel-sddm.py")
+    sddm_theme = "/usr/share/sddm/themes/ii-pixel"
+    if os.path.isfile(sddm_sync) and os.path.isdir(sddm_theme):
+        import subprocess
+
+        subprocess.Popen(
+            ["python3", sddm_sync],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )

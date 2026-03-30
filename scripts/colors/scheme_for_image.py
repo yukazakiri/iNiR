@@ -71,25 +71,25 @@ def pick_scheme(colorfulness, saturation, hue_spread):
     # Low-to-moderate colorfulness
     if colorfulness < 50:
         # If the image has a focused hue (low spread), content works well
-        if hue_spread < 25:
+        if hue_spread < 18 and saturation < 90:
             return "scheme-content"
         return "scheme-tonal-spot"
 
     # Moderate colorfulness
     if colorfulness < 80:
-        if hue_spread > 40:
+        if hue_spread > 34:
             # Wide color variety → expressive
             return "scheme-expressive"
-        if saturation > 120:
+        if saturation > 100:
             # Saturated but focused → fidelity
             return "scheme-fidelity"
-        return "scheme-tonal-spot"
+        return "scheme-expressive"
 
     # High colorfulness
-    if hue_spread > 45:
+    if hue_spread > 40:
         # Very colorful + wide hue spread → rainbow
         return "scheme-rainbow"
-    if saturation > 140:
+    if saturation > 125:
         # Very saturated, focused palette → fidelity
         return "scheme-fidelity"
     return "scheme-expressive"

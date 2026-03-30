@@ -8,7 +8,7 @@ STATE_DIR="$XDG_STATE_HOME/quickshell"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHELL_ROOT="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)"
 SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
-MATUGEN_DIR="$XDG_CONFIG_HOME/matugen"
+TEMPLATE_DIR="$XDG_CONFIG_HOME/matugen"
 terminalscheme="$SCRIPT_DIR/terminal/scheme-base.json"
 
 # Validate critical runtime dependencies early
@@ -17,32 +17,6 @@ if ! command -v jq &>/dev/null; then
     echo "  Arch: sudo pacman -S jq"
     exit 1
 fi
-if ! command -v matugen &>/dev/null; then
-    echo "[switchwall.sh] Missing required dependency: matugen"
-    echo "  Install from: https://github.com/InioX/matugen"
-    exit 1
-fi
-
-repair_matugen_colors_template() {
-    local user_template="$MATUGEN_DIR/templates/colors.json"
-    local default_template="$SHELL_ROOT/defaults/matugen/templates/colors.json"
-
-    # If user template is missing, restore from project defaults.
-    if [[ ! -f "$user_template" && -f "$default_template" ]]; then
-        mkdir -p "$MATUGEN_DIR/templates"
-        cp "$default_template" "$user_template"
-        return
-    fi
-
-    # Some broken installs ended up with commented tertiary lines in this template.
-    # Matugen then writes invalid JSON (comments included), breaking shell theming.
-    if [[ -f "$user_template" ]] && grep -qE '^\s*//\s*"tertiary"' "$user_template"; then
-        if [[ -f "$default_template" ]]; then
-            cp "$default_template" "$user_template"
-            echo "[switchwall.sh] Repaired invalid matugen colors template from defaults"
-        fi
-    fi
-}
 
 handle_kde_material_you_colors() {
     # Check if Qt app theming is enabled in config
@@ -83,7 +57,6 @@ handle_kde_material_you_colors() {
 
 pre_process() {
     local mode_flag="$1"
-    repair_matugen_colors_template
 
     # Set GNOME color-scheme if mode_flag is dark or light
     if [[ "$mode_flag" == "dark" ]]; then
@@ -109,8 +82,7 @@ post_process() {
 
     handle_kde_material_you_colors &
     "$SCRIPT_DIR/code/material-code-set-color.sh" &
-    # Note: GTK4/libadwaita apps don't reload ~/.config/gtk-4.0/gtk.css in real-time
-    # Apps need to be restarted to pick up new colors from matugen
+    # Best-effort live refresh is handled by apply-gtk-theme.sh for GTK/KDE apps.
 }
 
 write_generated_wallpaper_path() {
@@ -470,7 +442,6 @@ switch() {
     fi
 
     if [[ "$color_flag" == "1" ]]; then
-        matugen_args=(color hex "$color")
         generate_colors_material_args=(--color "$color")
     else
         if [[ -z "$imgpath" ]]; then
@@ -543,7 +514,6 @@ switch() {
             fi
 
             # Use thumbnail for color generation
-            matugen_args=(image "$thumbnail")
             generate_colors_material_args=(--path "$thumbnail")
             create_restore_script "$imgpath"
         else
@@ -554,7 +524,6 @@ switch() {
                     color_source="$color_preview"
                 fi
             fi
-            matugen_args=(image "$color_source")
             generate_colors_material_args=(--path "$color_source")
             # Update wallpaper path in config
             if [[ "$skip_config_write" != "1" ]]; then
@@ -581,7 +550,6 @@ switch() {
     # Shell/UI colors follow the requested real mode.
     # Terminal colors may optionally force dark mode, but that must not darken the shell palette.
     if [[ -n "$mode_flag" ]]; then
-        matugen_args+=(--mode "$mode_flag")
         generate_colors_material_args+=(--mode "$mode_flag")
     fi
     # If useBackdropForColors is enabled, override color source to use backdrop wallpaper
@@ -607,21 +575,16 @@ switch() {
                 if is_video "$backdrop_path"; then
                     local backdrop_thumb="$THUMBNAIL_DIR/$(echo -n "$backdrop_path" | md5sum | cut -d' ' -f1).jpg"
                     if [[ -f "$backdrop_thumb" ]]; then
-                        matugen_args=(image "$backdrop_thumb")
                         generate_colors_material_args=(--path "$backdrop_thumb")
                     fi
                 else
-                    matugen_args=(image "$backdrop_path")
                     generate_colors_material_args=(--path "$backdrop_path")
                 fi
             fi
         fi
     fi
 
-    [[ -n "$type_flag" ]] && matugen_args+=(--type "$type_flag") && generate_colors_material_args+=(--scheme "$type_flag")
-    if [[ "${matugen_args[0]:-}" == "image" ]] && matugen image --help 2>&1 | grep -q -- '--source-color-index'; then
-        matugen_args+=(--source-color-index 0)
-    fi
+    [[ -n "$type_flag" ]] && generate_colors_material_args+=(--scheme "$type_flag")
     generate_colors_material_args+=(--termscheme "$terminalscheme" --blend_bg_fg)
     generate_colors_material_args+=(--cache "$STATE_DIR/user/generated/color.txt")
 
@@ -649,6 +612,7 @@ switch() {
         term_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.60' "$SHELL_CONFIG_FILE")
         term_harmony=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.harmony // 0.40' "$SHELL_CONFIG_FILE")
         term_bg_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.backgroundBrightness // 0.50' "$SHELL_CONFIG_FILE")
+        color_strength=$(jq -r '.appearance.wallpaperTheming.colorStrength // 1.0' "$SHELL_CONFIG_FILE")
         
         # Legacy props for backwards compatibility
         harmonize_threshold=$(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.harmonizeThreshold // 100' "$SHELL_CONFIG_FILE")
@@ -659,12 +623,12 @@ switch() {
         [[ "$term_brightness" != "null" && -n "$term_brightness" ]] && generate_colors_material_args+=(--term_brightness "$term_brightness")
         [[ "$term_harmony" != "null" && -n "$term_harmony" ]] && generate_colors_material_args+=(--harmony "$term_harmony")
         [[ "$term_bg_brightness" != "null" && -n "$term_bg_brightness" ]] && generate_colors_material_args+=(--term_bg_brightness "$term_bg_brightness")
+        [[ "$color_strength" != "null" && -n "$color_strength" ]] && generate_colors_material_args+=(--color-strength "$color_strength")
         [[ "$harmonize_threshold" != "null" && -n "$harmonize_threshold" ]] && generate_colors_material_args+=(--harmonize_threshold "$harmonize_threshold")
         [[ "$soften_colors" == "true" ]] && generate_colors_material_args+=(--soften)
     fi
 
-    # Use user's matugen config (installed to ~/.config/matugen/ during setup)
-    matugen --config "$MATUGEN_DIR/config.toml" "${matugen_args[@]}"
+    # Generate colors and render templates in one unified Python pass
     if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
         _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
     else
@@ -684,12 +648,13 @@ switch() {
     _meta_tmp="$STATE_DIR/user/generated/theme-meta.json.tmp"
     _meta_out="$STATE_DIR/user/generated/theme-meta.json"
 
-    # 1) Generate authoritative shell/UI colors.json using the actual requested mode.
+    # 1) Generate authoritative shell/UI colors.json + render app templates.
     if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
         --json-output "$_json_tmp" \
         --palette-output "$_palette_tmp" \
         --terminal-output "$_terminal_tmp" \
         --meta-output "$_meta_tmp" \
+        --render-templates "$TEMPLATE_DIR" \
         > /dev/null 2>/dev/null && [[ -s "$_json_tmp" ]]; then
         mv "$_json_tmp" "$_json_out"
         [[ -s "$_palette_tmp" ]] && mv "$_palette_tmp" "$_palette_out" || rm -f "$_palette_tmp"
@@ -750,6 +715,7 @@ main() {
     color=""
     noswitch_flag=""
     skip_config_write=""
+    skip_accent_write=""
 
     get_type_from_config() {
         jq -r '.appearance.palette.type' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "auto"
@@ -789,10 +755,12 @@ main() {
                 ;;
             --color)
                 if [[ "$2" =~ ^#?[A-Fa-f0-9]{6}$ ]]; then
-                    set_accent_color "$2"
+                    [[ "$skip_accent_write" != "1" ]] && set_accent_color "$2"
+                    color_flag="1"
+                    color="$2"
                     shift 2
                 elif [[ "$2" == "clear" ]]; then
-                    set_accent_color ""
+                    [[ "$skip_accent_write" != "1" ]] && set_accent_color ""
                     shift 2
                 else
                     set_accent_color $(hyprpicker --no-fancy)
@@ -810,6 +778,10 @@ main() {
                 ;;
             --skip-config-write)
                 skip_config_write="1"
+                shift
+                ;;
+            --skip-accent-write)
+                skip_accent_write="1"
                 shift
                 ;;
             --monitor)
@@ -838,11 +810,18 @@ main() {
         type_flag="$(get_type_from_config)"
     fi
 
-    # If accentColor is set in config, use it
-    config_color="$(get_accent_color_from_config)"
-    if [[ "$config_color" =~ ^#?[A-Fa-f0-9]{6}$ ]]; then
-        color_flag="1"
-        color="$config_color"
+    # If accentColor is set in config, use it for static themes only.
+    # For auto themes, colors must come from the wallpaper — a stale accentColor
+    # from a previous static-theme variant would override wallpaper extraction.
+    if [[ -z "$color_flag" ]]; then
+        current_theme=$(jq -r '.appearance.theme // "auto"' "$SHELL_CONFIG_FILE" 2>/dev/null)
+        if [[ "$current_theme" != "auto" ]]; then
+            config_color="$(get_accent_color_from_config)"
+            if [[ "$config_color" =~ ^#?[A-Fa-f0-9]{6}$ ]]; then
+                color_flag="1"
+                color="$config_color"
+            fi
+        fi
     fi
 
     # Validate type_flag (allow 'auto' as well)
@@ -867,8 +846,13 @@ main() {
 
     # If type_flag is 'auto', detect scheme type from image (after imgpath is set)
     if [[ "$type_flag" == "auto" ]]; then
-        if [[ -n "$imgpath" && -f "$imgpath" ]]; then
-            detected_type="$(detect_scheme_type_from_image "$imgpath")"
+        auto_detect_path="$imgpath"
+        if [[ -z "$auto_detect_path" && -n "$noswitch_flag" && -z "$color_flag" ]]; then
+            auto_detect_path="$(resolve_effective_theming_wallpaper)"
+        fi
+
+        if [[ -n "$auto_detect_path" && -f "$auto_detect_path" ]]; then
+            detected_type="$(detect_scheme_type_from_image "$auto_detect_path")"
             # Only use detected_type if it's valid
             valid_detected=0
             for t in "${allowed_types[@]}"; do
