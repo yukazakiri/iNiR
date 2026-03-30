@@ -452,19 +452,35 @@ force_kill_qml_window() {
 
 restart_shell() {
     local dir="$1"
+    local quiet="${2:-}"
 
     if has_instances "$dir"; then
+        [[ -z "$quiet" ]] && printf 'Stopping iNiR... '
         kill_shell "$dir"
         if ! wait_for_stop "$dir"; then
             echo "Timed out waiting for iNiR to stop" >&2
             exit 1
         fi
+        [[ -z "$quiet" ]] && printf 'done.\n'
     fi
 
+    [[ -z "$quiet" ]] && printf 'Starting iNiR... '
     start_background "$dir"
     if ! wait_for_start "$dir"; then
         echo "Timed out waiting for iNiR to start" >&2
         exit 1
+    fi
+    [[ -z "$quiet" ]] && printf 'done.\n'
+
+    if [[ -z "$quiet" ]]; then
+        # Brief pause to let QML initialization settle before checking logs
+        sleep 1
+        local errors
+        errors="$("$qs_bin" -p "$dir" log 2>/dev/null | grep -iE 'error|ReferenceError|TypeError|binding loop' | tail -10 || true)"
+        if [[ -n "$errors" ]]; then
+            printf '\n\033[33m── errors in recent logs ──\033[0m\n'
+            printf '%s\n' "$errors"
+        fi
     fi
 }
 
@@ -1091,11 +1107,16 @@ case "$command_name" in
         exec "$qs_bin" -n -d -p "$config_dir"
         ;;
     restart)
+        restart_quiet=""
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)
                     parse_config_flag "$@"
                     shift 2
+                    ;;
+                -q|--quiet)
+                    restart_quiet="1"
+                    shift
                     ;;
                 -h|--help)
                     usage
@@ -1112,7 +1133,7 @@ case "$command_name" in
         apply_qt_runtime_env
         apply_qt_logging_rules
         check_qs_abi
-        restart_shell "$config_dir"
+        restart_shell "$config_dir" "$restart_quiet"
         ;;
     kill)
         while [[ $# -gt 0 ]]; do
