@@ -933,6 +933,25 @@ run_update() {
             tui_info "Preserving legacy quickshell/ii runtime..."
             PRESERVED_MODS_DIR=$(preserve_runtime_tree "$runtime_compare_dir" "legacy-runtime")
             tui_success "Legacy runtime preserved"
+        elif [[ -f "${runtime_compare_dir}/shell.qml" ]]; then
+            # No checksum manifest (v1 or missing) — compare installed files
+            # directly against repo to catch user modifications before first v2 update
+            echo ""
+            tui_info "No checksum manifest — comparing installed files against repo..."
+
+            local modified_files_str
+            modified_files_str=$(detect_user_modifications_by_source_comparison "$runtime_compare_dir" "$REPO_ROOT")
+
+            local mod_count=0
+            [[ -n "$modified_files_str" ]] && mod_count=$(echo "$modified_files_str" | grep -c . || echo 0)
+
+            if [[ $mod_count -gt 0 ]]; then
+                if ! handle_user_modifications "$modified_files_str" "" "$runtime_compare_dir"; then
+                    return 1  # User cancelled
+                fi
+            else
+                tui_success "No local modifications detected"
+            fi
         fi
 
         echo ""
