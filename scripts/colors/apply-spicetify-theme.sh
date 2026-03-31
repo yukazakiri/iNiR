@@ -114,24 +114,35 @@ read_colors() {
     return 1
   fi
 
-  COLORS[primary]=$(jq -r '.primary // "#8caaee"' "$color_source")
-  COLORS[on_primary]=$(jq -r '.on_primary // "#1e3a5f"' "$color_source")
-  COLORS[on_surface]=$(jq -r '.on_surface // "#dce0e8"' "$color_source")
-  COLORS[on_surface_variant]=$(jq -r '.on_surface_variant // "#a6adc8"' "$color_source")
-  COLORS[surface]=$(jq -r '.surface // "#1e1e2e"' "$color_source")
-  COLORS[surface_variant]=$(jq -r '.surface_variant // "#45475a"' "$color_source")
-  COLORS[surface_container_low]=$(jq -r '.surface_container_low // "#181825"' "$color_source")
-  COLORS[surface_container]=$(jq -r '.surface_container // "#313244"' "$color_source")
-  COLORS[surface_container_high]=$(jq -r '.surface_container_high // "#45475a"' "$color_source")
-  COLORS[surface_container_highest]=$(jq -r '.surface_container_highest // "#494d64"' "$color_source")
-  COLORS[primary_container]=$(jq -r '.primary_container // "#313244"' "$color_source")
-  COLORS[secondary]=$(jq -r '.secondary // "#89b4fa"' "$color_source")
-  COLORS[secondary_container]=$(jq -r '.secondary_container // "#3d4c6b"' "$color_source")
-  COLORS[tertiary]=$(jq -r '.tertiary // "#94e2d5"' "$color_source")
-  COLORS[outline]=$(jq -r '.outline // "#585b70"' "$color_source")
-  COLORS[outline_variant]=$(jq -r '.outline_variant // "#45475a"' "$color_source")
-  COLORS[error]=$(jq -r '.error // "#f38ba8"' "$color_source")
-  COLORS[shadow]=$(jq -r '.shadow // "#000000"' "$color_source")
+  # Single jq invocation with defaults merged — avoids 18 subprocess spawns
+  local jq_filter='
+    . as $input |
+    {
+      "primary": "#8caaee",
+      "on_primary": "#1e3a5f",
+      "on_surface": "#dce0e8",
+      "on_surface_variant": "#a6adc8",
+      "surface": "#1e1e2e",
+      "surface_variant": "#45475a",
+      "surface_container_low": "#181825",
+      "surface_container": "#313244",
+      "surface_container_high": "#45475a",
+      "surface_container_highest": "#494d64",
+      "primary_container": "#313244",
+      "secondary": "#89b4fa",
+      "secondary_container": "#3d4c6b",
+      "tertiary": "#94e2d5",
+      "outline": "#585b70",
+      "outline_variant": "#45475a",
+      "error": "#f38ba8",
+      "shadow": "#000000"
+    } | to_entries | map(.key + "=" + ($input[.key] // .value)) | .[]
+  '
+
+  local line
+  while IFS='=' read -r key value; do
+    COLORS["$key"]="$value"
+  done < <(jq -r "$jq_filter" "$color_source")
 }
 
 # ─── Theme generation ───────────────────────────────────────────────────────────
@@ -168,23 +179,14 @@ regenerate_user_css_bridge() {
   [[ -f "$css_file" ]] || return 0
 
   # ── Derive bridge values from matugen palette ─────────────────────────────
-  # main-secondary / highlight: one step above surface
   local main_secondary="${COLORS[surface_container]}"
-  # main-elevated: same as surface_container
   local main_elevated="${COLORS[surface_container]}"
-  # highlight: between surface and surface_container
   local highlight="${COLORS[surface_container_low]}"
-  # highlight-elevated: surface_container_high
   local highlight_elevated="${COLORS[surface_container_high]}"
-  # nav-active: primary_container (the active pill in left nav)
   local nav_active="${COLORS[primary_container]}"
-  # nav-active-text: on_surface (text on active nav pill)
   local nav_active_text="${COLORS[on_surface]}"
-  # playback-bar: on_surface_variant (progress bar fill — muted accent)
   local playback_bar="${COLORS[on_surface_variant]}"
-  # play-button: primary (the play/pause icon color)
   local play_button="${COLORS[primary]}"
-  # play-button-active: secondary (hover/active state)
   local play_button_active="${COLORS[secondary]}"
 
   # ── Build the bridge block ────────────────────────────────────────────────
@@ -214,24 +216,16 @@ regenerate_user_css_bridge() {
 /* === end iNiR CSS variable bridge ==="
 
   # ── Replace only the bridge block in user.css (keep everything else) ──────
-  # Use python3 for reliable multi-line regex replace without temp file races.
-  # The regex removes ALL occurrences (handles stale duplicate blocks from
-  # previous buggy runs) and inserts a single fresh block at the top.
-  python3 - "$css_file" "$bridge_block" <<'PYEOF'
-import sys, re, pathlib
-css_path = pathlib.Path(sys.argv[1])
-new_block = sys.argv[2] + ' */'
-content = css_path.read_text()
-pattern = re.compile(
-    r'/\* === iNiR CSS variable bridge.*?end iNiR CSS variable bridge === \*/',
-    re.DOTALL
-)
-# Strip ALL existing bridge blocks (including duplicates from prior bad runs)
-content = pattern.sub('', content).lstrip('\n')
-# Prepend the single fresh block
-content = new_block + '\n' + content
-css_path.write_text(content)
-PYEOF
+  # Use sed (faster than spawning python3) to strip all existing bridge blocks
+  # then prepend a single fresh block at the top.
+  local tmp
+  tmp=$(mktemp)
+  sed '/\/\* === iNiR CSS variable bridge/,/end iNiR CSS variable bridge === \*\//d' "$css_file" > "$tmp"
+  {
+    printf '%s\n */\n' "$bridge_block"
+    cat "$tmp"
+  } > "$css_file"
+  rm -f "$tmp"
 
   log "CSS variable bridge regenerated from current palette"
 }
@@ -280,8 +274,7 @@ configure_spicetify() {
   regenerate_user_css_bridge "$user_css"
   generate_color_ini "$color_file" || return 1
 
-  spicetify config inject_css 1 replace_colors 1 >> "$LOG_FILE" 2>&1 || true
-  spicetify config current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LOG_FILE" 2>&1 || true
+  spicetify config inject_css 1 replace_colors 1 current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LOG_FILE" 2>&1 || true
 }
 
 apply_spicetify_theme() {
@@ -311,17 +304,22 @@ start_watch_mode() {
   log "Starting spicetify watch mode..."
   nohup spicetify watch -s >> "$LOG_FILE" 2>&1 &
   local watch_pid=$!
-  sleep 0.5
 
-  if kill -0 "$watch_pid" 2>/dev/null; then
-    acquire_watch_lock
-    log "Watch mode started (PID: $watch_pid)"
-    return 0
-  else
-    log "Failed to start watch mode"
-    release_watch_lock
-    return 1
-  fi
+  # Poll for process liveness instead of fixed sleep — exits as soon as ready
+  local attempts=0
+  while (( attempts < 10 )); do
+    if kill -0 "$watch_pid" 2>/dev/null; then
+      acquire_watch_lock
+      log "Watch mode started (PID: $watch_pid)"
+      return 0
+    fi
+    sleep 0.1
+    (( attempts++ ))
+  done
+
+  log "Failed to start watch mode"
+  release_watch_lock
+  return 1
 }
 
 # ─── Main logic ────────────────────────────────────────────────────────────────
