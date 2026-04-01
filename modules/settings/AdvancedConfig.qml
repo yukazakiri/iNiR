@@ -70,6 +70,18 @@ ContentPage {
                 }
             }
             SettingsSwitch {
+                buttonIcon: "chat"
+                text: Translation.tr("Equicord")
+                checked: Config.options?.appearance?.wallpaperTheming?.enableEquicord ?? true
+                onCheckedChanged: {
+                    Config.setNestedValue("appearance.wallpaperTheming.enableEquicord", checked)
+                    colorRegenTimer.restart()
+                }
+                StyledToolTip {
+                    text: Translation.tr("Generate Equicord theme from wallpaper colors (Vencord fork)")
+                }
+            }
+            SettingsSwitch {
                 buttonIcon: "music_note"
                 text: Translation.tr("Spotify (Spicetify)")
                 checked: Config.options?.appearance?.wallpaperTheming?.enableSpicetify ?? false

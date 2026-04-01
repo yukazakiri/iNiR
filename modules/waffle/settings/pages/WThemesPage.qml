@@ -570,6 +570,14 @@ WSettingsPage {
         }
 
         WSettingsSwitch {
+            label: Translation.tr("Equicord theming")
+            icon: "people"
+            description: Translation.tr("Generate Equicord (Vencord fork) theme from wallpaper colors")
+            checked: Config.options?.appearance?.wallpaperTheming?.enableEquicord ?? true
+            onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.enableEquicord", checked)
+        }
+
+        WSettingsSwitch {
             label: Translation.tr("Spotify theming")
             icon: "music-note-2"
             description: Translation.tr("Generate and apply Spicetify theme from wallpaper colors")

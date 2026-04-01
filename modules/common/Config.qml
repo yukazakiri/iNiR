@@ -294,6 +294,7 @@ Singleton {
                     property bool enableQtApps: true
                     property bool enableTerminal: true
                     property bool enableVesktop: true
+                    property bool enableEquicord: true
                     property bool enableZed: true
                     property bool enableVSCode: true
                     property bool enableChrome: true

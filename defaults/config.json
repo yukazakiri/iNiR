@@ -121,6 +121,7 @@
             "enableQtApps": true,
             "enableTerminal": true,
             "enableVesktop": true,
+            "enableEquicord": true,
             "enableZed": true,
             "enableVSCode": true,
             "enableChrome": true,

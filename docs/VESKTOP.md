@@ -1,8 +1,15 @@
-# Vesktop Theming
+# Vesktop & Equicord Theming
 
-iNiR includes automatic Discord/Vesktop theming that syncs with your wallpaper colors.
+iNiR includes automatic Discord/Vesktop and Equicord theming that syncs with your wallpaper colors.
 
-## Included Theme
+## Supported Clients
+
+- **Vesktop** — Vencord-based Discord client
+- **Equicord** — Vencord fork with enhanced features
+
+Both clients use the same Material You color palette and system24 theme base.
+
+## Included Themes
 
 ### ii-system24
 A Material Design Discord theme based on [refact0r/system24](https://github.com/refact0r/system24) with Material You colors from your wallpaper.
@@ -15,14 +22,21 @@ Features:
 - Auto-sync with wallpaper changes
 - Auto-sync with theme preset changes
 
+### ii-midnight
+A dank-discord/midnight style theme using iNiR Material You colors.
+
 ## Setup
 
+### Vesktop
 1. Install [Vesktop](https://github.com/Vencord/Vesktop) (or any Vencord-based client)
-
 2. The theme is automatically installed to `~/.config/vesktop/themes/` during iNiR setup
-
 3. In Vesktop, go to Settings → Vencord → Themes and enable `system24`
+4. Colors will automatically update when you change your wallpaper or theme preset!
 
+### Equicord
+1. Install [Equicord](https://github.com/Equicord/Equicord)
+2. The theme is automatically installed to `~/.local/share/equicord/themes/` when colors are generated
+3. In Equicord, go to Settings → Vencord → Themes and enable `system24`
 4. Colors will automatically update when you change your wallpaper or theme preset!
 
 ## How It Works
@@ -30,14 +44,14 @@ Features:
 ### Wallpaper Changes (Auto mode)
 When you change your wallpaper:
 1. `switchwall.sh` runs matugen to generate Material You colors
-2. `system24_palette.sh` generates the complete theme with embedded palette
-3. Vesktop should auto-reload theme changes (if it doesn't, use Ctrl+R)
+2. `system24_palette.sh` generates the complete theme with embedded palette for both Vesktop and Equicord
+3. Clients should auto-reload theme changes (if they don't, use Ctrl+R)
 
 ### Theme Preset Changes
 When you change theme preset in Settings:
 1. `apply-gtk-theme.sh` applies GTK/KDE colors
-2. It also calls `system24_palette.sh` to regenerate Vesktop theme
-3. Vesktop should auto-reload theme changes (if it doesn't, use Ctrl+R)
+2. It also calls `system24_palette.sh` to regenerate themes for both Vesktop and Equicord
+3. Clients should auto-reload theme changes (if they don't, use Ctrl+R)
 
 ### Color Mapping
 
@@ -81,21 +95,24 @@ Then regenerate the theme.
 ## Troubleshooting
 
 ### Colors not updating
-- Check that `~/.config/vesktop/themes/system24.theme.css` exists
-- Some installs use `~/.config/Vesktop/themes/` (capital V)
-- Verify the theme is enabled in Vesktop settings
-- Try Ctrl+R in Vesktop to force reload
+- **Vesktop**: Check that `~/.config/vesktop/themes/system24.theme.css` exists
+- **Equicord**: Check that `~/.local/share/equicord/themes/system24.theme.css` exists
+- Some Vesktop installs use `~/.config/Vesktop/themes/` (capital V)
+- Verify the theme is enabled in client settings
+- Try Ctrl+R in the client to force reload
 
 ### Theme not appearing
-- Ensure the `.theme.css` file is in `~/.config/vesktop/themes/`
-- Check Vesktop console for CSS errors (Ctrl+Shift+I)
+- **Vesktop**: Ensure the `.theme.css` file is in `~/.config/vesktop/themes/`
+- **Equicord**: Ensure the `.theme.css` file is in `~/.local/share/equicord/themes/`
+- Check client console for CSS errors (Ctrl+Shift+I)
 
 ### Visual inconsistencies / theme looks half-applied
 - This theme relies on the System24 base CSS. If the remote `@import` fails (network/CSP), you may only get colors but not layout/styling.
 - Open DevTools (Ctrl+Shift+I) and check:
   - Network tab for failed `system24.css` requests
   - Console tab for `@import`/CSP related errors
-- Optional: place a local copy of System24 at `~/.config/vesktop/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
+- **Vesktop**: Optional: place a local copy of System24 at `~/.config/vesktop/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
+- **Equicord**: Optional: place a local copy of System24 at `~/.local/share/equicord/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
 
 ### Wrong colors
 - Run `bash ~/.config/quickshell/inir/scripts/colors/system24_palette.sh` to regenerate
@@ -107,10 +124,11 @@ Then regenerate the theme.
 
 ### Hot-reload not working
 - The theme palette is embedded in the main file, so Ctrl+R should work
-- If Vesktop window is not focused, the reload script may not work
-- Try manually pressing Ctrl+R in Vesktop
+- If the client window is not focused, the reload script may not work
+- Try manually pressing Ctrl+R in the client
 
 ## Credits
 
 - [refact0r](https://github.com/refact0r) for system24 theme base
 - [Vencord](https://github.com/Vencord) for the Discord mod platform
+- [Equicord](https://github.com/Equicord/Equicord) for the Vencord fork
