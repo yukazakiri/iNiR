@@ -317,7 +317,8 @@ tui_menu() {
     fi
 
     case "$choice" in
-        Install|Reinstall) run_install ;;
+        Install) run_install ;;
+        Reinstall) IS_UPDATE=true run_install ;;
         Update) run_update ;;
         Migrate) run_migrate ;;
         Doctor) run_doctor ;;
@@ -449,19 +450,19 @@ run_install() {
     check_conflicts
 
     # 1. Dependencies
-    if [[ "${SKIP_DEPS}" != "true" ]]; then
+    if [[ "${SKIP_ALLDEPS}" != "true" ]]; then
         tui_step 1 3 "Installing dependencies"
         source ./sdata/subcmd-install/1.deps-router.sh
     fi
 
     # 2. System setup (groups, services)
-    if [[ "${SKIP_SETUPS}" != "true" ]]; then
+    if [[ "${SKIP_ALLSETUPS}" != "true" ]]; then
         tui_step 2 3 "System configuration"
         source ./sdata/subcmd-install/2.setups.sh
     fi
 
     # 3. Config files
-    if [[ "${SKIP_FILES}" != "true" ]]; then
+    if [[ "${SKIP_ALLFILES}" != "true" ]]; then
         tui_step 3 3 "Installing config files"
         source ./sdata/subcmd-install/3.files.sh
     fi
@@ -993,6 +994,9 @@ run_update() {
     # Generate manifest
     generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"
 
+    # Remove orphan files left from previous versions
+    cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"
+
     # Fix permissions
     find "$II_TARGET/scripts" \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} \; 2>/dev/null || true
     [[ -f "${II_TARGET}/setup" ]] && chmod +x "${II_TARGET}/setup"
@@ -1297,16 +1301,14 @@ run_doctor() {
 # Parse args
 ###############################################################################
 COMMAND=""
+SUBCMD_ARGS=()
 while [[ $# -gt 0 ]]; do
     case $1 in
-        install) COMMAND="install"; shift ;;
-        update) COMMAND="update"; shift ;;
-        migrate) COMMAND="migrate"; shift ;;
-        doctor) COMMAND="doctor"; shift ;;
-        rollback) COMMAND="rollback"; shift ;;
-        my-changes) COMMAND="my-changes"; shift ;;
-        uninstall) COMMAND="uninstall"; shift ;;
-        status) COMMAND="status"; shift ;;
+        install|update|migrate|doctor|rollback|my-changes|uninstall|status)
+            COMMAND="$1"; shift
+            SUBCMD_ARGS=("$@")
+            break
+            ;;
         -y|--yes) ask=false; shift ;;
         -q|--quiet) quiet=true; shift ;;
         --set-default-shell) export INIR_SET_DEFAULT_SHELL=true; shift ;;
@@ -1317,6 +1319,10 @@ done
 
 # Check prerequisites for install command (after parsing flags)
 if [[ "$COMMAND" == "install" ]]; then
+  # Source install-specific option parser if there are subcommand args
+  if [[ ${#SUBCMD_ARGS[@]} -gt 0 ]]; then
+    source ./sdata/subcmd-install/options.sh "${SUBCMD_ARGS[@]}"
+  fi
   _check_privilege_prereqs "install"
 fi
 
