@@ -290,6 +290,7 @@ Singleton {
                     property real contentTransparency: 0.57
                 }
                 property JsonObject wallpaperTheming: JsonObject {
+                    property string generator: "material" // "material" | "aether" (auto theme only)
                     property bool enableAppsAndShell: true
                     property bool enableQtApps: true
                     property bool enableTerminal: true

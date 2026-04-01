@@ -24,6 +24,7 @@ Singleton {
         theme: currentTheme,
         themingWallpaperPath: Wallpapers.effectiveWallpaperPath ?? "",
         enableAppsAndShell: wallpaperThemingCfg?.enableAppsAndShell ?? true,
+        generator: wallpaperThemingCfg?.generator ?? "material",
         enableTerminal: wallpaperThemingCfg?.enableTerminal ?? true,
         enableVesktop: wallpaperThemingCfg?.enableVesktop ?? true,
         enableChrome: wallpaperThemingCfg?.enableChrome ?? true,
@@ -50,14 +51,14 @@ Singleton {
     function setTheme(themeId, applyExternal = true): void {
         root._log("[ThemeService] setTheme called with:", themeId);
         Config.setNestedValue(["appearance", "theme"], themeId)
-        
+
         // Update recent themes (max 4, no duplicates)
         let recent = Config.options?.appearance?.recentThemes ?? []
         recent = recent.filter(t => t !== themeId)
         recent.unshift(themeId)
         if (recent.length > 4) recent = recent.slice(0, 4)
         Config.setNestedValue("appearance.recentThemes", recent)
-        
+
         root._log("[ThemeService] Config updated, now applying theme");
         if (themeId === "auto") {
             root._log("[ThemeService] Auto theme, regenerating from wallpaper");
@@ -168,36 +169,36 @@ Singleton {
 
     // Theme Scheduling
     readonly property bool scheduleEnabled: Config.options?.appearance?.themeSchedule?.enabled ?? false
-    
+
     function isNightTime(): bool {
         const now = new Date()
         const currentMinutes = now.getHours() * 60 + now.getMinutes()
-        
+
         const dayStart = Config.options?.appearance?.themeSchedule?.dayStart ?? "06:00"
         const nightStart = Config.options?.appearance?.themeSchedule?.nightStart ?? "18:00"
-        
+
         const [dayH, dayM] = dayStart.split(":").map(Number)
         const [nightH, nightM] = nightStart.split(":").map(Number)
-        
+
         const dayMinutes = dayH * 60 + dayM
         const nightMinutes = nightH * 60 + nightM
-        
+
         // Night if before day start or after night start
         return currentMinutes < dayMinutes || currentMinutes >= nightMinutes
     }
-    
+
     function applyScheduledTheme(): void {
         if (!scheduleEnabled) return
-        
+
         const schedule = Config.options?.appearance?.themeSchedule
         const targetTheme = isNightTime() ? schedule?.nightTheme : schedule?.dayTheme
-        
+
         if (targetTheme && targetTheme !== currentTheme) {
             root._log("[ThemeService] Schedule: switching to", targetTheme)
             setTheme(targetTheme, true)
         }
     }
-    
+
     Timer {
         interval: 60000  // Check every minute
         running: root.scheduleEnabled

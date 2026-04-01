@@ -393,6 +393,31 @@ ContentPage {
                 }
             }
 
+            ContentSubsection {
+                title: Translation.tr("Auto Theme Generator")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.appearance?.wallpaperTheming?.generator ?? "material"
+                    onSelected: (newValue) => {
+                        Config.setNestedValue("appearance.wallpaperTheming.generator", newValue)
+                        if ((Config.options?.appearance?.theme ?? "auto") === "auto")
+                            ThemeService.regenerateAutoTheme()
+                    }
+                    options: [
+                        { displayName: Translation.tr("Material"), icon: "palette", value: "material" },
+                        { displayName: Translation.tr("Aether"), icon: "auto_awesome", value: "aether" }
+                    ]
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Used when the active theme is Auto. Material keeps the current Matugen pipeline. Aether generates an Omarchy-compatible theme set and stores it in ~/.config/aether/themes/inir-auto before iNiR exports its own shell color contracts.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+            }
+
             // Wallpaper Dominant Colors
             ColumnLayout {
                 Layout.fillWidth: true

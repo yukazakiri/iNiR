@@ -121,6 +121,26 @@ write_generated_wallpaper_path() {
     printf '%s\n' "$wallpaper_path" > "$wallpaper_state_path"
 }
 
+get_theme_generator() {
+    if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
+        jq -r '.appearance.wallpaperTheming.generator // "material"' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "material"
+    else
+        echo "material"
+    fi
+}
+
+map_scheme_to_aether_extract_mode() {
+    case "$1" in
+        scheme-monochrome) echo "monochromatic" ;;
+        scheme-neutral) echo "muted" ;;
+        scheme-content|scheme-fidelity) echo "material" ;;
+        scheme-expressive|scheme-rainbow) echo "colorful" ;;
+        scheme-fruit-salad|scheme-vibrant) echo "bright" ;;
+        scheme-tonal-spot|auto|"") echo "normal" ;;
+        *) echo "normal" ;;
+    esac
+}
+
 get_max_monitor_resolution() {
     local width=1920
     local height=1080
@@ -250,17 +270,17 @@ for output in $outputs; do
 done
 LAUNCHER_EOF
     chmod +x "$launcher_script"
-    
+
     # Execute launcher in a completely detached way using at if available, otherwise nohup
     if command -v at >/dev/null 2>&1; then
         echo "$launcher_script '$video_path' $outputs" | at now 2>/dev/null
     else
         (nohup "$launcher_script" "$video_path" $outputs > /dev/null 2>&1 &)
     fi
-    
+
     # Small delay to let the launcher start
     sleep 0.3
-    
+
     # Clean up launcher script after a delay
     (sleep 5 && rm -f "$launcher_script") &
 }
@@ -649,11 +669,11 @@ switch() {
         term_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.60' "$SHELL_CONFIG_FILE")
         term_harmony=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.harmony // 0.40' "$SHELL_CONFIG_FILE")
         term_bg_brightness=$(jq -r '.appearance.wallpaperTheming.terminalColorAdjustments.backgroundBrightness // 0.50' "$SHELL_CONFIG_FILE")
-        
+
         # Legacy props for backwards compatibility
         harmonize_threshold=$(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.harmonizeThreshold // 100' "$SHELL_CONFIG_FILE")
         soften_colors=$(jq -r '.appearance.softenColors' "$SHELL_CONFIG_FILE")
-        
+
         # Pass new parameters to Python script
         [[ "$term_saturation" != "null" && -n "$term_saturation" ]] && generate_colors_material_args+=(--term_saturation "$term_saturation")
         [[ "$term_brightness" != "null" && -n "$term_brightness" ]] && generate_colors_material_args+=(--term_brightness "$term_brightness")
@@ -661,6 +681,18 @@ switch() {
         [[ "$term_bg_brightness" != "null" && -n "$term_bg_brightness" ]] && generate_colors_material_args+=(--term_bg_brightness "$term_bg_brightness")
         [[ "$harmonize_threshold" != "null" && -n "$harmonize_threshold" ]] && generate_colors_material_args+=(--harmonize_threshold "$harmonize_threshold")
         [[ "$soften_colors" == "true" ]] && generate_colors_material_args+=(--soften)
+    fi
+
+    local theme_generator
+    theme_generator="$(get_theme_generator)"
+    if [[ "$theme_generator" == "aether" ]]; then
+        if ! command -v aether >/dev/null 2>&1; then
+            echo "[switchwall] Warning: Aether generator selected but aether is not installed; falling back to Material" >&2
+            theme_generator="material"
+        elif [[ "${matugen_args[0]:-}" != "image" || -z "${matugen_args[1]:-}" || ! -f "${matugen_args[1]}" ]]; then
+            echo "[switchwall] Warning: Aether requires an image wallpaper source; falling back to Material" >&2
+            theme_generator="material"
+        fi
     fi
 
     # Use user's matugen config (installed to ~/.config/matugen/ during setup)
@@ -683,44 +715,110 @@ switch() {
     _terminal_out="$STATE_DIR/user/generated/terminal.json"
     _meta_tmp="$STATE_DIR/user/generated/theme-meta.json.tmp"
     _meta_out="$STATE_DIR/user/generated/theme-meta.json"
+    _chromium_tmp="$STATE_DIR/user/generated/chromium.theme.tmp"
+    _chromium_out="$STATE_DIR/user/generated/chromium.theme"
 
-    # 1) Generate authoritative shell/UI colors.json using the actual requested mode.
-    if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
-        --json-output "$_json_tmp" \
-        --palette-output "$_palette_tmp" \
-        --terminal-output "$_terminal_tmp" \
-        --meta-output "$_meta_tmp" \
-        > /dev/null 2>/dev/null && [[ -s "$_json_tmp" ]]; then
-        mv "$_json_tmp" "$_json_out"
-        [[ -s "$_palette_tmp" ]] && mv "$_palette_tmp" "$_palette_out" || rm -f "$_palette_tmp"
-        [[ -s "$_terminal_tmp" ]] && mv "$_terminal_tmp" "$_terminal_out" || rm -f "$_terminal_tmp"
-        [[ -s "$_meta_tmp" ]] && mv "$_meta_tmp" "$_meta_out" || rm -f "$_meta_tmp"
-    else
-        echo "[switchwall] Warning: colors.json generation failed, keeping previous JSON" >&2
-        rm -f "$_json_tmp"
-        rm -f "$_palette_tmp"
-        rm -f "$_terminal_tmp"
-        rm -f "$_meta_tmp"
+    local force_terminal_dark="false"
+    if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
+        force_terminal_dark=$(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.forceDarkMode // false' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "false")
     fi
 
-    # 2) Generate material_colors.scss for terminals/editors. This path may optionally
-    #    force dark mode without affecting the shell/UI palette above.
-    scss_generate_args=("${generate_colors_material_args[@]}")
-    if [[ $(jq -r '.appearance.wallpaperTheming.terminalGenerationProps.forceDarkMode' "$SHELL_CONFIG_FILE") == "true" ]]; then
-        for i in "${!scss_generate_args[@]}"; do
-            if [[ "${scss_generate_args[$i]}" == "--mode" && $((i + 1)) -lt ${#scss_generate_args[@]} ]]; then
-                scss_generate_args[$((i + 1))]="dark"
-                break
+    if [[ "$theme_generator" == "aether" ]]; then
+        local aether_extract_mode aether_source aether_theme_dir aether_cache_dir
+        aether_extract_mode="$(map_scheme_to_aether_extract_mode "$type_flag")"
+        aether_source="${matugen_args[1]}"
+        aether_theme_dir="$XDG_CONFIG_HOME/aether/themes/inir-auto"
+        aether_cache_dir="$STATE_DIR/user/generated/aether-cache"
+
+        local aether_cmd=(
+            "$_ii_python" "$SCRIPT_DIR/generate_colors_aether.py"
+            --path "$aether_source"
+            --mode "$mode_flag"
+            --extract-mode "$aether_extract_mode"
+            --aether-output "$aether_theme_dir"
+            --cache "$STATE_DIR/user/generated/color.txt"
+            --json-output "$_json_tmp"
+            --palette-output "$_palette_tmp"
+            --terminal-output "$_terminal_tmp"
+            --meta-output "$_meta_tmp"
+            --chromium-output "$_chromium_tmp"
+        )
+        if [[ "$force_terminal_dark" != "true" || "$mode_flag" == "dark" ]]; then
+            aether_cmd+=(--scss-output "$_scss_tmp")
+        fi
+
+        if "${aether_cmd[@]}" > /dev/null 2>/dev/null && [[ -s "$_json_tmp" ]]; then
+            mv "$_json_tmp" "$_json_out"
+            [[ -s "$_palette_tmp" ]] && mv "$_palette_tmp" "$_palette_out" || rm -f "$_palette_tmp"
+            [[ -s "$_terminal_tmp" ]] && mv "$_terminal_tmp" "$_terminal_out" || rm -f "$_terminal_tmp"
+            [[ -s "$_meta_tmp" ]] && mv "$_meta_tmp" "$_meta_out" || rm -f "$_meta_tmp"
+            [[ -s "$_chromium_tmp" ]] && mv "$_chromium_tmp" "$_chromium_out" || rm -f "$_chromium_tmp"
+        else
+            echo "[switchwall] Warning: Aether contract generation failed, keeping previous JSON" >&2
+            rm -f "$_json_tmp" "$_palette_tmp" "$_terminal_tmp" "$_meta_tmp" "$_chromium_tmp"
+        fi
+
+        if [[ "$force_terminal_dark" != "true" || "$mode_flag" == "dark" ]]; then
+            if [[ -s "$_scss_tmp" ]]; then
+                mv "$_scss_tmp" "$STATE_DIR/user/generated/material_colors.scss"
+            else
+                rm -f "$_scss_tmp"
             fi
-        done
-    fi
-
-    if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${scss_generate_args[@]}" \
-        > "$_scss_tmp" 2>/dev/null && [[ -s "$_scss_tmp" ]]; then
-        mv "$_scss_tmp" "$STATE_DIR/user/generated/material_colors.scss"
+        else
+            if "$_ii_python" "$SCRIPT_DIR/generate_colors_aether.py" \
+                --path "$aether_source" \
+                --mode dark \
+                --extract-mode "$aether_extract_mode" \
+                --aether-output "$aether_cache_dir" \
+                --scss-output "$_scss_tmp" \
+                > /dev/null 2>/dev/null && [[ -s "$_scss_tmp" ]]; then
+                mv "$_scss_tmp" "$STATE_DIR/user/generated/material_colors.scss"
+            else
+                echo "[switchwall] Warning: Aether SCSS generation failed, keeping previous SCSS" >&2
+                rm -f "$_scss_tmp"
+            fi
+        fi
     else
-        echo "[switchwall] Warning: material_colors.scss generation failed, keeping previous SCSS" >&2
-        rm -f "$_scss_tmp"
+        # 1) Generate authoritative shell/UI colors.json using the actual requested mode.
+        if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
+            --json-output "$_json_tmp" \
+            --palette-output "$_palette_tmp" \
+            --terminal-output "$_terminal_tmp" \
+            --meta-output "$_meta_tmp" \
+            > /dev/null 2>/dev/null && [[ -s "$_json_tmp" ]]; then
+            mv "$_json_tmp" "$_json_out"
+            [[ -s "$_palette_tmp" ]] && mv "$_palette_tmp" "$_palette_out" || rm -f "$_palette_tmp"
+            [[ -s "$_terminal_tmp" ]] && mv "$_terminal_tmp" "$_terminal_out" || rm -f "$_terminal_tmp"
+            [[ -s "$_meta_tmp" ]] && mv "$_meta_tmp" "$_meta_out" || rm -f "$_meta_tmp"
+            if write_chromium_theme_contract "$_palette_out" "$_chromium_tmp" && [[ -s "$_chromium_tmp" ]]; then
+                mv "$_chromium_tmp" "$_chromium_out"
+            else
+                rm -f "$_chromium_tmp"
+            fi
+        else
+            echo "[switchwall] Warning: colors.json generation failed, keeping previous JSON" >&2
+            rm -f "$_json_tmp" "$_palette_tmp" "$_terminal_tmp" "$_meta_tmp" "$_chromium_tmp"
+        fi
+
+        # 2) Generate material_colors.scss for terminals/editors. This path may optionally
+        #    force dark mode without affecting the shell/UI palette above.
+        scss_generate_args=("${generate_colors_material_args[@]}")
+        if [[ "$force_terminal_dark" == "true" ]]; then
+            for i in "${!scss_generate_args[@]}"; do
+                if [[ "${scss_generate_args[$i]}" == "--mode" && $((i + 1)) -lt ${#scss_generate_args[@]} ]]; then
+                    scss_generate_args[$((i + 1))]="dark"
+                    break
+                fi
+            done
+        fi
+
+        if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${scss_generate_args[@]}" \
+            > "$_scss_tmp" 2>/dev/null && [[ -s "$_scss_tmp" ]]; then
+            mv "$_scss_tmp" "$STATE_DIR/user/generated/material_colors.scss"
+        else
+            echo "[switchwall] Warning: material_colors.scss generation failed, keeping previous SCSS" >&2
+            rm -f "$_scss_tmp"
+        fi
     fi
 
     # Generate Vesktop theme if enabled (only when app theming is on)
