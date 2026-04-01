@@ -2,7 +2,7 @@
 
 > A complete desktop shell built on [Quickshell](https://quickshell.outfoxxed.me/) for the [Niri](https://github.com/YaLTeR/niri) Wayland compositor.
 
-**Version**: 2.16.0 · **Stack**: QML (Quickshell), Bash, Python, Go · **Scale**: ~752 QML files, ~87 scripts, 70+ singletons, 129 shared widgets
+**Version**: 2.17.0 · **Stack**: QML (Quickshell), Bash, Python, Go
 
 Originally forked from [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) (illogical-impulse). Secondary Hyprland support is maintained.
 
@@ -99,7 +99,7 @@ scripts/                      # Shell/fish/python helpers
 
 sdata/                        # Install/update lifecycle
 ├── lib/                      # Shared bash libraries
-├── migrations/               # Numbered scripts (001–018+)
+├── migrations/               # Numbered scripts (001–020)
 ├── subcmd-install/           # Install phases (1–5)
 └── subcmd-uninstall/         # Uninstall phases
 
@@ -204,10 +204,10 @@ User config always lives at `~/.config/illogical-impulse/config.json` (persisten
 
 ### Migrations
 
-Location: `sdata/migrations/` (numbered scripts: 001–018+).
+Location: `sdata/migrations/` (numbered scripts: 001–020).
 - Append-only — never rename, reorder, or delete existing migrations
 - Idempotent — may run again if state is lost
-- Next number: `019-descriptive-name.sh`
+- Next number: `021-descriptive-name.sh`
 
 ## Daily Development
 

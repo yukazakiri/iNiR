@@ -179,7 +179,7 @@ Always update these together:
 When a config or data format changes between versions:
 
 - Add a new script at `sdata/migrations/NNN-descriptive-name.sh`
-- Use the next sequential number (currently 019+)
+- Use the next sequential number (currently 021+)
 - Migrations must be idempotent (safe to run twice)
 - Never rename, reorder, or delete existing migrations
 
