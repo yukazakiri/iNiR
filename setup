@@ -1043,6 +1043,18 @@ MATUGEN_SDDM_EOF
         tui_success "Vesktop themes updated"
     fi
 
+    # Update Equicord themes (Vencord fork)
+    if [[ -d "${REPO_ROOT}/dots/.config/vesktop/themes" ]]; then
+        echo ""
+        tui_info "Updating Equicord themes..."
+
+        mkdir -p "${XDG_DATA_HOME}/Equicord/themes"
+
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_DATA_HOME}/Equicord/themes"
+
+        tui_success "Equicord themes updated"
+    fi
+
     # Migrations
     local pending=$(count_pending_migrations)
     if [[ "$pending" -gt 0 ]]; then

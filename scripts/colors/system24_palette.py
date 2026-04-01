@@ -46,6 +46,21 @@ MIDNIGHT_OUTPUT_FILE = Path(
     )
 ).expanduser()
 
+# Equicord theme paths (Vencord fork)
+EQUICORD_OUTPUT_FILE = Path(
+    os.environ.get(
+        "EQUICORD_SYSTEM24_PALETTE_CSS",
+        "~/.local/share/Equicord/themes/system24.theme.css",
+    )
+).expanduser()
+
+EQUICORD_MIDNIGHT_OUTPUT_FILE = Path(
+    os.environ.get(
+        "EQUICORD_MIDNIGHT_DMS_CSS",
+        "~/.local/share/Equicord/themes/ii-midnight.theme.css",
+    )
+).expanduser()
+
 
 def _resolve_output_files(env_var: str, default_path: Path) -> list[Path]:
     """Return a list of paths to write the theme to.
@@ -380,7 +395,20 @@ def _write_palette(palette: Dict[str, str]) -> None:
     system24_outputs = _resolve_output_files("SYSTEM24_PALETTE_CSS", OUTPUT_FILE)
     midnight_outputs = _resolve_output_files("MIDNIGHT_DMS_CSS", MIDNIGHT_OUTPUT_FILE)
 
-    for out in system24_outputs + midnight_outputs:
+    # Equicord outputs (Vencord fork)
+    equicord_system24_outputs = _resolve_output_files(
+        "EQUICORD_SYSTEM24_PALETTE_CSS", EQUICORD_OUTPUT_FILE
+    )
+    equicord_midnight_outputs = _resolve_output_files(
+        "EQUICORD_MIDNIGHT_DMS_CSS", EQUICORD_MIDNIGHT_OUTPUT_FILE
+    )
+
+    for out in (
+        system24_outputs
+        + midnight_outputs
+        + equicord_system24_outputs
+        + equicord_midnight_outputs
+    ):
         _ensure_parent(out)
 
     system24_content = THEME_TEMPLATE.format(palette_css=palette_css)
@@ -395,6 +423,16 @@ def _write_palette(palette: Dict[str, str]) -> None:
         with out.open("w", encoding="utf-8") as fh:
             fh.write(midnight_content)
         print(f"Generated: {out}")
+
+    for out in equicord_system24_outputs:
+        with out.open("w", encoding="utf-8") as fh:
+            fh.write(system24_content)
+        print(f"Generated Equicord: {out}")
+
+    for out in equicord_midnight_outputs:
+        with out.open("w", encoding="utf-8") as fh:
+            fh.write(midnight_content)
+        print(f"Generated Equicord: {out}")
 
 
 def main() -> None:

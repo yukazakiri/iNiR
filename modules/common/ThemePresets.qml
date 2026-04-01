@@ -3369,6 +3369,14 @@ Singleton {
                 Directories.scriptPath + "/colors/system24_palette.sh"
             ])
         }
+        if ((Config.options?.appearance?.wallpaperTheming?.enableEquicord ?? true) !== false) {
+            console.log("[ThemePresets] Triggering Equicord theme generation wrapper")
+            Quickshell.execDetached([
+                "/usr/bin/bash",
+                "-c",
+                "EQUICORD_SYSTEM24_PALETTE_CSS=\"$HOME/.local/share/Equicord/themes/system24.theme.css\" EQUICORD_MIDNIGHT_DMS_CSS=\"$HOME/.local/share/Equicord/themes/ii-midnight.theme.css\" " + Directories.scriptPath + "/colors/system24_palette.sh"
+            ])
+        }
         console.log("[ThemePresets] colors.json written to:", outputPath);
     }
 
