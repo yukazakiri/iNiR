@@ -50,14 +50,14 @@ MIDNIGHT_OUTPUT_FILE = Path(
 EQUICORD_OUTPUT_FILE = Path(
     os.environ.get(
         "EQUICORD_SYSTEM24_PALETTE_CSS",
-        "~/.local/share/equicord/themes/system24.theme.css",
+        "~/.local/share/Equicord/themes/system24.theme.css",
     )
 ).expanduser()
 
 EQUICORD_MIDNIGHT_OUTPUT_FILE = Path(
     os.environ.get(
         "EQUICORD_MIDNIGHT_DMS_CSS",
-        "~/.local/share/equicord/themes/ii-midnight.theme.css",
+        "~/.local/share/Equicord/themes/ii-midnight.theme.css",
     )
 ).expanduser()
 

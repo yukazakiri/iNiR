@@ -733,8 +733,8 @@ switch() {
         # Generate Equicord theme if enabled (Equicord is a Vencord fork)
         enable_equicord=$(jq -r '.appearance.wallpaperTheming.enableEquicord // true' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "true")
         if [[ "$enable_equicord" != "false" ]]; then
-            EQUICORD_SYSTEM24_PALETTE_CSS="$HOME/.local/share/equicord/themes/system24.theme.css" \
-            EQUICORD_MIDNIGHT_DMS_CSS="$HOME/.local/share/equicord/themes/ii-midnight.theme.css" \
+            EQUICORD_SYSTEM24_PALETTE_CSS="$HOME/.local/share/Equicord/themes/system24.theme.css" \
+            EQUICORD_MIDNIGHT_DMS_CSS="$HOME/.local/share/Equicord/themes/ii-midnight.theme.css" \
             "$SCRIPT_DIR/system24_palette.sh"
         fi
     fi

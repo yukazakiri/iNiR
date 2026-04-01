@@ -35,7 +35,7 @@ A dank-discord/midnight style theme using iNiR Material You colors.
 
 ### Equicord
 1. Install [Equicord](https://github.com/Equicord/Equicord)
-2. The theme is automatically installed to `~/.local/share/equicord/themes/` when colors are generated
+2. The theme is automatically installed to `~/.local/share/Equicord/themes/` when colors are generated
 3. In Equicord, go to Settings → Vencord → Themes and enable `system24`
 4. Colors will automatically update when you change your wallpaper or theme preset!
 
@@ -96,14 +96,14 @@ Then regenerate the theme.
 
 ### Colors not updating
 - **Vesktop**: Check that `~/.config/vesktop/themes/system24.theme.css` exists
-- **Equicord**: Check that `~/.local/share/equicord/themes/system24.theme.css` exists
+- **Equicord**: Check that `~/.local/share/Equicord/themes/system24.theme.css` exists
 - Some Vesktop installs use `~/.config/Vesktop/themes/` (capital V)
 - Verify the theme is enabled in client settings
 - Try Ctrl+R in the client to force reload
 
 ### Theme not appearing
 - **Vesktop**: Ensure the `.theme.css` file is in `~/.config/vesktop/themes/`
-- **Equicord**: Ensure the `.theme.css` file is in `~/.local/share/equicord/themes/`
+- **Equicord**: Ensure the `.theme.css` file is in `~/.local/share/Equicord/themes/`
 - Check client console for CSS errors (Ctrl+Shift+I)
 
 ### Visual inconsistencies / theme looks half-applied
@@ -112,7 +112,7 @@ Then regenerate the theme.
   - Network tab for failed `system24.css` requests
   - Console tab for `@import`/CSP related errors
 - **Vesktop**: Optional: place a local copy of System24 at `~/.config/vesktop/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
-- **Equicord**: Optional: place a local copy of System24 at `~/.local/share/equicord/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
+- **Equicord**: Optional: place a local copy of System24 at `~/.local/share/Equicord/themes/system24.local.css` (same folder as the theme). If present, iNiR will import it first.
 
 ### Wrong colors
 - Run `bash ~/.config/quickshell/inir/scripts/colors/system24_palette.sh` to regenerate

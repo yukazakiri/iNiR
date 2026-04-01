@@ -1048,9 +1048,9 @@ MATUGEN_SDDM_EOF
         echo ""
         tui_info "Updating Equicord themes..."
 
-        mkdir -p "${XDG_DATA_HOME}/equicord/themes"
+        mkdir -p "${XDG_DATA_HOME}/Equicord/themes"
 
-        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_DATA_HOME}/equicord/themes"
+        install_dir "${REPO_ROOT}/dots/.config/vesktop/themes" "${XDG_DATA_HOME}/Equicord/themes"
 
         tui_success "Equicord themes updated"
     fi

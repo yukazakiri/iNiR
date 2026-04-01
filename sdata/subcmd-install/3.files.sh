@@ -521,13 +521,13 @@ fi
 
 # Equicord themes (Vencord fork with Material You colors)
 if [[ -d "dots/.config/vesktop/themes" ]]; then
-  mkdir -p "${XDG_DATA_HOME}/equicord/themes"
+  mkdir -p "${XDG_DATA_HOME}/Equicord/themes"
 
-  install_dir "dots/.config/vesktop/themes" "${XDG_DATA_HOME}/equicord/themes"
+  install_dir "dots/.config/vesktop/themes" "${XDG_DATA_HOME}/Equicord/themes"
   log_success "Equicord Material You theme installed"
 
   # Best-effort verification
-  EQUICORD_THEME="${XDG_DATA_HOME}/equicord/themes/system24.theme.css"
+  EQUICORD_THEME="${XDG_DATA_HOME}/Equicord/themes/system24.theme.css"
   if [[ ! -f "$EQUICORD_THEME" ]]; then
     log_warning "Equicord theme file was not found after install"
     log_warning "Expected: $EQUICORD_THEME"
