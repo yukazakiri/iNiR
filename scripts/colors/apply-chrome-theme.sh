@@ -16,6 +16,7 @@
 
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE_DIR="$XDG_STATE_HOME/quickshell"
+CHROMIUM_THEME_FILE="$STATE_DIR/user/generated/chromium.theme"
 LOG_FILE="$STATE_DIR/user/generated/chrome_theme.log"
 mkdir -p "$STATE_DIR/user/generated" 2>/dev/null
 : > "$LOG_FILE" 2>/dev/null
@@ -33,6 +34,15 @@ hex_to_rgb() {
   local hex=$1
   hex="${hex#\#}"
   printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+rgb_to_hex() {
+  local rgb="$1"
+  local r g b
+  IFS=',' read -r r g b <<< "$rgb"
+  [[ "$r" =~ ^[0-9]+$ && "$g" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 1
+  (( r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 )) || return 1
+  printf '#%02X%02X%02X\n' "$r" "$g" "$b"
 }
 
 is_omarchy() {
@@ -103,7 +113,21 @@ resolve_color() {
     return
   fi
 
-  # 2. Raw seed color from image (best for GM3, as Chrome generates its own palette from this)
+  # 2. Generated browser theme contract
+  if [[ -f "$CHROMIUM_THEME_FILE" ]]; then
+    local rgb_color
+    rgb_color=$(tr -d '[:space:]' < "$CHROMIUM_THEME_FILE")
+    if [[ "$rgb_color" =~ ^[0-9]{1,3},[0-9]{1,3},[0-9]{1,3}$ ]]; then
+      local hex_color
+      hex_color=$(rgb_to_hex "$rgb_color" 2>/dev/null || true)
+      if [[ -n "$hex_color" ]]; then
+        echo "$hex_color"
+        return
+      fi
+    fi
+  fi
+
+  # 3. Raw seed color from image
   local seed_file="$STATE_DIR/user/generated/color.txt"
   if [[ -f "$seed_file" ]]; then
     local c
@@ -114,12 +138,12 @@ resolve_color() {
     fi
   fi
 
-  # 3. explicit palette contract, then colors.json fallback
+  # 4. explicit palette contract, then colors.json fallback
   local colors_json="$STATE_DIR/user/generated/palette.json"
   [[ -f "$colors_json" ]] || colors_json="$STATE_DIR/user/generated/colors.json"
   if [[ -f "$colors_json" ]] && command -v jq &>/dev/null; then
     local c
-    c=$(jq -r '.primary // empty' "$colors_json" 2>/dev/null)
+    c=$(jq -r '.surface_container_low // .surface // .background // .primary // empty' "$colors_json" 2>/dev/null)
     if [[ -n "$c" ]]; then
       echo "$c"
       return
@@ -266,7 +290,7 @@ apply_to_browser() {
 
   # 2. Write policy — only BrowserThemeColor (persists across restarts)
   if ensure_policy_dir_writable "$policy_dir" "$name"; then
-    printf '{"BrowserThemeColor": "%s"}\n' "$theme_color" > "$policy_dir/ii-theme.json"
+    printf '{"BrowserThemeColor": "%s", "BrowserColorScheme": "device"}\n' "$theme_color" > "$policy_dir/ii-theme.json"
     policy_written='true'
     log "$name: policy written to $policy_dir/ii-theme.json"
   else
@@ -334,7 +358,7 @@ main() {
   theme_color=$(resolve_color "$1")
 
   if [[ -z "$theme_color" ]]; then
-    log "Could not determine primary color. Skipping."
+    log "Could not determine browser theme color. Skipping."
     return 1
   fi
 
@@ -344,7 +368,7 @@ main() {
   local variant
   variant=$(resolve_variant)
 
-  log "GM3 seed color: $theme_color, mode: $mode, variant: $variant"
+  log "Browser theme color: $theme_color, mode: $mode, variant: $variant"
 
   _dedup_browsers
 

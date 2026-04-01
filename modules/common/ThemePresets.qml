@@ -2993,15 +2993,15 @@ Singleton {
             return false;
         }
         console.log("[ThemePresets] Applying colors to Appearance.m3colors");
-        
+
         var cSource = preset.colors === "custom" ? (Config.options?.appearance?.customTheme ?? {}) : preset.colors;
-        
+
         // Soften colors for built-in presets (not custom) if enabled in config
         var shouldSoften = (Config.options?.appearance?.softenColors ?? true) && (id !== "custom");
         var c = shouldSoften ? softenColors(cSource) : cSource;
 
         const m3 = Appearance.m3colors;
-        
+
         m3.darkmode = c.darkmode;
         m3.transparent = c.transparent ?? false;
         m3.m3background = c.m3background;
@@ -3059,19 +3059,19 @@ Singleton {
         m3.m3onSuccessContainer = c.m3onSuccessContainer;
 
         generateColorsJson(c);
-        
+
         if (applyExternal) {
             applyExternalThemes(c);
         }
-        
+
         return true;
     }
-    
+
     function applyExternalThemes(c) {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
         const enableVesktop = Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
-        
+
         // Apply GTK theme (if enabled)
         if (enableAppsAndShell) {
             Qt.callLater(() => {
@@ -3087,22 +3087,22 @@ Singleton {
                 ]);
             });
         }
-        
+
         // Apply terminal colors (if enabled)
         if (enableTerminal) {
             applyTerminalColors(c);
         }
     }
-    
+
     function applyTerminalColors(c) {
         // Generate material_colors.scss from preset colors for terminal theming
         const scssContent = generateScssFromColors(c);
         const scssPath = Directories.state + "/user/generated/material_colors.scss";
-        
+
         // Write scss file
         presetScssFileView.path = Qt.resolvedUrl(scssPath);
         presetScssFileView.setText(scssContent);
-        
+
         // Run applycolor.sh to apply terminal colors
         Qt.callLater(() => {
             Quickshell.execDetached([
@@ -3111,12 +3111,12 @@ Singleton {
             ]);
         });
     }
-    
+
     function generateScssFromColors(c) {
         // Generate SCSS format matching generate_colors_material.py output
         let scss = `$darkmode: ${c.darkmode};\n`;
         scss += `$transparent: ${c.transparent ?? false};\n`;
-        
+
         // Map m3* properties to scss variables
         const colorMap = {
             "background": c.m3background,
@@ -3173,21 +3173,21 @@ Singleton {
             "successContainer": c.m3successContainer,
             "onSuccessContainer": c.m3onSuccessContainer,
         };
-        
+
         for (const [key, value] of Object.entries(colorMap)) {
             if (value) scss += `$${key}: ${value};\n`;
         }
-        
+
         // Generate terminal colors from material palette
         // Using the theme's actual colors with configurable adjustments
         const isDark = c.darkmode;
-        
+
         // Get user adjustments from config
         const termAdj = Config.options?.appearance?.wallpaperTheming?.terminalColorAdjustments ?? {};
         const userSaturation = termAdj.saturation ?? 0.65;
         const userBrightness = termAdj.brightness ?? 0.60;
         const userHarmony = termAdj.harmony ?? 0.40;
-        
+
         // Get primary color for harmonization
         const primaryColor = Qt.color(c.m3primary);
         const primaryHue = primaryColor.hslHue;
@@ -3216,53 +3216,53 @@ Singleton {
             const col = Qt.hsla(finalHue, clampedSat, clampedLight, 1.0);
             return colorToHex(col);
         }
-        
+
         // Background colors - directly from theme (use surfaceContainerLow for slightly lighter bg)
         const bgColor = Qt.color(c.m3surfaceContainerLow ?? c.m3background);
         const term0 = colorToHex(bgColor);
-        
+
         // Foreground colors - from theme
         const fgColor = Qt.color(c.m3onBackground);
         const term15 = colorToHex(fgColor);
-        
+
         // Gray tones - from theme's surface variant and outline
         const term7 = colorToHex(Qt.color(c.m3onSurfaceVariant));
         const term8 = colorToHex(Qt.color(c.m3outline));
-        
+
         // Calculate lightness values based on user brightness setting
         // For dark mode: higher brightness = lighter colors (0.45-0.65 range)
         // For light mode: higher brightness = darker colors (0.35-0.55 range)
         const normalLight = isDark ? (0.40 + userBrightness * 0.30) : (0.60 - userBrightness * 0.30);
         const brightLight = isDark ? (0.50 + userBrightness * 0.30) : (0.50 - userBrightness * 0.30);
-        
+
         // Saturation values - use user setting directly
         const normalSat = userSaturation;
         const brightSat = Math.min(0.55, userSaturation + 0.05);
-        
+
         // Red - always use semantic red (error colors often have wrong hue)
         const term1 = harmonizedColor(0.98, normalSat, normalLight, userHarmony);
         const term9 = harmonizedColor(0.98, brightSat, brightLight, userHarmony);
-        
+
         // Green - semantic green harmonized with theme
         const term2 = harmonizedColor(0.36, normalSat, normalLight, userHarmony);
         const term10 = harmonizedColor(0.36, brightSat, brightLight, userHarmony);
-        
+
         // Yellow - semantic yellow/orange
         const term3 = harmonizedColor(0.12, normalSat + 0.10, normalLight, userHarmony);
         const term11 = harmonizedColor(0.12, brightSat + 0.10, brightLight, userHarmony);
-        
+
         // Blue - semantic blue
         const term4 = harmonizedColor(0.58, normalSat, normalLight, userHarmony);
         const term12 = harmonizedColor(0.58, brightSat, brightLight, userHarmony);
-        
+
         // Magenta - semantic magenta/purple
         const term5 = harmonizedColor(0.85, normalSat, normalLight, userHarmony);
         const term13 = harmonizedColor(0.85, brightSat, brightLight, userHarmony);
-        
+
         // Cyan - semantic cyan
         const term6 = harmonizedColor(0.48, normalSat, normalLight, userHarmony);
         const term14 = harmonizedColor(0.48, brightSat, brightLight, userHarmony);
-        
+
         scss += `$term0: ${term0};\n`;
         scss += `$term1: ${term1};\n`;
         scss += `$term2: ${term2};\n`;
@@ -3279,14 +3279,14 @@ Singleton {
         scss += `$term13: ${term13};\n`;
         scss += `$term14: ${term14};\n`;
         scss += `$term15: ${term15};\n`;
-        
+
         return scss;
     }
-    
+
     FileView {
         id: presetScssFileView
     }
-    
+
     function applyGtkTheme(c) {
         // DEPRECATED: Use applyExternalThemes instead
         applyExternalThemes(c);
@@ -3349,7 +3349,7 @@ Singleton {
             on_success_container: c.m3onSuccessContainer
         };
     }
-    
+
     function generateColorsJson(c) {
         console.log("[ThemePresets] Generating colors.json for preset theme");
         const colorsJson = generateColorsJsonObject(c);
@@ -3388,6 +3388,10 @@ Singleton {
         id: themeMetaFileView
     }
 
+    FileView {
+        id: chromiumThemeFileView
+    }
+
     function buildTerminalJson(c) {
         const scss = generateScssFromColors(c);
         const terminalJson = {};
@@ -3410,6 +3414,19 @@ Singleton {
         };
     }
 
+    function hexToRgbTriplet(hex) {
+        const normalized = String(hex ?? "").trim();
+        const match = normalized.match(/^#?([0-9A-Fa-f]{6})$/);
+        if (!match)
+            return "";
+
+        const value = match[1];
+        const r = parseInt(value.slice(0, 2), 16);
+        const g = parseInt(value.slice(2, 4), 16);
+        const b = parseInt(value.slice(4, 6), 16);
+        return `${r},${g},${b}`;
+    }
+
     function writeGeneratedThemeContracts(c) {
         paletteJsonFileView.path = Qt.resolvedUrl(Directories.generatedPalettePath)
         paletteJsonFileView.setText(JSON.stringify(generateColorsJsonObject(c), null, 2))
@@ -3419,6 +3436,12 @@ Singleton {
 
         themeMetaFileView.path = Qt.resolvedUrl(Directories.generatedThemeMetaPath)
         themeMetaFileView.setText(JSON.stringify(buildThemeMeta(c), null, 2))
+
+        const chromiumThemeRgb = hexToRgbTriplet(c.m3surfaceContainerLow || c.m3surface || c.m3background || "")
+        if (chromiumThemeRgb.length > 0) {
+            chromiumThemeFileView.path = Qt.resolvedUrl(Directories.generatedChromiumThemePath)
+            chromiumThemeFileView.setText(`${chromiumThemeRgb}\n`)
+        }
     }
 
     // ========== Hover Preview System ==========
@@ -3488,27 +3511,27 @@ Singleton {
 
     function previewPreset(id) {
         if (!id || id === "auto") return;
-        
+
         const preset = getPreset(id);
         if (!preset?.colors) return;
-        
+
         // Capture current colors if not already previewing
         if (!_isPreviewing) {
             _previewBackup = captureCurrentColors();
             _isPreviewing = true;
         }
-        
+
         // Apply preview (no external apps)
         var cSource = preset.colors === "custom" ? Config.options?.appearance?.customTheme : preset.colors;
         var shouldSoften = (Config.options?.appearance?.softenColors ?? true) && (id !== "custom");
         var c = shouldSoften ? softenColors(cSource) : cSource;
-        
+
         applyColorsToAppearance(c);
     }
 
     function restoreFromPreview() {
         if (!_isPreviewing || !_previewBackup) return;
-        
+
         applyColorsToAppearance(_previewBackup);
         _previewBackup = null;
         _isPreviewing = false;
