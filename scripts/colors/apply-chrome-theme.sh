@@ -7,12 +7,12 @@
 #   apply-chrome-theme.sh "#ff6b35"        # explicit hex color
 #
 # Supports: Google Chrome, Chromium, Brave
-# Requires: jq, writable policy dir (one-time sudo setup)
+# Requires: jq, writable policy dir (one-time sudo/pkexec setup)
 #
 # One-time setup per browser:
-#   sudo mkdir -p /etc/chromium/policies/managed && sudo chown a+rw- /etc/chromium/policies/managed
-#   sudo mkdir -p /etc/opt/chrome/policies/managed && sudo chown a+rw- /etc/opt/chrome/policies/managed
-#   sudo mkdir -p /etc/brave/policies/managed && sudo chown a+rw- /etc/brave/policies/managed
+#   sudo mkdir -p /etc/chromium/policies/managed && sudo chmod a+rw /etc/chromium/policies/managed
+#   sudo mkdir -p /etc/opt/chrome/policies/managed && sudo chmod a+rw /etc/opt/chrome/policies/managed
+#   sudo mkdir -p /etc/brave/policies/managed && sudo chmod a+rw /etc/brave/policies/managed
 
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE_DIR="$XDG_STATE_HOME/quickshell"
@@ -21,6 +21,11 @@ mkdir -p "$STATE_DIR/user/generated" 2>/dev/null
 : > "$LOG_FILE" 2>/dev/null
 
 log() { echo "[chrome] $*" >> "$LOG_FILE"; }
+
+notify_user() {
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notify-send "Chrome Theme" "$1" -a "Chrome Theme"
+}
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +43,54 @@ is_omarchy() {
       pacman -Qo "$bin_path" 2>/dev/null | grep -qi "omarchy" && return 0
     fi
   fi
+  return 1
+}
+
+elevate() {
+  if [[ -t 0 ]] && [[ -t 1 ]]; then
+    sudo "$@"
+    return $?
+  fi
+
+  if sudo -n true 2>/dev/null; then
+    sudo "$@"
+    return $?
+  fi
+
+  if command -v pkexec >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    pkexec "$@"
+    return $?
+  fi
+
+  return 1
+}
+
+policy_fix_commands() {
+  local policy_dir="$1"
+  printf 'sudo mkdir -p %s\nsudo chmod a+rw %s' "$policy_dir" "$policy_dir"
+}
+
+ensure_policy_dir_writable() {
+  local policy_dir="$1"
+  local name="$2"
+
+  if [[ -d "$policy_dir" && -w "$policy_dir" ]]; then
+    return 0
+  fi
+
+  log "$name: requesting writable policy dir: $policy_dir"
+  if elevate mkdir -p "$policy_dir" && elevate chmod a+rw "$policy_dir"; then
+    log "$name: policy dir ready: $policy_dir"
+    notify_user "$name can now write browser policy files."
+    return 0
+  fi
+
+  local instructions
+  instructions=$(policy_fix_commands "$policy_dir")
+  log "$name: ERROR — failed to prepare $policy_dir"
+  log "$name: run manually:
+$instructions"
+  notify_user "$name needs writable policy files.\n$instructions"
   return 1
 }
 
@@ -97,7 +150,7 @@ resolve_color_scheme() {
     val=$(grep '^\$darkmode:' "$scss_file" | sed 's/.*: *\(.*\);/\1/' | tr -d ' ')
     if [[ "$val" == "True" || "$val" == "true" ]]; then
       # If Dark mode is currently returning light, we swap to 1.
-      # If it's standard, it's 2. But we need to use 2 for dark in CLI and 2 for light in Prefs? 
+      # If it's standard, it's 2. But we need to use 2 for dark in CLI and 2 for light in Prefs?
       # Let's pass 'dark' or 'light' string, and translate internally per method.
       echo "dark"
       return
@@ -196,6 +249,8 @@ apply_to_browser() {
   local mode="$5"  # "dark" or "light"
   local variant="$6"  # "tonal_spot", "content", "rainbow", etc.
   local name="$bin"
+  local policy_written='false'
+  local omarchy_browser='false'
 
   # We must explicitly set Chrome's internal theme engine to Dark (2) or Light (1).
   # While xdg-desktop-portal successfully tells Chrome's GTK window borders to switch,
@@ -210,17 +265,20 @@ apply_to_browser() {
   fix_preferences "$prefs_dir" "$name" "$pref_cs2"
 
   # 2. Write policy — only BrowserThemeColor (persists across restarts)
-  if [[ -d "$policy_dir" && -w "$policy_dir" ]]; then
-    echo "{\"BrowserThemeColor\": \"$theme_color\"}" | tee "$policy_dir/ii-theme.json" >/dev/null
+  if ensure_policy_dir_writable "$policy_dir" "$name"; then
+    printf '{"BrowserThemeColor": "%s"}\n' "$theme_color" > "$policy_dir/ii-theme.json"
+    policy_written='true'
+    log "$name: policy written to $policy_dir/ii-theme.json"
   else
-    log "$name: policy dir not writable → sudo mkdir -p $policy_dir && sudo chown \$USER $policy_dir"
+    log "$name: BrowserThemeColor policy unavailable; standard Chrome/Brave will only get dark/light frame prefs"
   fi
 
   # 3. Apply live
   if is_omarchy "$bin"; then
+    omarchy_browser='true'
     local rgb_color
     rgb_color=$(hex_to_rgb "$theme_color")
-    
+
     log "$name: Omarchy fork detected. Using CLI flags + policy."
     # We use both: policy for persistence, CLI for instant flicker-free update
     "$bin" --no-startup-window \
@@ -233,7 +291,11 @@ apply_to_browser() {
     "$bin" --refresh-platform-policy --no-startup-window >/dev/null 2>&1 & disown
   fi
 
-  log "$name: applied theme $theme_color (mode=$mode, variant=$variant)"
+  if [[ "$policy_written" == 'true' || "$omarchy_browser" == 'true' ]]; then
+    log "$name: applied theme $theme_color (mode=$mode, variant=$variant)"
+  else
+    log "$name: applied mode only (mode=$mode); theme color requires writable policy dir"
+  fi
 }
 
 # ── Resolve variant (scheme type) ──────────────────────────────────────────────
@@ -247,7 +309,7 @@ resolve_variant() {
     if [[ -n "$variant" && "$variant" != "null" && "$variant" != "auto" ]]; then
       # Convert scheme-xxx to xxx for Chrome (e.g., scheme-tonal-spot -> tonal_spot)
       local chrome_variant
-      chrome_variant=$(echo "$variant" | sed 's/scheme-//')
+      chrome_variant=$(echo "$variant" | sed 's/scheme-//' | tr '-' '_')
 
       # Chrome only supports: tonal_spot, neutral, vibrant, expressive
       # Map unsupported variants to neutral
