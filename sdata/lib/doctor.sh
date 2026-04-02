@@ -588,6 +588,7 @@ check_version_tracking() {
     local legacy_version_file="${XDG_CONFIG_HOME}/illogical-impulse/version.json"
     local runtime_version_file
     local installed_marker="${DOTS_CORE_CONFDIR}/installed_true"
+    local repair_source=""
     runtime_version_file="$(get_runtime_version_file)"
 
     if [[ ! -f "$version_file" && -f "$legacy_version_file" ]]; then
@@ -596,17 +597,30 @@ check_version_tracking() {
         doctor_fix "Migrated version tracking to active config directory"
     fi
     
-    if [[ -f "$installed_marker" && ! -f "$version_file" ]]; then
-        if [[ -f "$runtime_version_file" ]]; then
+    if [[ -f "$installed_marker" && -f "$version_file" ]] && ! version_file_has_core_metadata "$version_file"; then
+        repair_source="incomplete"
+    elif [[ -f "$installed_marker" && ! -f "$version_file" ]]; then
+        repair_source="missing"
+    fi
+
+    if [[ -n "$repair_source" ]]; then
+        if [[ -f "$runtime_version_file" ]] && version_file_has_core_metadata "$runtime_version_file"; then
             mkdir -p "$(dirname "$version_file")"
             cp "$runtime_version_file" "$version_file"
-            doctor_fix "Created version tracking from runtime metadata"
+            if [[ "$repair_source" == "incomplete" ]]; then
+                doctor_fix "Repaired version tracking from runtime metadata"
+            else
+                doctor_fix "Created version tracking from runtime metadata"
+            fi
         else
-            # Existing install without tracking - create it
             local repo_ver=$(get_repo_version 2>/dev/null || echo "unknown")
             local repo_commit=$(get_repo_commit 2>/dev/null || echo "unknown")
             set_installed_version "$repo_ver" "$repo_commit" "doctor"
-            doctor_fix "Created version tracking"
+            if [[ "$repair_source" == "incomplete" ]]; then
+                doctor_fix "Repaired incomplete version tracking"
+            else
+                doctor_fix "Created version tracking"
+            fi
         fi
     else
         doctor_pass "Version tracking OK"

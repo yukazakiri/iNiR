@@ -149,10 +149,29 @@ get_installed_version_json() {
 # Get just the version string
 get_installed_version() {
     local version_file
+    local value=""
     version_file="$(get_installed_version_file)"
     if [[ -n "$version_file" ]] && command -v jq &>/dev/null; then
-        jq -r '.version // "0.0.0"' "$version_file"
-    elif [[ -f "${CONFIG_DIR}/version" ]]; then
+        value=$(jq -r '.version // empty' "$version_file" 2>/dev/null || true)
+        if [[ -n "$value" && "$value" != "null" ]]; then
+            printf '%s\n' "$value"
+            return
+        fi
+    fi
+
+    if [[ "$(get_installed_install_mode)" == "repo-link" ]]; then
+        local runtime_dir
+        runtime_dir="$(get_runtime_shell_dir)"
+        if [[ -n "$runtime_dir" && -f "$runtime_dir/VERSION" ]]; then
+            head -1 "$runtime_dir/VERSION" | tr -d '[:space:]'
+            return
+        elif [[ -f "$VERSION_FILE_REPO" ]]; then
+            get_repo_version
+            return
+        fi
+    fi
+
+    if [[ -f "${CONFIG_DIR}/version" ]]; then
         # Fallback to old format
         cat "${CONFIG_DIR}/version"
     else
@@ -163,12 +182,47 @@ get_installed_version() {
 # Get installed commit hash
 get_installed_commit() {
     local version_file
+    local value=""
     version_file="$(get_installed_version_file)"
     if [[ -n "$version_file" ]] && command -v jq &>/dev/null; then
-        jq -r '.commit // "unknown"' "$version_file"
-    else
-        echo "unknown"
+        value=$(jq -r '.commit // empty' "$version_file" 2>/dev/null || true)
+        if [[ -n "$value" && "$value" != "null" ]]; then
+            printf '%s\n' "$value"
+            return
+        fi
     fi
+
+    if [[ "$(get_installed_install_mode)" == "repo-link" ]]; then
+        local runtime_dir
+        runtime_dir="$(get_runtime_shell_dir)"
+        if [[ -n "$runtime_dir" && -d "$runtime_dir/.git" ]]; then
+            git -C "$runtime_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown"
+            return
+        elif [[ -d "${REPO_ROOT}/.git" ]]; then
+            get_repo_commit
+            return
+        fi
+    fi
+
+    echo "unknown"
+}
+
+version_file_has_core_metadata() {
+    local version_file="$1"
+
+    [[ -n "$version_file" && -f "$version_file" ]] || return 1
+
+    if command -v jq &>/dev/null; then
+        local version_value=""
+        local commit_value=""
+        version_value=$(jq -r '.version // empty' "$version_file" 2>/dev/null || true)
+        commit_value=$(jq -r '.commit // empty' "$version_file" 2>/dev/null || true)
+        [[ -n "$version_value" && "$version_value" != "null" && -n "$commit_value" && "$commit_value" != "null" ]]
+        return
+    fi
+
+    grep -Eq '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$version_file" 2>/dev/null \
+        && grep -Eq '"commit"[[:space:]]*:[[:space:]]*"[^"]+"' "$version_file" 2>/dev/null
 }
 
 read_installed_version_field() {
