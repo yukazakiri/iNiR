@@ -44,6 +44,7 @@ Singleton {
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
     property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.json`)
+    property string todoTxtPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.txt`)
     property string notepadPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notepad.txt`)
     property string notesPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notes.txt`)
     property string conflictCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/conflict-killer`)
