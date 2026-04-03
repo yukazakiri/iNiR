@@ -31,6 +31,11 @@
       "output": "~/.local/state/quickshell/user/generated/firefox-materialfox.css"
     },
     {
+      "name": "firefox_website_colors",
+      "input": "firefox/website-colors.css",
+      "output": "~/.local/state/quickshell/user/generated/firefox-website-colors.css"
+    },
+    {
       "name": "steam_adwsteam",
       "input": "steam/adw-colortheme.css",
       "output": "~/.local/state/quickshell/user/generated/steam-colortheme.css"

@@ -117,6 +117,18 @@ ContentPage {
                     text: Translation.tr("Generate theme for VSCode and its forks from wallpaper colors")
                 }
             }
+            SettingsSwitch {
+                buttonIcon: "web"
+                text: Translation.tr("Firefox browsers")
+                checked: Config.options?.appearance?.wallpaperTheming?.enableFirefox ?? true
+                onCheckedChanged: {
+                    Config.setNestedValue("appearance.wallpaperTheming.enableFirefox", checked)
+                    colorRegenTimer.restart()
+                }
+                StyledToolTip {
+                    text: Translation.tr("Install wallpaper-driven Firefox profile CSS and website themes")
+                }
+            }
             ConfigRow {
                 uniform: true
                 SettingsSwitch {
