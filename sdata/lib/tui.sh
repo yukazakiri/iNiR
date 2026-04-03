@@ -804,3 +804,425 @@ tui_stage_header() {
     fi
     _draw_line "dim" 40
 }
+
+###############################################################################
+# Rich Choose — Menu with icons + aligned descriptions (Ink Select-inspired)
+# Usage: tui_choose_rich "header" "icon|Label|Description" ...
+# Returns the Label part of the selected item.
+###############################################################################
+tui_choose_rich() {
+    local header="$1"
+    shift
+    local items=("$@")
+
+    if $HAS_GUM; then
+        # Build formatted display strings
+        local display_items=()
+        local labels=()
+        local max_label_len=0
+
+        for item in "${items[@]}"; do
+            local label
+            label="$(echo "$item" | cut -d'|' -f2)"
+            labels+=("$label")
+            local len=${#label}
+            (( len > max_label_len )) && max_label_len=$len
+        done
+
+        for item in "${items[@]}"; do
+            local icon label desc
+            icon="$(echo "$item" | cut -d'|' -f1)"
+            label="$(echo "$item" | cut -d'|' -f2)"
+            desc="$(echo "$item" | cut -d'|' -f3)"
+            if [[ -n "$desc" ]]; then
+                display_items+=("$(printf '%s %-*s  %s' "$icon" "$max_label_len" "$label" "$desc")")
+            else
+                display_items+=("$(printf '%s %s' "$icon" "$label")")
+            fi
+        done
+
+        local chosen
+        chosen=$(gum choose --header "$header" \
+            --header.foreground "$(_tui_color_value accent)" \
+            --cursor.foreground "$(_tui_color_value accent)" \
+            --selected.foreground "$(_tui_color_value accent)" \
+            --item.foreground "$(_tui_color_value text)" \
+            "${display_items[@]}")
+
+        [[ -z "$chosen" ]] && return 1
+
+        # Extract label from the chosen display string
+        for i in "${!display_items[@]}"; do
+            if [[ "${display_items[$i]}" == "$chosen" ]]; then
+                echo "${labels[$i]}"
+                return 0
+            fi
+        done
+        echo "$chosen"
+    else
+        echo -e "\n  ${STY_PURPLE}${STY_BOLD}$header${STY_RST}"
+        echo ""
+        local i=1
+        local labels=()
+        local max_label_len=0
+
+        for item in "${items[@]}"; do
+            local label
+            label="$(echo "$item" | cut -d'|' -f2)"
+            labels+=("$label")
+            local len=${#label}
+            (( len > max_label_len )) && max_label_len=$len
+        done
+
+        for item in "${items[@]}"; do
+            local icon label desc
+            icon="$(echo "$item" | cut -d'|' -f1)"
+            label="$(echo "$item" | cut -d'|' -f2)"
+            desc="$(echo "$item" | cut -d'|' -f3)"
+            if [[ -n "$desc" ]]; then
+                printf "    ${STY_FAINT}%d)${STY_RST} %s ${STY_BOLD}%-*s${STY_RST}  ${STY_FAINT}%s${STY_RST}\n" "$i" "$icon" "$max_label_len" "$label" "$desc"
+            else
+                printf "    ${STY_FAINT}%d)${STY_RST} %s %s\n" "$i" "$icon" "$label"
+            fi
+            ((i++))
+        done
+        echo ""
+        echo -ne "  ${STY_PURPLE}${ICON_ARROW}${STY_RST} "
+        read -r selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [[ "$selection" -ge 1 ]] && [[ "$selection" -le "${#labels[@]}" ]]; then
+            echo "${labels[$((selection-1))]}"
+        else
+            echo "${labels[0]}"
+        fi
+    fi
+}
+
+###############################################################################
+# Task List — Tasuku-inspired task progress tracker
+# Shows tasks with states: ◻ pending, ◉ running, ✓ done, ✗ failed, ⚠ warn
+#
+# Usage:
+#   tui_task_init "Task 1" "Task 2" "Task 3"
+#   tui_task_run 0        # Mark task 0 as running
+#   tui_task_done 0       # Mark task 0 as done
+#   tui_task_fail 1       # Mark task 1 as failed
+#   tui_task_warn 2       # Mark task 2 as warning
+#   tui_task_render        # Redraw the task list
+###############################################################################
+declare -a _TUI_TASKS=()
+declare -a _TUI_TASK_STATES=()
+declare -a _TUI_TASK_DETAILS=()
+_TUI_TASK_LINES=0
+
+_tui_task_state_icon() {
+    local state="$1"
+    case "$state" in
+        pending)  echo -e "${STY_FAINT}◻${STY_RST}" ;;
+        running)  echo -e "${STY_PURPLE}◉${STY_RST}" ;;
+        done)     echo -e "${STY_GREEN}✓${STY_RST}" ;;
+        fail)     echo -e "${STY_RED}✗${STY_RST}" ;;
+        warn)     echo -e "${STY_YELLOW}⚠${STY_RST}" ;;
+        skip)     echo -e "${STY_FAINT}○${STY_RST}" ;;
+        *)        echo -e "${STY_FAINT}◻${STY_RST}" ;;
+    esac
+}
+
+_tui_task_state_color() {
+    local state="$1"
+    case "$state" in
+        pending)  echo "$STY_FAINT" ;;
+        running)  echo "$STY_BOLD" ;;
+        done)     echo "$STY_GREEN" ;;
+        fail)     echo "$STY_RED" ;;
+        warn)     echo "$STY_YELLOW" ;;
+        skip)     echo "$STY_FAINT" ;;
+        *)        echo "$STY_RST" ;;
+    esac
+}
+
+tui_task_init() {
+    _TUI_TASKS=("$@")
+    _TUI_TASK_STATES=()
+    _TUI_TASK_DETAILS=()
+    _TUI_TASK_LINES=0
+    for (( i=0; i<${#_TUI_TASKS[@]}; i++ )); do
+        _TUI_TASK_STATES+=("pending")
+        _TUI_TASK_DETAILS+=("")
+    done
+    tui_task_render
+}
+
+tui_task_run() {
+    local idx="$1"
+    local detail="${2:-}"
+    _TUI_TASK_STATES[$idx]="running"
+    [[ -n "$detail" ]] && _TUI_TASK_DETAILS[$idx]="$detail"
+    tui_task_render
+}
+
+tui_task_done() {
+    local idx="$1"
+    local detail="${2:-}"
+    _TUI_TASK_STATES[$idx]="done"
+    [[ -n "$detail" ]] && _TUI_TASK_DETAILS[$idx]="$detail"
+    tui_task_render
+}
+
+tui_task_fail() {
+    local idx="$1"
+    local detail="${2:-}"
+    _TUI_TASK_STATES[$idx]="fail"
+    [[ -n "$detail" ]] && _TUI_TASK_DETAILS[$idx]="$detail"
+    tui_task_render
+}
+
+tui_task_warn() {
+    local idx="$1"
+    local detail="${2:-}"
+    _TUI_TASK_STATES[$idx]="warn"
+    [[ -n "$detail" ]] && _TUI_TASK_DETAILS[$idx]="$detail"
+    tui_task_render
+}
+
+tui_task_skip() {
+    local idx="$1"
+    local detail="${2:-}"
+    _TUI_TASK_STATES[$idx]="skip"
+    [[ -n "$detail" ]] && _TUI_TASK_DETAILS[$idx]="$detail"
+    tui_task_render
+}
+
+tui_task_render() {
+    # Move cursor up to overwrite previous render
+    if [[ $_TUI_TASK_LINES -gt 0 ]]; then
+        printf '\033[%dA' "$_TUI_TASK_LINES"
+        printf '\033[J'  # Clear from cursor to end
+    fi
+
+    _TUI_TASK_LINES=0
+    for (( i=0; i<${#_TUI_TASKS[@]}; i++ )); do
+        local state="${_TUI_TASK_STATES[$i]}"
+        local icon
+        icon="$(_tui_task_state_icon "$state")"
+        local color
+        color="$(_tui_task_state_color "$state")"
+        local detail="${_TUI_TASK_DETAILS[$i]}"
+        local detail_str=""
+        [[ -n "$detail" ]] && detail_str=" ${STY_FAINT}${detail}${STY_RST}"
+
+        printf "  %b %b%s%b%b\n" "$icon" "$color" "${_TUI_TASKS[$i]}" "$STY_RST" "$detail_str"
+        (( _TUI_TASK_LINES++ ))
+    done
+}
+
+# Finalize task list (print newline, prevent further overwrites)
+tui_task_finalize() {
+    _TUI_TASK_LINES=0
+    echo ""
+}
+
+###############################################################################
+# Alert — Ink UI Alert component (colored box with icon and message)
+# Usage: tui_alert "variant" "title" "message"
+# Variants: info, success, warning, error
+###############################################################################
+tui_alert() {
+    local variant="${1:-info}"
+    local title="$2"
+    local message="${3:-}"
+
+    local icon color border_color
+    case "$variant" in
+        success) icon="$ICON_CHECK"; color="success"; border_color="success" ;;
+        warning) icon="$ICON_WARN";  color="warning"; border_color="warning" ;;
+        error)   icon="$ICON_CROSS"; color="error";   border_color="error" ;;
+        *)       icon="$ICON_INFO";  color="info";     border_color="info" ;;
+    esac
+
+    local content="${icon} ${title}"
+    [[ -n "$message" ]] && content="${content}\n${message}"
+
+    if $HAS_GUM; then
+        local styled_title
+        styled_title=$(echo "${icon} ${title}" | gum style --foreground "$(_tui_color_value "$color")" --bold)
+        if [[ -n "$message" ]]; then
+            local styled_msg
+            styled_msg=$(echo "$message" | gum style --foreground "$(_tui_color_value text)")
+            gum join --vertical "$styled_title" "$styled_msg" | \
+                gum style --border rounded \
+                    --border-foreground "$(_tui_color_value "$border_color")" \
+                    --padding "0 2" \
+                    --margin "0 1"
+        else
+            echo "$styled_title" | \
+                gum style --border rounded \
+                    --border-foreground "$(_tui_color_value "$border_color")" \
+                    --padding "0 2" \
+                    --margin "0 1"
+        fi
+    else
+        local inner_width=60
+        local h_line=$(_repeat_char "$BOX_H" $((inner_width)))
+
+        case "$variant" in
+            success) echo -e "  ${STY_GREEN}${BOX_TL}${h_line}${BOX_TR}${STY_RST}" ;;
+            warning) echo -e "  ${STY_YELLOW}${BOX_TL}${h_line}${BOX_TR}${STY_RST}" ;;
+            error)   echo -e "  ${STY_RED}${BOX_TL}${h_line}${BOX_TR}${STY_RST}" ;;
+            *)       echo -e "  ${STY_BLUE}${BOX_TL}${h_line}${BOX_TR}${STY_RST}" ;;
+        esac
+
+        case "$variant" in
+            success) printf "  ${STY_GREEN}${BOX_V} ${STY_BOLD}%s %s${STY_RST}%*s${STY_GREEN}${BOX_V}${STY_RST}\n" "$icon" "$title" $((inner_width - ${#title} - 3)) "" ;;
+            warning) printf "  ${STY_YELLOW}${BOX_V} ${STY_BOLD}%s %s${STY_RST}%*s${STY_YELLOW}${BOX_V}${STY_RST}\n" "$icon" "$title" $((inner_width - ${#title} - 3)) "" ;;
+            error)   printf "  ${STY_RED}${BOX_V} ${STY_BOLD}%s %s${STY_RST}%*s${STY_RED}${BOX_V}${STY_RST}\n" "$icon" "$title" $((inner_width - ${#title} - 3)) "" ;;
+            *)       printf "  ${STY_BLUE}${BOX_V} ${STY_BOLD}%s %s${STY_RST}%*s${STY_BLUE}${BOX_V}${STY_RST}\n" "$icon" "$title" $((inner_width - ${#title} - 3)) "" ;;
+        esac
+
+        if [[ -n "$message" ]]; then
+            while IFS= read -r line || [[ -n "$line" ]]; do
+                local pad=$((inner_width - ${#line} - 2))
+                (( pad < 0 )) && pad=0
+                case "$variant" in
+                    success) printf "  ${STY_GREEN}${BOX_V}${STY_RST} %-*s ${STY_GREEN}${BOX_V}${STY_RST}\n" $((inner_width - 2)) "$line" ;;
+                    warning) printf "  ${STY_YELLOW}${BOX_V}${STY_RST} %-*s ${STY_YELLOW}${BOX_V}${STY_RST}\n" $((inner_width - 2)) "$line" ;;
+                    error)   printf "  ${STY_RED}${BOX_V}${STY_RST} %-*s ${STY_RED}${BOX_V}${STY_RST}\n" $((inner_width - 2)) "$line" ;;
+                    *)       printf "  ${STY_BLUE}${BOX_V}${STY_RST} %-*s ${STY_BLUE}${BOX_V}${STY_RST}\n" $((inner_width - 2)) "$line" ;;
+                esac
+            done <<< "$message"
+        fi
+
+        case "$variant" in
+            success) echo -e "  ${STY_GREEN}${BOX_BL}${h_line}${BOX_BR}${STY_RST}" ;;
+            warning) echo -e "  ${STY_YELLOW}${BOX_BL}${h_line}${BOX_BR}${STY_RST}" ;;
+            error)   echo -e "  ${STY_RED}${BOX_BL}${h_line}${BOX_BR}${STY_RST}" ;;
+            *)       echo -e "  ${STY_BLUE}${BOX_BL}${h_line}${BOX_BR}${STY_RST}" ;;
+        esac
+    fi
+}
+
+###############################################################################
+# Filter — Fuzzy search wrapper (Ink TextInput-inspired)
+# Usage: result=$(echo "$items" | tui_filter "Search...")
+###############################################################################
+tui_filter() {
+    local placeholder="${1:-Filter...}"
+    local limit="${2:-1}"
+
+    if $HAS_GUM; then
+        gum filter --placeholder "$placeholder" \
+            --indicator.foreground "$(_tui_color_value accent)" \
+            --match.foreground "$(_tui_color_value accent)" \
+            --prompt.foreground "$(_tui_color_value accent)" \
+            --header.foreground "$(_tui_color_value muted)" \
+            --text.foreground "$(_tui_color_value text)" \
+            --limit "$limit"
+    else
+        # Simple grep-based fallback
+        echo -ne "  ${STY_PURPLE}?${STY_RST} $placeholder: "
+        local query
+        read -r query
+        if [[ -n "$query" ]]; then
+            grep -i "$query" || true
+        else
+            cat
+        fi
+    fi
+}
+
+###############################################################################
+# Columns — Side-by-side card layout (Ink Box flexDirection-inspired)
+# Usage: tui_columns "left_content" "right_content" [gap]
+###############################################################################
+tui_columns() {
+    local left="$1"
+    local right="$2"
+    local gap="${3:-2}"
+
+    if $HAS_GUM; then
+        local left_styled right_styled
+        left_styled=$(echo "$left" | gum style \
+            --border rounded \
+            --border-foreground "$(_tui_color_value accent-dim)" \
+            --padding "0 2")
+        right_styled=$(echo "$right" | gum style \
+            --border rounded \
+            --border-foreground "$(_tui_color_value accent-dim)" \
+            --padding "0 2")
+        gum join --horizontal "$left_styled" "$(printf '%*s' "$gap" '')" "$right_styled"
+    else
+        # Fallback: stack vertically
+        echo "$left"
+        echo ""
+        echo "$right"
+    fi
+}
+
+###############################################################################
+# Summary Card — Compact key-value card with title (Ink StatusMessage-inspired)
+# Usage: tui_summary_card "title" "key1:value1" "key2:value2" ...
+###############################################################################
+tui_summary_card() {
+    local title="$1"
+    shift
+    local pairs=("$@")
+
+    local content=""
+    local max_key_len=0
+
+    for pair in "${pairs[@]}"; do
+        local key="${pair%%:*}"
+        local len=${#key}
+        (( len > max_key_len )) && max_key_len=$len
+    done
+
+    for pair in "${pairs[@]}"; do
+        local key="${pair%%:*}"
+        local value="${pair#*:}"
+        content+="$(printf '%-*s  %s' "$max_key_len" "$key" "$value")"$'\n'
+    done
+    content="${content%$'\n'}"  # trim trailing newline
+
+    if $HAS_GUM; then
+        local styled_title
+        styled_title=$(echo "$title" | gum style --foreground "$(_tui_color_value accent)" --bold)
+        local styled_content
+        styled_content=$(echo "$content" | gum style --foreground "$(_tui_color_value text)")
+        gum join --vertical "$styled_title" "$styled_content" | \
+            gum style --border rounded \
+                --border-foreground "$(_tui_color_value accent-dim)" \
+                --padding "0 2" \
+                --margin "0 1"
+    else
+        tui_box "$content" "$title" "$TUI_ACCENT_DIM" 56
+    fi
+}
+
+###############################################################################
+# Keybind Hint — Bottom bar with key hints (Ink useInput-inspired)
+# Usage: tui_keyhints "↑↓ Navigate" "Enter Select" "q Quit"
+###############################################################################
+tui_keyhints() {
+    local hints=("$@")
+
+    if $HAS_GUM; then
+        local parts=()
+        for hint in "${hints[@]}"; do
+            local key="${hint%% *}"
+            local desc="${hint#* }"
+            local styled
+            styled=$(gum join --horizontal \
+                "$(echo "$key" | gum style --foreground "$(_tui_color_value accent)" --bold)" \
+                "$(echo " $desc" | gum style --foreground "$(_tui_color_value muted)")")
+            parts+=("$styled")
+        done
+        gum join --horizontal "${parts[@]}" | gum style --margin "0 1"
+    else
+        local line=""
+        for hint in "${hints[@]}"; do
+            local key="${hint%% *}"
+            local desc="${hint#* }"
+            line+="  ${STY_PURPLE}${STY_BOLD}${key}${STY_RST} ${STY_FAINT}${desc}${STY_RST}"
+        done
+        echo -e "$line"
+    fi
+}

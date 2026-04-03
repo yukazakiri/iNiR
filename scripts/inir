@@ -71,6 +71,10 @@ Setup-backed maintenance commands:
   rollback [-c PATH]
   my-changes [-c PATH]
   uninstall [-c PATH]
+  config [-c PATH]               View and edit shell settings
+  info [-c PATH]                 System and shell details dashboard
+  backup [-c PATH]               Create a manual snapshot
+  logs [-c PATH]                 Browse runtime logs
   setup [-c PATH] [args...]
 
 Other:
@@ -1484,7 +1488,7 @@ case "$command_name" in
     service)
         run_service_command "$@"
         ;;
-    doctor|migrate|status|update|rollback|my-changes|uninstall)
+    doctor|migrate|status|update|rollback|my-changes|uninstall|config|info|backup|logs)
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)
