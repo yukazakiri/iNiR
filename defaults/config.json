@@ -319,17 +319,25 @@
                     "timeIndicators": false,
                     "useSineCookie": false
                 },
+                "dateStyle": "long",
                 "digital": {
                     "animateChange": true
                 },
                 "dim": 70,
                 "enable": true,
+                "fontFamily": "Space Grotesk",
                 "placementStrategy": "free",
                 "quote": {
                     "enable": false,
                     "text": ""
                 },
+                "showDate": true,
+                "showSeconds": false,
+                "showShadow": true,
                 "style": "digital",
+                "timeFormat": "system",
+                "timeScale": 100,
+                "dateScale": 100,
                 "x": 100,
                 "y": 100
             },

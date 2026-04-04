@@ -465,6 +465,14 @@ Singleton {
                         property real y: 100
                         property string style: "cookie" // Options: "cookie", "digital"
                         property int dim: 0 // Extra dim for clock text (0-100)
+                        property string fontFamily: "Space Grotesk"
+                        property string timeFormat: "system" // "system", "24h", "12h"
+                        property string dateStyle: "long" // "long", "minimal", "weekday", "numeric"
+                        property bool showDate: true
+                        property bool showSeconds: false
+                        property bool showShadow: true
+                        property int timeScale: 100
+                        property int dateScale: 100
                         property JsonObject cookie: JsonObject {
                             property bool aiStyling: false
                             property int sides: 14
