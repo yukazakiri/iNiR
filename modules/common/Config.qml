@@ -323,6 +323,7 @@ Singleton {
                     property JsonObject terminals: JsonObject {
                         property bool kitty: true
                         property bool alacritty: true
+                        property bool cliamp: true
                         property bool foot: true
                         property bool wezterm: true
                         property bool ghostty: true

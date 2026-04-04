@@ -891,6 +891,17 @@ ContentPage {
                 }
 
                 ConfigSwitch {
+                    buttonIcon: "library_music"
+                    text: "cliamp" + (terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["cliamp"] ?? false) ? " ⌀" : "")
+                    checked: Config.options?.appearance?.wallpaperTheming?.terminals?.cliamp ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.terminals.cliamp", checked)
+                    opacity: terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["cliamp"] ?? false) ? 0.5 : 1
+                    StyledToolTip {
+                        text: Translation.tr("cliamp terminal music player theme")
+                    }
+                }
+
+                ConfigSwitch {
                     buttonIcon: "terminal"
                     text: "Foot" + (terminalColorsSection.detectionDone && !(terminalColorsSection.installedTerminals["foot"] ?? false) ? " ⌀" : "")
                     checked: Config.options?.appearance?.wallpaperTheming?.terminals?.foot ?? true
@@ -1019,7 +1030,7 @@ ContentPage {
                     command: [
                         "/usr/bin/bash",
                         "-c",
-                        "for term in kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi; do " +
+                        "for term in kitty alacritty cliamp foot wezterm ghostty konsole starship btop lazygit yazi; do " +
                         "if command -v $term &>/dev/null; then echo \"$term:true\"; " +
                         "else echo \"$term:false\"; fi; done"
                     ]

@@ -1,0 +1,9 @@
+{
+  "id": "cliamp",
+  "label": "cliamp",
+  "module": "15-cliamp.sh",
+  "category": "terminal",
+  "inputs": ["palette.json", "terminal.json", "material_colors.scss"],
+  "description": "Generate and apply the live cliamp wallpaper-driven theme.",
+  "configKey": "appearance.wallpaperTheming.terminals.cliamp"
+}

@@ -146,6 +146,7 @@
             "terminals": {
                 "kitty": true,
                 "alacritty": true,
+                "cliamp": true,
                 "foot": true,
                 "wezterm": true,
                 "ghostty": true,
