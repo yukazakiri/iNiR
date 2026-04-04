@@ -1090,7 +1090,7 @@ Singleton {
                     property bool enable: false
                     property bool showNsfw: false
                     // Custom streaming site URL (use %s for search query placeholder)
-                    // Examples: "https://hianime.to/search?keyword=%s", "https://9animetv.to/search?keyword=%s"
+                    // Examples: "https://9animetv.to/search?keyword=%s", "https://anitaku.pe/search.html?keyword=%s"
                     property string watchSite: ""
                 }
                 // Reddit tab - public JSON API

@@ -1057,7 +1057,7 @@ ContentPage {
 
                         MaterialTextField {
                             Layout.fillWidth: true
-                            placeholderText: "https://hianime.to/search?keyword=%s"
+                            placeholderText: "https://9animetv.to/search?keyword=%s"
                             text: Config.options.sidebar?.animeSchedule?.watchSite ?? ""
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.m3colors.m3onSurface
