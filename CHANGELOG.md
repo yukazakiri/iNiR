@@ -10,17 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Arch dependency tracker meta-package**: New `inir-deps` package registered during setup so pacman orphan cleanup does not remove iNiR runtime dependencies.
 - **Post-install extras flow**: `./setup extras` now exposes optional installs for iNiR-Walls and ii-pixel-sddm after initial setup.
+- **Curated software catalog sidebar tab**: Added software discovery surface with bundled catalog data and AppCatalog service wiring.
+- **Material background clock controls**: Added full clock customization for the ii background widget (schema/defaults/settings + widget surfaces).
 
 ### Changed
 - **Arch install hardening**: Dependency install flow now handles known Noctalia package conflicts before iNiR package resolution.
 - **Path model normalization**: Runtime/services/settings/welcome surfaces now consume centralized XDG-derived paths from `Directories.qml` instead of scattered literals.
 - **Setup UX flow**: Fresh install keeps optional content opt-in (SDDM/iNiR-Walls), update path handling and theme actions were hardened, and the setup TUI received the new Ink visual refactor.
+- **README localization refresh**: Main README and localized docs/readme pages were rewritten/synced for current project messaging.
+- **Technical docs sync**: IPC, theming, package, and project-map docs were aligned with real runtime/distribution behavior.
 
 ### Fixed
 - **Wallpaper status resolution**: Setup now reads `theme-meta.json` via `.wallpaper` with `.source_path` fallback so active wallpaper no longer shows as `none` when metadata uses source-path shape.
 - **iNiR-Walls feedback**: Extras flow now shows visible clone/download progress and no longer suppresses user-facing install logs.
 - **Theming target wiring**: Spicetify target config key corrected to `appearance.wallpaperTheming.enableSpicetify`, and terminal theming applies with safer terminal ancestry detection.
 - **Runtime interaction edge cases**: Cheatsheet key handling and wallpaper coverflow monitor targeting/cleanup were corrected for more reliable focus and close behavior.
+- **YTMusic playback/state reliability**: Fixed media source switching sync and autoplay recovery when mpv hangs at EOF.
+- **Background media widget blur placement**: Corrected half-pixel placement artifact that caused blur instability.
+- **Settings/overlay alignment polish**: Fixed variable-width action tab underline alignment, removed settings nav scrollbar rail bleed, and prevented overlay-mode hover bubble from shifting nav alignment.
+- **Anime schedule watch fallback**: Migrated fallback target to 9animetv for broken/legacy watch links.
 
 ## [2.17.1] - 2026-04-02
 
