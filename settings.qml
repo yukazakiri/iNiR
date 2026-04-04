@@ -1971,7 +1971,7 @@ ApplicationWindow {
                     boundsBehavior: Flickable.StopAtBounds
                     interactive: contentHeight > height
                     ScrollBar.vertical: StyledScrollBar {
-                        policy: navRailFlickable.contentHeight > navRailFlickable.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                        policy: ScrollBar.AlwaysOff
                     }
 
                     NavigationRail {
