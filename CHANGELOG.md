@@ -5,6 +5,19 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.3] - 2026-04-04
+
+### Added
+- **Configurable sidebar animations**: Sidebars now support 4 animation types — slide (default), fade, pop, and reveal — selectable from Settings > Panels. Uses Material Design motion tokens with enter/exit transitions.
+- **Lock screen video/GIF support**: Video and animated GIF wallpapers now render on the lock screen with first-frame fallback. Animation is off by default (Settings > Lock Screen toggle). Supports both ii and waffle families including the Niri-safe variant.
+- **Version bump script**: `scripts/bump-version.sh` updates VERSION, all README badges, PKGBUILDs, and doc references in one command.
+
+### Fixed
+- **YTMusic track selection race**: Clicking a song while another was playing could advance to the next track instead of the selected one. Added `_userInitiatedPlay` guard to suppress spurious `playNext()` from the old mpv's exit handler during the 200ms handoff window.
+- **Cloudflare WARP toggle misalignment**: WARP toggle in the classic quick panel broke grid alignment because its `contentItem` lacked the Item wrapper other toggles use.
+- **Classic quick toggles left-aligned in compact mode**: Grid was anchored to left/right edges in compact mode instead of centering. Now always horizontally centered.
+- **Waffle lock screen GIF detection**: `wallpaperIsVideo`/`wallpaperIsGif` were checking the thumbnail-resolved path instead of the raw source path, which could miss animated wallpapers when a thumbnail was set.
+
 ## [2.17.2] - 2026-04-04
 
 ### Added
