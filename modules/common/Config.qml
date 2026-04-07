@@ -562,8 +562,8 @@ Singleton {
                     property bool autoVertical: false
                     property bool enableWorkspace: true
                     property real workspaceShift: 1.0
-                    property real workspaceZoom: 1.07 // Relative to your screen, not wallpaper size
-                    property real zoom: 1.07
+                    property real workspaceZoom: 1.0 // Relative to wallpaper size, with headroom applied internally
+                    property real zoom: 1.0
                     property bool enableSidebar: true
                     property real panelShift: 0.15
                     property real widgetsFactor: 1.2
@@ -1425,8 +1425,8 @@ Singleton {
                         property bool autoVertical: true
                         property bool enableWorkspace: false
                         property real workspaceShift: 1.0
-                        property real workspaceZoom: 1.05
-                        property real zoom: 1.05
+                        property real workspaceZoom: 1.0
+                        property real zoom: 1.0
                         property bool enableSidebar: false
                         property real panelShift: 0.12
                         property real widgetsFactor: 1.0
@@ -1465,6 +1465,9 @@ Singleton {
                     property bool tintTrayIcons: false
                     property int iconSize: 26
                     property int searchIconSize: 24
+                    property JsonObject activationWatermark: JsonObject {
+                        property bool enable: false
+                    }
                     property JsonObject desktopPeek: JsonObject {
                         property bool hoverPeek: false
                         property int hoverDelay: 500

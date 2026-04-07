@@ -263,13 +263,13 @@
             "enableWorkspace": true,
             "workspaceShift": 1.0,
             "vertical": true,
-            "zoom": 1.07,
+            "zoom": 1.0,
             "panelShift": 0.15,
             "widgetDepth": 1.2,
             "pauseDuringTransitions": true,
             "transitionSettleMs": 220,
             "widgetsFactor": 1.2,
-            "workspaceZoom": 1.07
+            "workspaceZoom": 1.0
         },
         "thumbnailPath": "",
         "wallpaperPath": "",
@@ -1154,8 +1154,8 @@
                 "enableWorkspace": false,
                 "enableSidebar": false,
                 "workspaceShift": 1.0,
-                "workspaceZoom": 1.05,
-                "zoom": 1.05,
+                "workspaceZoom": 1.0,
+                "zoom": 1.0,
                 "autoVertical": true,
                 "vertical": false,
                 "panelShift": 0.12,
@@ -1193,6 +1193,9 @@
             "iconSize": 26,
             "leftAlignApps": false,
             "monochromeIcons": false,
+            "activationWatermark": {
+                "enable": false
+            },
             "desktopPeek": {
                 "hoverPeek": false,
                 "hoverDelay": 500
