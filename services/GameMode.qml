@@ -28,6 +28,13 @@ Singleton {
     property bool active: _manualActive || _autoActive
     readonly property bool autoDetect: Config.options?.gameMode?.autoDetect ?? true
     property bool manuallyActivated: _manualActive
+    readonly property bool autoActivated: _autoActive
+
+    // True when panels should hide (slide-out + mask null + exclusiveZone 0).
+    // Only when auto-detected AND the focused window is still fullscreen.
+    // When user opens Niri overview (Super+TAB), focused window changes → panels return.
+    // Manual GameMode never hides panels — it only applies performance optimizations.
+    readonly property bool shouldHidePanels: _autoActive && _focusedIsFullscreen
     
     // When autoDetect is disabled, immediately clear auto state
     onAutoDetectChanged: {
@@ -51,6 +58,7 @@ Singleton {
     property bool _manualActive: false
     property bool _autoActive: false
     property bool _initialized: false
+    property bool _focusedIsFullscreen: false
 
     // Config-driven behavior (reactive bindings - re-evaluated when Config changes)
     readonly property bool disableAnimations: Config.options?.gameMode?.disableAnimations ?? true
@@ -193,6 +201,7 @@ Singleton {
         if (!CompositorService.isNiri) {
             _autoActive = false
             _fullscreenCount = 0
+            _focusedIsFullscreen = false
             hasAnyFullscreenWindow = false
             return
         }
@@ -200,14 +209,17 @@ Singleton {
         // Always update hasAnyFullscreenWindow (for toast suppression)
         hasAnyFullscreenWindow = checkAnyFullscreenWindow()
 
+        const focusedWindow = NiriService.activeWindow
+        const isFullscreen = isWindowFullscreen(focusedWindow)
+
+        // Always track focused window state (drives shouldHidePanels reactively)
+        _focusedIsFullscreen = isFullscreen
+
         if (!autoDetect) {
             _autoActive = false
             _fullscreenCount = 0
             return
         }
-
-        const focusedWindow = NiriService.activeWindow
-        const isFullscreen = isWindowFullscreen(focusedWindow)
         
         // Hysteresis: require consistent state before changing
         if (isFullscreen) {
