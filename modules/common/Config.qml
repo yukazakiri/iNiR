@@ -556,7 +556,7 @@ Singleton {
                     property real auroraOverlayOpacity: 0.38
                 }
                 property JsonObject parallax: JsonObject {
-                    property bool enable: true
+                    property bool enable: false
                     property string axis: "vertical"
                     property bool vertical: false
                     property bool autoVertical: false

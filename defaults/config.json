@@ -256,7 +256,7 @@
         },
         "hideWhenFullscreen": true,
         "parallax": {
-            "enable": true,
+            "enable": false,
             "axis": "vertical",
             "autoVertical": false,
             "enableSidebar": true,

@@ -46,7 +46,7 @@ Variants {
             }
             return false
         }
-        visible: GlobalStates.screenLocked || !hasFullscreenWindow || !(Config.options?.background?.hideWhenFullscreen ?? false)
+        visible: !GameMode.shouldHidePanels && (GlobalStates.screenLocked || !hasFullscreenWindow || !(Config.options?.background?.hideWhenFullscreen ?? false))
 
         // Workspaces
         property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(modelData) : null
@@ -685,12 +685,15 @@ Variants {
                         return [0.54, 0.0, 0.34, 0.99, 1, 1]
                     return [x1, y1, x2, y2, 1, 1]
                 }
+                // Container resize is NOT animated during crossfader transitions.
+                // The crossfader handles its own transition visually; animating the
+                // container size simultaneously causes double-image artifacts.
                 Behavior on width {
                     enabled: Appearance.animationsEnabled
                         && (wallpaperContainer.useParallax || bgRoot.effectiveHasPan)
                         && bgRoot._awwwRevealOpacity >= 1
-                        && ((!bgRoot.parallaxTransitionActive && bgRoot.parallaxResumeProgress >= 1)
-                            || bgRoot._parallaxWaitingCrossfader)
+                        && !bgRoot.parallaxTransitionActive
+                        && bgRoot.parallaxResumeProgress >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline
@@ -701,8 +704,8 @@ Variants {
                     enabled: Appearance.animationsEnabled
                         && (wallpaperContainer.useParallax || bgRoot.effectiveHasPan)
                         && bgRoot._awwwRevealOpacity >= 1
-                        && ((!bgRoot.parallaxTransitionActive && bgRoot.parallaxResumeProgress >= 1)
-                            || bgRoot._parallaxWaitingCrossfader)
+                        && !bgRoot.parallaxTransitionActive
+                        && bgRoot.parallaxResumeProgress >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline

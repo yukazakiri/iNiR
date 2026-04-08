@@ -1,6 +1,9 @@
 .pragma library
 
-var PARALLAX_HEADROOM = 1.1
+// Minimum scale floor above screen-cover.  Guarantees a small travel distance
+// even when the user's zoom is <= 1.0, without the old 10% unconditional
+// multiplier that caused oversized containers.
+var PARALLAX_MIN_TRAVEL = 1.02
 
 var presets = {
     subtle: { zoom: 0.95, workspaceShift: 0.7, panelShift: 0.08, widgetDepth: 0.9 },
@@ -35,9 +38,12 @@ function minSuitableScale(imageWidth, imageHeight, screenWidth, screenHeight) {
 }
 
 function effectiveScale(imageWidth, imageHeight, screenWidth, screenHeight, additionalZoom) {
-    return minSuitableScale(imageWidth, imageHeight, screenWidth, screenHeight)
-        * clamp(additionalZoom ?? 1, 0.1, 2.0)
-        * PARALLAX_HEADROOM
+    var base = minSuitableScale(imageWidth, imageHeight, screenWidth, screenHeight)
+    var zoomed = base * clamp(additionalZoom ?? 1, 0.1, 2.0)
+    // Ensure the image is at least slightly larger than the screen so there
+    // is travel distance for the parallax effect, but never inflate beyond
+    // what the user's zoom already provides.
+    return Math.max(zoomed, base * PARALLAX_MIN_TRAVEL)
 }
 
 function parallaxTotalPixels(scaledDimension, screenDimension) {
