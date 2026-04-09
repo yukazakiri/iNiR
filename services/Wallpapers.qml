@@ -485,11 +485,6 @@ Singleton {
             Config.setNestedValue("waffles.background.thumbnailPath", thumbnailPath)
             if (needsThumbnail)
                 root.ensureThumbnailForPath(normalizedPath, "large")
-            if ((Config.options?.panelFamily ?? "ii") === "waffle") {
-                root._applyInProgress = true
-                _applySuppressTimer.restart()
-                root._queueWallpaperScript(normalizedPath, darkMode, true)
-            }
             root.changed()
             return
         case "waffle-backdrop":

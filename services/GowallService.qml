@@ -41,7 +41,6 @@ Singleton {
     property string _pendingThemeJson: ""
     property bool _pendingNeedsThemeFile: false
     property string _pendingSourceBasename: ""  // Track source for smart naming
-    property string _applyTarget: ""  // "waffle" or "" (main/ii)
 
     readonly property string _runtimeDir: FileUtils.trimFileProtocol(`${Directories.state}/user/generated/gowall`)
     readonly property string _customThemePath: FileUtils.trimFileProtocol(`${_runtimeDir}/custom-theme.json`)
@@ -233,14 +232,14 @@ Singleton {
             "--output", _previewPathFor(fmt)], fmt, "", false, _basenameWithoutExt(src) + "-upscaled")
     }
 
-    // Apply current preview as wallpaper — copies to final destination, then applies via Wallpapers
-    // Uses source-based naming to avoid spamming multiple files for the same wallpaper
-    // target: "" = main/ii (Wallpapers.apply), "waffle" = waffle family (Wallpapers.select with target)
-    function applyPreview(target = ""): void {
+    // Apply current preview as wallpaper — copies to final destination, then applies via Wallpapers.apply()
+    // Always sets the main wallpaper and runs the full color pipeline (switchwall.sh),
+    // identical to selecting a wallpaper from the wallpaper selector.
+    // Uses source-based naming to avoid spamming multiple files for the same wallpaper.
+    function applyPreview(): void {
         if (!_previewReady || _currentPreviewPath.length === 0) return
         if (busy) return
         error = ""
-        _applyTarget = target ?? ""
         // Use source basename for predictable naming (overwrites previous result from same source)
         const basename = _pendingSourceBasename.length > 0 ? _pendingSourceBasename : "gowall"
         const dest = `${_outputDir}/${basename}.${_pendingFormat}`
@@ -439,11 +438,28 @@ Singleton {
         property string _destPath: ""
         onExited: (exitCode) => {
             if (exitCode !== 0) { root.error = "Failed to copy result to wallpapers"; return }
-            if (root._applyTarget.length > 0)
-                Wallpapers.select(_destPath, Appearance.m3colors.darkmode, "", root._applyTarget)
-            else
-                Wallpapers.apply(_destPath, Appearance.m3colors.darkmode)
-            AwwwBackend.forceSync()
+            // Always apply as main wallpaper → runs full color pipeline (switchwall.sh)
+            Wallpapers.apply(_destPath, Appearance.m3colors.darkmode)
+            // Sync all wallpaper surfaces so the gowall result shows everywhere.
+            // Wallpapers.apply() already sets background.wallpaperPath + runs switchwall.sh.
+            // Surfaces with useMainWallpaper=true follow automatically; those with their own
+            // separate wallpaper need an explicit config write to avoid stale images.
+            const isWaffle = (Config.options?.panelFamily ?? "ii") === "waffle"
+            if (isWaffle) {
+                if (!(Config.options?.waffles?.background?.useMainWallpaper ?? true)) {
+                    Config.setNestedValue("waffles.background.wallpaperPath", _destPath)
+                    Config.setNestedValue("waffles.background.thumbnailPath", "")
+                }
+                if (!(Config.options?.waffles?.background?.backdrop?.useMainWallpaper ?? true)) {
+                    Config.setNestedValue("waffles.background.backdrop.wallpaperPath", _destPath)
+                    Config.setNestedValue("waffles.background.backdrop.thumbnailPath", "")
+                }
+            } else {
+                if (!(Config.options?.background?.backdrop?.useMainWallpaper ?? true)) {
+                    Config.setNestedValue("background.backdrop.wallpaperPath", _destPath)
+                    Config.setNestedValue("background.backdrop.thumbnailPath", "")
+                }
+            }
         }
     }
 
