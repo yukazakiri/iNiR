@@ -987,17 +987,10 @@ reload_pear() {
     return 0
   fi
 
-  # App is running but without CDP — restart it with CDP enabled
-  # This is the fallback for users who haven't relaunched after desktop override
-  log_module "CDP unavailable — restarting pear-desktop with CDP"
-  pkill -f "youtube-music/app.asar" 2>/dev/null || true
-  sleep 0.5
-  nohup youtube-music --remote-debugging-port="$CDP_PORT" >/dev/null 2>&1 &
-  disown
-
-  # Wait for app to start and inject
-  sleep 2
-  inject_css_cdp "$css_file" || log_module "injection after restart failed"
+  # App is running but without CDP — CSS is deployed to config and will apply on next launch.
+  # Never kill and restart the app: the user perceives it as the app crashing.
+  # The desktop override ensures future launches have CDP enabled.
+  log_module "CDP unavailable — CSS registered in config, will apply on next app launch"
 }
 
 # --- Main ---
