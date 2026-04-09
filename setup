@@ -1821,11 +1821,6 @@ run_update() {
 
     ensure_user_inir_service_enabled >/dev/null 2>&1 || true
 
-    if [[ -n "${NIRI_SOCKET:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-        systemctl --user reset-failed inir.service >/dev/null 2>&1 || true
-        systemctl --user start inir.service >/dev/null 2>&1 || true
-    fi
-
     local niri_config="${XDG_CONFIG_HOME}/niri/config.kdl"
     local niri_startup_cfg="${XDG_CONFIG_HOME}/niri/config.d/50-startup.kdl"
     local niri_binds_cfg="${XDG_CONFIG_HOME}/niri/config.d/70-binds.kdl"
