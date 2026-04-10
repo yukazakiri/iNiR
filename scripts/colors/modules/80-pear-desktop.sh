@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Pear Desktop (YouTube Music) theming module: generates Material You CSS
+# Pear Desktop / YouTube Music theming module: generates Material You CSS
 # and optionally injects it live via CDP if the app is running with debug port.
 #
 # CSS based on catppuccin/youtubemusic with Material You color mapping.
 #
+# Supports both package names: "pear-desktop" (AUR) and "youtube-music" (CachyOS).
+# They are the same Electron app — auto-detected at runtime.
+#
 # Live reload requires CDP enabled. The module creates a desktop override
-# that launches youtube-music with --remote-debugging-port=9222.
+# that launches the detected binary with --remote-debugging-port=9223.
+# Port 9223 avoids conflict with Spotify/Spicetify which uses 9222.
 #
 # Called from: scripts/colors/applycolor.sh (color pipeline)
 
@@ -19,7 +23,34 @@ PEAR_CONFIG_FILE="$PEAR_CONFIG_DIR/config.json"
 
 GENERATED_CSS="$STATE_DIR/user/generated/pear-desktop-theme.css"
 COLORS_JSON="$STATE_DIR/user/generated/colors.json"
-CDP_PORT=9222
+CDP_PORT=9223
+
+# --- Package detection ---
+# Pear Desktop and YouTube Music are the same Electron app (th-ch/youtube-music
+# renamed to pear-devs/pear-desktop). CachyOS ships "youtube-music", AUR ships
+# "pear-desktop". They conflict — only one can be installed. Detect which.
+
+PEAR_BINARY=""
+PEAR_ASAR_PATTERN=""
+
+detect_package() {
+  if command -v pear-desktop &>/dev/null; then
+    PEAR_BINARY="pear-desktop"
+    PEAR_ASAR_PATTERN="pear-desktop/app.asar"
+  elif command -v youtube-music &>/dev/null; then
+    PEAR_BINARY="youtube-music"
+    PEAR_ASAR_PATTERN="youtube-music/app.asar"
+  else
+    # Neither binary found — check config dir as fallback (app may be installed
+    # via flatpak or appimage with a different binary name)
+    if [[ -d "$PEAR_CONFIG_DIR" ]]; then
+      PEAR_BINARY="pear-desktop"
+      PEAR_ASAR_PATTERN="pear-desktop/app.asar\|youtube-music/app.asar"
+    fi
+    return 1
+  fi
+  return 0
+}
 
 # --- CSS generation from colors.json (catppuccin structure with Material You colors) ---
 
@@ -904,7 +935,7 @@ register_theme_in_config() {
   local css_path="$1"
 
   [[ -d "$PEAR_CONFIG_DIR" ]] || {
-    log_module "YouTube Music config dir not found — app not installed?"
+    log_module "config dir not found — app not installed?"
     return 1
   }
 
@@ -932,11 +963,13 @@ register_theme_in_config() {
 # --- Desktop override for CDP ---
 
 ensure_desktop_override() {
-  # Create a .desktop override that launches youtube-music with CDP enabled
-  # This allows live CSS injection without requiring user to manually add flags
+  # Create a .desktop override that launches the app with CDP enabled.
+  # Works for both youtube-music (CachyOS) and pear-desktop (AUR).
+  [[ -n "$PEAR_BINARY" ]] || return 0
+
   local user_apps="$HOME/.local/share/applications"
-  local override="$user_apps/youtube-music.desktop"
-  local system_desktop="/usr/share/applications/youtube-music.desktop"
+  local override="$user_apps/${PEAR_BINARY}.desktop"
+  local system_desktop="/usr/share/applications/${PEAR_BINARY}.desktop"
 
   [[ -f "$system_desktop" ]] || return 0
   mkdir -p "$user_apps"
@@ -947,9 +980,9 @@ ensure_desktop_override() {
   fi
 
   # Create override with CDP flag
-  sed "s|^Exec=youtube-music|Exec=youtube-music --remote-debugging-port=$CDP_PORT|" \
+  sed "s|^Exec=${PEAR_BINARY}|Exec=${PEAR_BINARY} --remote-debugging-port=$CDP_PORT|" \
     "$system_desktop" > "$override"
-  log_module "created desktop override with CDP enabled"
+  log_module "created desktop override with CDP enabled ($PEAR_BINARY)"
 }
 
 # --- Live reload via CDP ---
@@ -982,7 +1015,7 @@ reload_pear() {
   fi
 
   # CDP unavailable — check if app is running at all
-  if ! pgrep -f "youtube-music/app.asar" >/dev/null 2>&1; then
+  if ! pgrep -f "$PEAR_ASAR_PATTERN" >/dev/null 2>&1; then
     log_module "pear-desktop not running"
     return 0
   fi
@@ -1003,11 +1036,12 @@ main() {
     exit 0
   }
 
-  # Check if YouTube Music / pear-desktop is installed
-  if [[ ! -d "$PEAR_CONFIG_DIR" ]] && ! command -v youtube-music &>/dev/null; then
-    log_module "pear-desktop (youtube-music) not installed — skipping"
+  # Detect which package is installed (youtube-music or pear-desktop)
+  if ! detect_package; then
+    log_module "pear-desktop / youtube-music not installed — skipping"
     exit 0
   fi
+  log_module "detected package: $PEAR_BINARY"
 
   # Generate CSS from colors.json
   local css_file="$GENERATED_CSS"
