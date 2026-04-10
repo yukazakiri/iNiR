@@ -8,17 +8,17 @@ import qs.modules.common.functions
 
 /**
  * Compact iNiR shell update indicator for the bar.
- * Shows when a new version is available in the git repo.
+ * Shows when a new version is available in the git repo, and handles live update progress.
  */
 MouseArea {
     id: root
 
-    visible: ShellUpdates.showUpdate
+    visible: ShellUpdates.showUpdate || ShellUpdates.isUpdating
     implicitWidth: visible ? pill.width : 0
     implicitHeight: Appearance.sizes.barHeight
 
     hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+    cursorShape: ShellUpdates.isUpdating ? Qt.ArrowCursor : Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
     readonly property color accentColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
@@ -27,6 +27,8 @@ MouseArea {
         : Appearance.m3colors.m3primary
 
     onClicked: (mouse) => {
+        if (ShellUpdates.isUpdating) return;
+        
         if (mouse.button === Qt.RightButton) {
             ShellUpdates.dismiss()
         } else {
@@ -41,8 +43,14 @@ MouseArea {
         width: contentRow.implicitWidth + 16
         height: contentRow.implicitHeight + 8
         radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : height / 2
-        scale: root.pressed ? 0.93 : (root.containsMouse ? 1.03 : 1.0)
+        scale: (!ShellUpdates.isUpdating && root.pressed) ? 0.93 : ((!ShellUpdates.isUpdating && root.containsMouse) ? 1.03 : 1.0)
         color: {
+            if (ShellUpdates.isUpdating) {
+                if (Appearance.angelEverywhere) return ColorUtils.transparentize(Appearance.angel.colPrimary, 0.92)
+                if (Appearance.inirEverywhere) return ColorUtils.transparentize(Appearance.inir?.colAccent ?? Appearance.m3colors.m3primary, 0.92)
+                if (Appearance.auroraEverywhere) return ColorUtils.transparentize(Appearance.aurora?.colAccent ?? Appearance.m3colors.m3primary, 0.92)
+                return ColorUtils.transparentize(Appearance.m3colors.m3primary, 0.92)
+            }
             if (root.pressed) {
                 if (Appearance.angelEverywhere) return Appearance.angel.colGlassCardActive
                 if (Appearance.inirEverywhere) return Appearance.inir.colLayer2Active
@@ -80,23 +88,40 @@ MouseArea {
 
         MaterialSymbol {
             id: updateIcon
-            text: "upgrade"
+            text: ShellUpdates.isUpdating ? "progress_activity" : "upgrade"
             iconSize: Appearance.font.pixelSize.normal
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter
 
+            RotationAnimation on rotation {
+                loops: Animation.Infinite
+                running: ShellUpdates.isUpdating
+                from: 0
+                to: 360
+                duration: 1200
+            }
+
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
-                running: root.containsMouse
+                running: !ShellUpdates.isUpdating && root.containsMouse
                 NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
             }
         }
 
         StyledText {
-            text: ShellUpdates.commitsBehind > 0
-                ? ShellUpdates.commitsBehind.toString()
-                : "!"
+            text: {
+                if (ShellUpdates.isUpdating) {
+                    if (ShellUpdates.updateStep > 0 && ShellUpdates.updateTotalSteps > 0) {
+                        return ShellUpdates.updateStep + "/" + ShellUpdates.updateTotalSteps
+                    }
+                    return "" // Just spinner if no steps known
+                }
+                return ShellUpdates.commitsBehind > 0
+                    ? ShellUpdates.commitsBehind.toString()
+                    : "!"
+            }
+            visible: text !== ""
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.weight: Font.DemiBold
             color: root.accentColor
@@ -120,14 +145,22 @@ MouseArea {
                     anchors.verticalCenter: parent.verticalCenter
                     fill: 0
                     font.weight: Font.Medium
-                    text: "deployed_code_update"
+                    text: ShellUpdates.isUpdating ? "progress_activity" : "deployed_code_update"
                     iconSize: Appearance.font.pixelSize.large
                     color: Appearance.colors.colOnSurfaceVariant
+                    
+                    RotationAnimation on rotation {
+                        loops: Animation.Infinite
+                        running: ShellUpdates.isUpdating && updatePopup.active
+                        from: 0
+                        to: 360
+                        duration: 1200
+                    }
                 }
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Translation.tr("iNiR Update")
+                    text: ShellUpdates.isUpdating ? Translation.tr("Updating...") : Translation.tr("iNiR Update")
                     font {
                         weight: Font.Medium
                         pixelSize: Appearance.font.pixelSize.normal
@@ -136,8 +169,33 @@ MouseArea {
                 }
             }
 
+            // Update Progress details (Only visible when updating)
+            RowLayout {
+                visible: ShellUpdates.isUpdating
+                spacing: 5
+                Layout.fillWidth: true
+
+                MaterialSymbol {
+                    text: "info"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: ShellUpdates.updateStepMessage.length > 0 ? Translation.tr(ShellUpdates.updateStepMessage) : Translation.tr("Processing...")
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
+                StyledText {
+                    visible: ShellUpdates.updateStep > 0 && ShellUpdates.updateTotalSteps > 0
+                    text: Translation.tr("Step") + " " + ShellUpdates.updateStep + "/" + ShellUpdates.updateTotalSteps
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.weight: Font.DemiBold
+                }
+            }
+
             // Commits behind
             RowLayout {
+                visible: !ShellUpdates.isUpdating
                 spacing: 5
                 Layout.fillWidth: true
 
@@ -165,7 +223,7 @@ MouseArea {
 
             // Version row
             RowLayout {
-                visible: ShellUpdates.localVersion.length > 0 && ShellUpdates.remoteVersion.length > 0 && ShellUpdates.remoteVersion !== ShellUpdates.localVersion
+                visible: !ShellUpdates.isUpdating && ShellUpdates.localVersion.length > 0 && ShellUpdates.remoteVersion.length > 0 && ShellUpdates.remoteVersion !== ShellUpdates.localVersion
                 spacing: 5
                 Layout.fillWidth: true
 
@@ -192,6 +250,7 @@ MouseArea {
 
             // Commit comparison row
             RowLayout {
+                visible: !ShellUpdates.isUpdating
                 spacing: 5
                 Layout.fillWidth: true
 
@@ -219,7 +278,7 @@ MouseArea {
 
             // Branch row
             RowLayout {
-                visible: ShellUpdates.currentBranch.length > 0
+                visible: !ShellUpdates.isUpdating && ShellUpdates.currentBranch.length > 0
                 spacing: 5
                 Layout.fillWidth: true
 
@@ -244,7 +303,7 @@ MouseArea {
             // Error display
             RowLayout {
                 spacing: 5
-                visible: ShellUpdates.lastError.length > 0
+                visible: !ShellUpdates.isUpdating && ShellUpdates.lastError.length > 0
                 Layout.fillWidth: true
                 Layout.maximumWidth: 280
 
@@ -264,6 +323,7 @@ MouseArea {
 
             // Separator
             Rectangle {
+                visible: !ShellUpdates.isUpdating
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
                 Layout.topMargin: 2
@@ -276,6 +336,7 @@ MouseArea {
 
             // Hint
             StyledText {
+                visible: !ShellUpdates.isUpdating
                 text: Translation.tr("Click for details · Right-click to dismiss")
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 color: Appearance.colors.colOnSurfaceVariant

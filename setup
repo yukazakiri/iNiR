@@ -1461,6 +1461,19 @@ restore_single_user_mod() {
 ###############################################################################
 # Update
 ###############################################################################
+
+# Progress reporting for shell UI — writes structured markers to the update
+# status file so ShellUpdates.qml can show live progress in the bar indicator.
+# Format: progress:STEP:TOTAL:MESSAGE
+# Called only during automated updates (setup -y -q update from ShellUpdates).
+_update_status_file="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user/update-status"
+_update_total_steps=7
+
+_report_progress() {
+    local step="$1" msg="$2"
+    echo "progress:${step}:${_update_total_steps}:${msg}" > "$_update_status_file" 2>/dev/null || true
+}
+
 run_update() {
     echo ""
     tui_title "Checking for updates..."
@@ -1541,6 +1554,7 @@ run_update() {
             tui_success "Snapshot: $snapshot_id"
 
             # Pull changes
+            _report_progress 1 "Pulling changes"
             tui_info "Pulling changes..."
             if ! git -C "$REPO_ROOT" pull --ff-only origin 2>/dev/null; then
                 tui_error "Git pull failed. You may have local changes."
@@ -1598,6 +1612,7 @@ run_update() {
     local repo_commit=$(get_repo_commit)
 
     echo ""
+    _report_progress 2 "Syncing files"
     tui_info "Syncing iNiR..."
 
     II_SOURCE="${REPO_ROOT}"
@@ -1804,6 +1819,7 @@ run_update() {
     fi
 
     # Migrations
+    _report_progress 3 "Running migrations"
     local pending=$(count_pending_migrations)
     if [[ "$pending" -gt 0 ]]; then
         echo ""
@@ -1818,6 +1834,7 @@ run_update() {
         fi
     fi
 
+    _report_progress 4 "Finalizing"
     _service_refresh_status=1
     if sync_user_inir_service_from_repo_if_present; then
         _service_refresh_status=0
@@ -1874,30 +1891,8 @@ run_update() {
     #     [[ $new_plugins -gt 0 ]] && tui_success "Installed $new_plugins default WebApp plugin(s)"
     # fi
 
-    # Restart shell (only if we have access to the session)
-    echo ""
-    if [[ -n "$NIRI_SOCKET" ]] || [[ -n "$WAYLAND_DISPLAY" ]]; then
-        tui_info "Restarting shell..."
-        if command -v systemctl >/dev/null 2>&1 && systemctl --user cat inir.service >/dev/null 2>&1; then
-            nohup systemctl --user restart inir.service >/dev/null 2>&1 &
-            disown
-        elif [[ -x "${II_TARGET}/scripts/inir" ]]; then
-            nohup bash "${II_TARGET}/scripts/inir" restart -c "${II_TARGET}" >/dev/null 2>&1 &
-            disown
-        else
-            qs -p "${II_TARGET}" kill 2>/dev/null || true
-            sleep 1
-            nohup qs -p "${II_TARGET}" >/dev/null 2>&1 &
-            disown
-        fi
-        tui_success "Shell restarted"
-    else
-        tui_warn "Not in graphical session - shell restart skipped"
-        tui_info "The shell will use new files on next restart"
-        tui_info "Or run: inir restart"
-    fi
-
     # Post-update: check for missing dependencies and offer to install them
+    _report_progress 5 "Checking dependencies"
     echo ""
     tui_title "Dependency check"
     echo ""
@@ -1988,6 +1983,7 @@ run_update() {
     # fi
 
     # Update Python venv packages
+    _report_progress 6 "Python packages"
     echo ""
     tui_title "Python packages"
     echo ""
@@ -2009,6 +2005,33 @@ run_update() {
         fi
     else
         tui_success "Python packages (skipped - uv not available)"
+    fi
+
+    # Signal success to the shell UI before restart
+    echo "success" > "$_update_status_file" 2>/dev/null || true
+
+    # Restart shell (only if we have access to the session)
+    echo ""
+    if [[ -n "$NIRI_SOCKET" ]] || [[ -n "$WAYLAND_DISPLAY" ]]; then
+        _report_progress 7 "Restarting shell"
+        tui_info "Restarting shell..."
+        if command -v systemctl >/dev/null 2>&1 && systemctl --user cat inir.service >/dev/null 2>&1; then
+            nohup systemctl --user restart inir.service >/dev/null 2>&1 &
+            disown
+        elif [[ -x "${II_TARGET}/scripts/inir" ]]; then
+            nohup bash "${II_TARGET}/scripts/inir" restart -c "${II_TARGET}" >/dev/null 2>&1 &
+            disown
+        else
+            qs -p "${II_TARGET}" kill 2>/dev/null || true
+            sleep 1
+            nohup qs -p "${II_TARGET}" >/dev/null 2>&1 &
+            disown
+        fi
+        tui_success "Shell restarted"
+    else
+        tui_warn "Not in graphical session - shell restart skipped"
+        tui_info "The shell will use new files on next restart"
+        tui_info "Or run: inir restart"
     fi
 
     echo ""
