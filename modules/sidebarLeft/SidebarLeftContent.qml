@@ -24,27 +24,6 @@ Item {
     property int screenHeight: 1080
     property var panelScreen: null
 
-    // Delay content loading until after animation completes
-    property bool contentReady: false
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged() {
-            if (GlobalStates.sidebarLeftOpen) {
-                root.contentReady = false
-                contentDelayTimer.restart()
-            }
-            // WebApps keep running in background — audio, WebSockets, etc.
-            // stay alive even when sidebar is closed. No freeze/resume.
-        }
-    }
-
-    Timer {
-        id: contentDelayTimer
-        interval: 200
-        onTriggered: root.contentReady = true
-    }
-
     property bool aiChatEnabled: (Config.options?.policies?.ai ?? 0) !== 0
     property bool translatorEnabled: (Config.options?.sidebar?.translator?.enable ?? false)
     property bool animeEnabled: (Config.options?.policies?.weeb ?? 0) !== 0
@@ -64,7 +43,6 @@ Item {
     property bool pluginViewActive: false // _activeWebAppId !== ""
 
     // Persistent cache: pluginId → WebAppView instance
-    // These NEVER get destroyed by contentReady or SwipeView lifecycle
     property var _webViewCache: ({})
     property int _webViewCount: 0  // for reactivity
 
@@ -283,7 +261,7 @@ Item {
                     interactive: !(currentItem?.item?.editMode ?? false) && !(currentItem?.item?.dragPending ?? false)
 
                     clip: true
-                    layer.enabled: root.contentReady
+                    layer.enabled: !Appearance.gameModeMinimal
                     layer.effect: GE.OpacityMask {
                         maskSource: Rectangle {
                             width: swipeView.width
@@ -293,7 +271,7 @@ Item {
                     }
 
                     Repeater {
-                        model: root.contentReady ? root.tabButtonList : []
+                        model: root.tabButtonList
                         delegate: Loader {
                             required property var modelData
                             required property int index
@@ -321,7 +299,6 @@ Item {
 
                 // ── WebApp overlay ───────────────────────────────────
                 // WebAppViews live HERE, above the SwipeView.
-                // They survive contentReady resets and SwipeView destruction.
                 // Visibility controlled by: active webapp + sidebar open state.
                 Item {
                     id: webAppOverlay

@@ -144,9 +144,15 @@ Scope {
             property real animOpacity: 1
             property real animScale: 1
             property bool useClip: root.animationType === "reveal"
+            // Drop: vertical offset; Swing: horizontal scale from edge
+            property real animTranslateY: 0
+            property real animScaleX: 1
 
             property bool animating: false
-            transform: Translate { x: sidebarContentLoader.animTranslateX }
+            transform: [
+                Translate { x: sidebarContentLoader.animTranslateX; y: sidebarContentLoader.animTranslateY },
+                Scale { xScale: sidebarContentLoader.animScaleX; origin.x: sidebarContentLoader.width; origin.y: sidebarContentLoader.height / 2 }
+            ]
             opacity: sidebarContentLoader.animOpacity
             scale: sidebarContentLoader.animScale
 
@@ -159,6 +165,8 @@ Scope {
                         animTranslateX: 0
                         animOpacity: 1
                         animScale: 1
+                        animTranslateY: 0
+                        animScaleX: 1
                     }
                 },
                 State {
@@ -169,8 +177,12 @@ Scope {
                         animTranslateX: root.animationType === "slide" || root.animationType === "reveal"
                             ? (sidebarWidth + Appearance.sizes.hyprlandGapsOut)
                             : 0
-                        animOpacity: root.animationType === "fade" || root.animationType === "pop" ? 0 : 1
-                        animScale: root.animationType === "pop" ? 0.94 : 1
+                        animOpacity: (root.animationType === "slide" || root.animationType === "reveal") ? 1 : 0
+                        animScale: root.animationType === "elastic" ? 0.88
+                            : root.animationType === "pop" ? 0.94 : 1
+                        animTranslateY: root.animationType === "drop"
+                            ? -(sidebarContentLoader.height + Appearance.sizes.hyprlandGapsOut * 2) : 0
+                        animScaleX: root.animationType === "swing" ? 0 : 1
                     }
                 }
             ]
@@ -186,6 +198,12 @@ Scope {
                             easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
                         }
                         NumberAnimation {
+                            target: sidebarContentLoader; property: "animTranslateY"
+                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                        }
+                        NumberAnimation {
                             target: sidebarContentLoader; property: "animOpacity"
                             duration: Math.round((Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.7)
                             easing.type: Easing.BezierSpline
@@ -194,8 +212,10 @@ Scope {
                         SequentialAnimation {
                             NumberAnimation {
                                 target: sidebarContentLoader; property: "animScale"
-                                from: root.animationType === "pop" ? 0.94 : 1
-                                to: root.animationType === "pop" ? 1.018 : 1
+                                from: root.animationType === "elastic" ? 0.88
+                                    : root.animationType === "pop" ? 0.94 : 1
+                                to: root.animationType === "elastic" ? 1.04
+                                    : root.animationType === "pop" ? 1.018 : 1
                                 duration: Math.round((Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.62)
                                 easing.type: Easing.BezierSpline
                                 easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
@@ -207,6 +227,12 @@ Scope {
                                 easing.type: Easing.BezierSpline
                                 easing.bezierCurve: Appearance.animationCurves?.expressiveEffects ?? [0.34, 0.80, 0.34, 1.00, 1, 1]
                             }
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader; property: "animScaleX"
+                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
                         }
                     }
                     onRunningChanged: sidebarContentLoader.animating = running
@@ -222,6 +248,12 @@ Scope {
                             easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
                         }
                         NumberAnimation {
+                            target: sidebarContentLoader; property: "animTranslateY"
+                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                        }
+                        NumberAnimation {
                             target: sidebarContentLoader; property: "animOpacity"
                             duration: Math.round((Appearance.animation?.elementMoveExit?.duration ?? 200) * 0.7)
                             easing.type: Easing.BezierSpline
@@ -229,6 +261,12 @@ Scope {
                         }
                         NumberAnimation {
                             target: sidebarContentLoader; property: "animScale"
+                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader; property: "animScaleX"
                             duration: Appearance.animation?.elementMoveExit?.duration ?? 200
                             easing.type: Easing.BezierSpline
                             easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]

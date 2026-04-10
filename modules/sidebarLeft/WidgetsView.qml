@@ -14,25 +14,16 @@ Item {
 
     readonly property bool editMode: widgetContainer.editMode
     readonly property bool dragPending: widgetContainer.dragPending
-    property bool animateIn: GlobalStates.sidebarLeftOpen
+    property bool animateIn: false
 
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged() {
-            if (GlobalStates.sidebarLeftOpen) {
-                root.animateIn = false
-                animateInTimer.restart()
-            } else {
-                root.animateIn = false
-            }
-        }
-    }
-
+    // One-shot entrance animation — content stays loaded after first open,
+    // panel slide-in provides motion on subsequent opens
     Timer {
         id: animateInTimer
         interval: 50
         onTriggered: root.animateIn = true
     }
+    Component.onCompleted: animateInTimer.restart()
 
     Flickable {
         id: flickable
@@ -61,7 +52,7 @@ Item {
                 opacity: root.animateIn ? 1 : 0
                 scale: root.animateIn ? 1 : 0.97
                 transformOrigin: Item.Top
-                transform: Translate { y: root.animateIn ? 0 : 18 }
+                transform: Translate { y: root.animateIn ? 0 : 10 }
 
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled

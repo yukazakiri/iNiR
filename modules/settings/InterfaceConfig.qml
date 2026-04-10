@@ -727,7 +727,10 @@ ContentPage {
                         { displayName: Translation.tr("Slide"), value: "slide" },
                         { displayName: Translation.tr("Fade"), value: "fade" },
                         { displayName: Translation.tr("Pop"), value: "pop" },
-                        { displayName: Translation.tr("Reveal"), value: "reveal" }
+                        { displayName: Translation.tr("Reveal"), value: "reveal" },
+                        { displayName: Translation.tr("Swing"), value: "swing" },
+                        { displayName: Translation.tr("Drop"), value: "drop" },
+                        { displayName: Translation.tr("Elastic"), value: "elastic" }
                     ]
                     model: animOptions
                     textRole: "displayName"
