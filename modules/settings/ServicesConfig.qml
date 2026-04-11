@@ -436,7 +436,12 @@ ContentPage {
 
                             StyledText {
                                 text: {
-                                    if (ShellUpdates.isUpdating) return Translation.tr("Updating…")
+                                    if (ShellUpdates.isUpdating) {
+                                        if (ShellUpdates.updateStepMessage.length > 0) {
+                                            return Translation.tr(ShellUpdates.updateStepMessage) + (ShellUpdates.updateStep > 0 ? " (" + ShellUpdates.updateStep + "/" + ShellUpdates.updateTotalSteps + ")" : "")
+                                        }
+                                        return Translation.tr("Updating…")
+                                    }
                                     if (ShellUpdates.isChecking) return Translation.tr("Checking for updates…")
                                     if (ShellUpdates.hasUpdate) return Translation.tr("Update available")
                                     if (ShellUpdates.managedExternally) return "Managed externally"
@@ -701,7 +706,11 @@ ContentPage {
                             color: Appearance.m3colors.m3onPrimary
                         }
                         StyledText {
-                            text: ShellUpdates.isUpdating ? Translation.tr("Updating…") : Translation.tr("Update Now")
+                            text: ShellUpdates.isUpdating
+                                ? (ShellUpdates.updateStepMessage.length > 0
+                                    ? Translation.tr(ShellUpdates.updateStepMessage) + "…"
+                                    : Translation.tr("Updating…"))
+                                : Translation.tr("Update Now")
                             font {
                                 pixelSize: Appearance.font.pixelSize.smaller
                                 weight: Font.DemiBold

@@ -292,6 +292,12 @@ tui_info "Installing AUR packages..."
 AUR_PACKAGES=(
   # Qt6 extras (not in official repos)
   qt6-avif-image-plugin
+
+  # Wallpaper effects editor (used by Gowall integration)
+  gowall-bin
+
+  # System monitor (default task manager)
+  mission-center
   
   # Note: Python deps are handled via uv + requirements.txt, not AUR packages
 )
@@ -417,7 +423,7 @@ tui_info "Registering dependencies with pacman..."
 _meta_dir="./sdata/dist-arch/inir-deps"
 if [[ -f "$_meta_dir/PKGBUILD" ]]; then
   # Update pkgver from VERSION file
-  _inir_ver="$(cat ./VERSION 2>/dev/null || echo '2.18.0')"
+  _inir_ver="$(cat ./VERSION 2>/dev/null || echo '2.19.0')"
   sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_dir/PKGBUILD"
 
   (

@@ -20,7 +20,7 @@ Singleton {
         configFileView.writeAdapter();
     }
 
-    function setNestedValue(nestedKey, value) {
+    function _applyNestedKey(nestedKey, value) {
         let keys = [];
         if (Array.isArray(nestedKey)) {
             keys = nestedKey;
@@ -36,15 +36,13 @@ Singleton {
             return;
         }
         let obj = root.options;
-        let parents = [obj];
 
-        // Traverse and collect parent objects
+        // Traverse to parent object
         for (let i = 0; i < keys.length - 1; ++i) {
             if (!obj[keys[i]] || typeof obj[keys[i]] !== "object") {
                 obj[keys[i]] = {};
             }
             obj = obj[keys[i]];
-            parents.push(obj);
         }
 
         // Convert value to correct type using JSON.parse when safe
@@ -61,7 +59,22 @@ Singleton {
         }
 
         obj[keys[keys.length - 1]] = convertedValue;
-        root.configChanged()
+    }
+
+    function setNestedValue(nestedKey, value) {
+        _applyNestedKey(nestedKey, value);
+        root.configChanged();
+    }
+
+    // Batch multiple key-value pairs, emitting configChanged only once.
+    // Usage: Config.setNestedValues({ "a.b.c": 1, "x.y": "hello" })
+    function setNestedValues(updates) {
+        if (!updates || typeof updates !== "object") return;
+        const paths = Object.keys(updates);
+        for (let i = 0; i < paths.length; ++i) {
+            _applyNestedKey(paths[i], updates[paths[i]]);
+        }
+        if (paths.length > 0) root.configChanged();
     }
 
     Timer {
@@ -299,7 +312,7 @@ Singleton {
                     property bool enableChrome: true
                     property bool enableSpicetify: false
                     property bool enableAdwSteam: false
-                    property bool enablePearDesktop: false
+                    property bool enablePearDesktop: true
                     property bool enableOpenCode: false
                     property real colorStrength: 1.0
                     property JsonObject vscodeEditors: JsonObject {
@@ -363,7 +376,7 @@ Singleton {
                         property int grad: 175
                     }
                 }
-                property string iconTheme: "" // System icon theme (tray, GTK/Qt apps)
+                property string iconTheme: "WhiteSur-dark" // System icon theme (tray, GTK/Qt apps)
                 property string dockIconTheme: "" // Dock icon theme (overrides system for dock only)
                 property real shellScale: 1.0 // Legacy compatibility key. Launcher keeps QT_SCALE_FACTOR=1; use appearance.typography.sizeScale.
             }
@@ -1131,6 +1144,9 @@ Singleton {
                     property list<var> playlists: []
                     property list<var> liked: []
                     property string lastLikedSync: ""
+                    property bool upNextNotifications: true
+                    property bool suppressUpNextInFullscreen: true
+                    property int volume: 100
                     property JsonObject profile: JsonObject {
                         property string name: ""
                         property string avatar: ""
@@ -1140,6 +1156,18 @@ Singleton {
                         property list<var> playlists: []
                         property list<var> albums: []
                         property list<var> liked: []
+                    }
+                    property JsonObject resume: JsonObject {
+                        property string videoId: ""
+                        property string title: ""
+                        property string artist: ""
+                        property string thumbnail: ""
+                        property string url: ""
+                        property real position: 0
+                        property bool wasPlaying: false
+                        property list<var> activePlaylist: []
+                        property int currentIndex: -1
+                        property string activePlaylistSource: ""
                     }
                 }
                 // Widgets tab in left sidebar

@@ -1411,7 +1411,9 @@ Scope {
                             }
                             StyledText {
                                 text: ShellUpdates.isUpdating
-                                    ? Translation.tr("Updating...")
+                                    ? (ShellUpdates.updateStepMessage.length > 0
+                                        ? Translation.tr(ShellUpdates.updateStepMessage) + "..."
+                                        : Translation.tr("Updating..."))
                                     : Translation.tr("Update Now")
                                 font {
                                     pixelSize: Appearance.font.pixelSize.small

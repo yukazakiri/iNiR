@@ -291,7 +291,7 @@ Scope {
                     anchors.horizontalCenter: parent.horizontalCenter
                     readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
                     active: GlobalStates.overviewOpen && !dashboardMode && (Config.options?.overview?.enable ?? true)
-                    visible: active
+                    visible: active && (root.searchingText == "")
                     sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
                 }
 

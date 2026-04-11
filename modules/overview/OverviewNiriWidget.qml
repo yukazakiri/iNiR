@@ -308,7 +308,19 @@ Item {
                                 source: root.wallpaperPath
                                 asynchronous: true
                                 fillMode: Image.PreserveAspectCrop
-                                visible: false
+                                // Visible as unblurred fallback when effects are disabled
+                                visible: !Appearance.effectsEnabled
+                                layer.enabled: !Appearance.effectsEnabled
+                                layer.effect: OpacityMask {
+                                    maskSource: Rectangle {
+                                        width: workspace.width
+                                        height: workspace.height
+                                        topLeftRadius: workspace.topLeftRadius
+                                        topRightRadius: workspace.topRightRadius
+                                        bottomLeftRadius: workspace.bottomLeftRadius
+                                        bottomRightRadius: workspace.bottomRightRadius
+                                    }
+                                }
                             }
 
                             FastBlur {

@@ -5,6 +5,61 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.0] - 2026-04-11
+
+Community contributions edition. Turns out people actually use this thing and want to make it better. Who knew.
+
+### Added
+- **YTMusic "Up Next" notifications** ([@SecArt1](https://github.com/SecArt1)): When a track auto-advances, a transient notification shows what's coming next. Suppressed during gamemode and fullscreen. Configurable via `sidebar.ytmusic.upNextNotifications` and `sidebar.ytmusic.suppressUpNextInFullscreen`. *(PR #111)*
+- **Zed editor Go-based theme pipeline** ([@yukazakiri](https://github.com/yukazakiri)): Zed theming split into its own module (`31-zed.sh`) with a compiled Go generator for significantly faster theme generation. Supports variant-based themes and input signature caching to skip redundant rebuilds. *(PR #98)*
+- **Neovim/LazyVim wallpaper theming** ([@yukazakiri](https://github.com/yukazakiri)): Generates an `aether.nvim` colorscheme plugin that maps Material 3 palette to Neovim highlight groups. Includes file watchers for live hot-reload when colors change. *(PR #103)*
+- **Equicord theme support** ([@yukazakiri](https://github.com/yukazakiri)): System24 theme generation now discovers Equicord config directories alongside standard Discord client paths. *(PR #100)*
+
+### Fixed
+- **Battery info display** ([@orcusforyou](https://github.com/orcusforyou)): Fixed wrong battery percentage and status shown in the Overview dashboard and Control Panel. Turns out displaying the correct number matters. *(PR #95)*
+- **Spicetify playback theme refresh** ([@yukazakiri](https://github.com/yukazakiri)): Playback CSS color blocks now properly rewrite on theme changes instead of going stale. *(PR #101)*
+- **YTMusic double-advance race condition**: Fixed a timing bug where the old mpv process exiting during the play-delay window would trigger a second `playNext()`, sending two "Up Next" notifications and skipping a track. The `_userInitiatedPlay` guard now stays active until the new mpv confirms started.
+- **Zed theme rebuild detection**: The Go binary now checks timestamps of `main.go`, `common.go`, and `go.mod` before running, preventing a stale binary from silently succeeding and caching the input signature.
+
+### Improved
+- **pt-BR translations** ([@Guilherme4Colamarco](https://github.com/Guilherme4Colamarco)): 651 human-written translations replacing auto-generated ones, plus 38 new keys. Fixed broken `%1` format string placeholders that had spaces injected by machine translation. Total coverage: 3435 keys. *(PR #97)*
+
+### Contributors
+Shoutout to [@yukazakiri](https://github.com/yukazakiri) for basically adopting the color pipeline this release (4 PRs!), [@SecArt1](https://github.com/SecArt1) for the YTMusic notify feature, [@orcusforyou](https://github.com/orcusforyou) for catching the battery display bug, and [@Guilherme4Colamarco](https://github.com/Guilherme4Colamarco) for making pt-BR speakers not suffer through Google Translate's interpretation of UI strings.
+
+## [2.19.0] - 2026-04-11
+
+### Added
+- **Live update progress**: Setup writes structured progress markers (`progress:STEP:TOTAL:MSG`) during updates. ShellUpdates.qml polls the status file every 2s, parsing step/total/message into reactive properties. UI shows a spinner with step counter (e.g. 3/7) during updates. Watchdog staleness detection prevents infinite timeout on stuck updates.
+- **Sidebar drop, swing, and elastic animations**: Three new sidebar open/close animation types in addition to the existing slide/fade/pop/reveal — drop (vertical slide from above with fade), swing (horizontal scale from edge), and elastic (overshoot bounce with scale). Widget stagger animation intensity reduced for subtler startup.
+- **YTMusic session resume**: Playback state (URL, position, title, etc.) persisted to config every 5s while playing. On shell restart, the last session is restored automatically if playback was active. New `Config.setNestedValues()` batch function prevents multiple config-change emissions during multi-key writes.
+- **WAYLAND_DISPLAY auto-detection**: `apply_qt_runtime_env` now probes `/run/user/<uid>/wayland-*` when `WAYLAND_DISPLAY` is unset — prevents Qt XCB fallback crash on boot-time systemd starts where the compositor hasn't exported the variable yet. `ensure_systemd_graphical_env` added to the bare `start` code path.
+- **Waffle theme settings parity**: Color strength slider, soften colors toggle, and terminal color adjustment sliders (saturation, brightness, harmony, background brightness) with reset button added to WThemesPage — matches ii's ThemesConfig feature set.
+- **Waffle font selector widget**: New `WSettingsFontSelector` component — searchable popup over all installed system fonts with featured fonts pinned at top. Used for desktop clock font selection, replacing the previous hardcoded 5-option choice group.
+
+### Changed
+- **Dock indicator dots redesign**: Focused dot is now wider (pill shape) with accent color per visual style (angel/inir/aurora/material). Unfocused dots are narrow and dimmed. Fallback dim dot shown for inactive apps when `showAllWindowDots` is off. Config properties hoisted to root for reuse. Vertical-mode anchor overrides removed (unused in current dock modes).
+- **Module list sync**: iiShellUpdate added to ii family, iiTilingOverlay moved from waffle shared to ii-only, iiControlPanel removed from waffle shared. Module lists in ModulesConfig.qml synced with shell.qml. DockAppButton pear-desktop app ID updated. `enablePearDesktop` enabled by default.
+- **Pear Desktop package detection**: Auto-detect whether `youtube-music` (CachyOS) or `pear-desktop` (AUR) is installed instead of hardcoding one name. CDP port changed from 9222 to 9223 to avoid spicetify conflict.
+- **Fresh install defaults**: Material settings UI defaults to overlay mode. Waffle activation watermark enabled by default. Waffle widgets panel slimmed to DateTime + Weather + Media (System, QuickActions, ColorScheme disabled). Wallpaper transition type defaults to random instead of crossfade. Waffle desktop clock font defaults to Roboto Flex.
+- **Fresh install packages**: gowall-bin and mission-center added to Arch AUR packages. mission-center added to deps-map for all distros (flatpak fallback). SDDM theme prompt defaults to yes.
+- **Waffle background settings order**: Desktop Clock card moved to end of WBackgroundPage — wallpaper controls, effects, and backdrop come first.
+
+### Fixed
+- **Dock preview popup stability**: ScriptModel `objectProp` with stable `previewKey` prevents delegate recreation on model rebuild (fixes icon flash). 500ms close grace period prevents popup closure when resizing after closing a window moves the cursor outside bounds. Removed stale `syncVisibleWindows`/`maybeCaptureMissingPreviews` machinery — replaced by simple `onLiveToplevelsChanged` auto-close. Closing animation removed for immediate response.
+- **SDDM theme.conf self-heal**: Detects missing `[General]` section or `background=` directive in corrupted theme.conf and restores the canonical template before applying color values.
+- **Config bool false values in color pipeline**: jq's `//` operator treats `false` as null, causing `config_bool` to return the fallback instead of the actual `false` value. Uses explicit null check now.
+- **Setup flag ordering**: `-y`/`-q` flags moved before the `update` subcommand in the re-exec path so the global parser picks them up. POSIX TTY detection (`[ -t 0 ]`) added as defense-in-depth — non-interactive mode auto-forced when no terminal is attached.
+- **GameMode fullscreen detection**: Focused window lookup switched from stale `activeWindow` to `NiriService.windows` array — catches F11 without focus change. Fixed `stateReader.path` where `Qt.resolvedUrl()` on an absolute filesystem path mangled the path, preventing FileView from emitting signals and disabling all detection connections. Input mask across Bar, Dock, VerticalBar, WaffleBar, and Overlay replaced with explicit zero-size emptyMask Item.
+- **Systemd KillMode**: Switched from `KillMode=control-group` to `KillMode=process` so apps launched by the shell (mpv, browsers, etc.) survive shell restart.
+- **Overview search layout without dashboard**: Workspace grid loader now hides from Column layout during search, preventing vertical centering breakage and results pushed to top of screen.
+- **Overview wallpaper without effects**: Workspace thumbnails render unblurred with OpacityMask fallback when `Appearance.effectsEnabled` is false — previously no wallpaper showed at all.
+- **Media player selection**: Fixed player selection logic and scroll volume consistency.
+- **Waffle dark mode toggle**: Was calling switchwall.sh directly, bypassing MaterialThemeLoader's force-apply gate — preset themes silently ignored mode changes. Now routes through `MaterialThemeLoader.setDarkMode()`.
+- **Double palette type regeneration**: Palette type changes in both ii and waffle settings fired switchwall.sh immediately AND through ThemeService's 260ms debounce, causing a race condition. Removed redundant direct calls — ThemeService's `liveRegenSignature` handles auto-theme regeneration automatically.
+- **Terminal color adjustment defaults**: ThemesConfig preview and spinbox fallbacks mismatched Config schema — saturation showed 40% instead of 65%, brightness 55% instead of 60%, harmony preview used 0.15 instead of 0.40.
+- **Waffle taskbar task manager icon**: Icon name `monitoring` didn't exist in the fluent icon set, rendering blank. Changed to `pulse`.
+
 ## [2.18.0] - 2026-04-09
 
 ### Added
@@ -51,7 +106,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Theme regen consistency**: Aligned regeneration across settings, family switch, and external targets.
 - **Preset theme color propagation**: Fixed propagation to external apps and family switch regen.
 - **Fullscreen surface handling**: Unmap all shell surfaces during fullscreen for direct scanout.
-
 ### Removed
 - **`overview.centerLauncher`**: Config option removed — overview always uses calculated vertical centering.
 - **`spawn-at-startup` compositor entry**: Shell startup ownership moved to systemd user service.

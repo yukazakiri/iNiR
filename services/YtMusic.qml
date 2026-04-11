@@ -10,6 +10,66 @@ import qs.modules.common
 Singleton {
     id: root
 
+    property bool _resumeRestored: false
+
+    function _persistResume(): void {
+        if (!root.currentVideoId) return
+        Config.setNestedValues({
+            'sidebar.ytmusic.resume.videoId': root.currentVideoId,
+            'sidebar.ytmusic.resume.title': root.currentTitle,
+            'sidebar.ytmusic.resume.artist': root.currentArtist,
+            'sidebar.ytmusic.resume.thumbnail': root.currentThumbnail,
+            'sidebar.ytmusic.resume.url': root.currentUrl,
+            'sidebar.ytmusic.resume.position': root.currentPosition,
+            'sidebar.ytmusic.resume.wasPlaying': root.isPlaying,
+            'sidebar.ytmusic.resume.activePlaylist': root.activePlaylist,
+            'sidebar.ytmusic.resume.currentIndex': root.currentIndex,
+            'sidebar.ytmusic.resume.activePlaylistSource': root.activePlaylistSource
+        })
+    }
+
+    function _clearResume(): void {
+        Config.setNestedValues({
+            'sidebar.ytmusic.resume.videoId': "",
+            'sidebar.ytmusic.resume.title': "",
+            'sidebar.ytmusic.resume.artist': "",
+            'sidebar.ytmusic.resume.thumbnail': "",
+            'sidebar.ytmusic.resume.url': "",
+            'sidebar.ytmusic.resume.position': 0,
+            'sidebar.ytmusic.resume.wasPlaying': false,
+            'sidebar.ytmusic.resume.activePlaylist': [],
+            'sidebar.ytmusic.resume.currentIndex': -1,
+            'sidebar.ytmusic.resume.activePlaylistSource': ""
+        })
+    }
+
+    Timer {
+        id: _resumeSaveTimer
+        interval: 5000
+        repeat: true
+        running: root.currentVideoId !== ""
+        onTriggered: root._persistResume()
+    }
+
+    Component.onDestruction: {
+        if (root.currentVideoId) {
+            root._persistResume()
+            Config.flushWrites()
+        }
+    }
+
+    Timer {
+        id: _resumeSeekTimer
+        interval: 1500
+        repeat: false
+        property real _targetPosition: 0
+        onTriggered: {
+            if (_resumeSeekTimer._targetPosition > 3) {
+                root.seek(_resumeSeekTimer._targetPosition)
+            }
+        }
+    }
+
     property bool available: false
     property bool enabled: Config.options?.sidebar?.ytmusic?.enable ?? false
     property bool searching: false
@@ -34,6 +94,8 @@ Singleton {
     
     property bool shuffleMode: Config.options?.sidebar?.ytmusic?.shuffleMode ?? false
     property int repeatMode: Config.options?.sidebar?.ytmusic?.repeatMode ?? 0
+    readonly property bool upNextNotificationsEnabled: Config.options?.sidebar?.ytmusic?.upNextNotifications ?? true
+    readonly property bool suppressUpNextInFullscreen: Config.options?.sidebar?.ytmusic?.suppressUpNextInFullscreen ?? true
     
     onShuffleModeChanged: Config.setNestedValue('sidebar.ytmusic.shuffleMode', shuffleMode)
     onRepeatModeChanged: Config.setNestedValue('sidebar.ytmusic.repeatMode', repeatMode)
@@ -230,6 +292,31 @@ Singleton {
         _loadData()
         _findMpvPlayer()
         checkOAuth()
+
+        // Restore previous playback session if applicable.
+        if (!root._resumeRestored) {
+            root._resumeRestored = true
+            const r = Config.options?.sidebar?.ytmusic?.resume
+            if (r?.videoId && r.wasPlaying && !root.currentVideoId) {
+                const item = {
+                    videoId: r.videoId,
+                    title: r.title ?? "",
+                    artist: r.artist ?? "",
+                    thumbnail: r.thumbnail ?? "",
+                    url: r.url ?? ""
+                }
+                const playlist = r.activePlaylist ?? []
+                const idx = r.currentIndex ?? 0
+                const src = r.activePlaylistSource ?? "single"
+                if (playlist.length > 0 && idx >= 0 && idx < playlist.length) {
+                    root.playFromPlaylist(playlist, idx, src)
+                } else {
+                    root.play(item)
+                }
+                _resumeSeekTimer._targetPosition = r.position ?? 0
+                _resumeSeekTimer.start()
+            }
+        }
     }
 
     Timer {
@@ -240,19 +327,22 @@ Singleton {
             if (root._mpvPlayer) {
                 root.currentPosition = root._mpvPlayer.position
                 root._ipcPaused = !root._mpvPlayer.isPlaying
-            } else {
+            } else if (!root._userInitiatedPlay) {
                 _ipcQueryProc.running = true
                 _ipcPauseQueryProc.running = true
             }
 
-            _ipcEofQueryProc.running = true
+            // Don't query EOF while a new play is pending — the old socket
+            // would return stale eof-reached=true and cause double-advance.
+            if (!root._userInitiatedPlay)
+                _ipcEofQueryProc.running = true
 
             // Covers keep-open style endings where mpv doesn't exit,
             // so onExited never fires but eof-reached becomes true.
             // Also guard against stale EOF from old mpv when user initiated a new play.
             if (root._ipcEofReached && !root._autoAdvanceTriggered && !root._userInitiatedPlay && root.currentVideoId !== "") {
                 root._autoAdvanceTriggered = true
-                root.playNext()
+                root.playNext(true)
             }
         }
     }
@@ -428,6 +518,7 @@ Singleton {
         root.currentPosition = 0
         root.activePlaylist = []
         root.currentIndex = -1
+        root._clearResume()
     }
 
     function _didTrackEndNaturally(code: int, stderrText: string): bool {
@@ -471,6 +562,7 @@ Singleton {
     function setVolume(vol): void {
         const clamped = Math.max(0, Math.min(1, vol))
         root._savedVolume = Math.round(clamped * 100)
+        Config.setNestedValue("sidebar.ytmusic.volume", root._savedVolume)
         if (root._mpvPlayer) {
             root._mpvPlayer.volume = clamped
         } else {
@@ -483,7 +575,7 @@ Singleton {
     }
     
     property real _ipcVolume: 1.0
-    property int _savedVolume: 100
+    property int _savedVolume: Config.options?.sidebar?.ytmusic?.volume ?? 100
 
     function toggleShuffle(): void {
         root.shuffleMode = !root.shuffleMode
@@ -493,7 +585,35 @@ Singleton {
         root.repeatMode = (root.repeatMode + 1) % 3
     }
 
-    function playNext(): void {
+    function _shouldNotifyUpcomingTrack(): bool {
+        if (!root.upNextNotificationsEnabled) return false
+        if (Config.options?.notifications?.silent ?? false) return false
+        if (root.suppressUpNextInFullscreen && (GameMode.active || GameMode.hasAnyFullscreenWindow)) return false
+        return true
+    }
+
+    function _notifyUpcomingTrack(item): void {
+        if (!item) return
+        if (!root._shouldNotifyUpcomingTrack()) return
+
+        const title = String(item.title ?? "").trim()
+        if (!title) return
+        const artist = String(item.artist ?? "").trim()
+        const body = artist.length > 0 ? `${title} - ${artist}` : title
+
+        Quickshell.execDetached([
+            "/usr/bin/notify-send",
+            Translation.tr("Up Next"),
+            body,
+            "-a", "YtMusic",
+            "-i", "audio-x-generic",
+            "-h", "int:transient:1",
+            "-t", "4000"
+        ])
+    }
+
+    function playNext(notifyUpcoming): void {
+        notifyUpcoming = (notifyUpcoming === true)
         root._log("[YtMusic] playNext called. activePlaylist.length=" + activePlaylist.length + " currentIndex=" + currentIndex + " source=" + activePlaylistSource)
         
         if (root.repeatMode === 1 && root.currentVideoId) {
@@ -513,6 +633,8 @@ Singleton {
             
             if (nextIndex >= root.activePlaylist.length) {
                 if (root.queue.length > 0) {
+                    if (notifyUpcoming)
+                        root._notifyUpcomingTrack(root.queue[0])
                     playFromQueue(0)
                     return
                 }
@@ -523,12 +645,17 @@ Singleton {
                 }
             }
             
+            const nextItem = root.activePlaylist[nextIndex]
+            if (notifyUpcoming)
+                root._notifyUpcomingTrack(nextItem)
             root.currentIndex = nextIndex
-            _playInternal(root.activePlaylist[nextIndex])
+            _playInternal(nextItem)
             return
         }
         
         if (root.queue.length > 0) {
+            if (notifyUpcoming)
+                root._notifyUpcomingTrack(root.queue[0])
             playFromQueue(0)
         }
     }
@@ -1440,12 +1567,15 @@ print("")
         id: _playDelayTimer
         interval: 200
         onTriggered: {
-            // New mpv is about to start — clear the guards now.
-            // _autoAdvanceTriggered is reset here (not in _playInternal) so that any
-            // stale onExited from the old mpv that fires between user-click and now
-            // cannot trigger a spurious playNext().
+            // Reset auto-advance and EOF flags — the new play supersedes any pending advance.
             root._autoAdvanceTriggered = false
-            root._userInitiatedPlay = false
+            root._ipcEofReached = false
+            // KEEP _userInitiatedPlay = true here! When _playProc.running = true kills
+            // the old mpv, onExited fires synchronously. If _userInitiatedPlay were false,
+            // that onExited would pass the guard and trigger a spurious playNext().
+            // _userInitiatedPlay is cleared in _playProc.onRunningChanged when the new
+            // mpv actually starts.
+
             // Refresh static cookie file for mpv before playing
             if (root.googleConnected) {
                 _refreshCookiesForMpvProc.running = true
@@ -1681,6 +1811,9 @@ print("")
         onRunningChanged: {
             if (running) {
                 root.loading = false
+                // New mpv is confirmed running — safe to clear the guard now.
+                // Any onExited from here on is for THIS mpv instance.
+                root._userInitiatedPlay = false
                 Qt.callLater(root._findMpvPlayer)
             }
         }
@@ -1694,7 +1827,7 @@ print("")
             if (root._didTrackEndNaturally(code, _stderr) && !root._autoAdvanceTriggered) {
                 // Track ended naturally, advance according to playlist/queue/repeat state
                 root._autoAdvanceTriggered = true
-                root.playNext()
+                root.playNext(true)
             } else if (code !== 0 && code !== 4 && code !== 9 && code !== 15 && code !== 143 && code !== 137) {
                 root.error = Translation.tr("Playback failed")
             }

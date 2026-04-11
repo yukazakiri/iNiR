@@ -195,7 +195,7 @@ Item {
                 readonly property real dragFollowY: root.getDragFollowY()
 
                 // ─── Staggered entrance animation ────────────────────
-                readonly property int staggerDelay: 45
+                readonly property int staggerDelay: 25
                 property bool animatedIn: false
 
                 onVisibleChanged: if (!visible) animatedIn = false
@@ -214,7 +214,7 @@ Item {
                 // Combine entrance, displacement and drag-follow transforms
                 transform: Translate {
                     y: {
-                        if (!widgetWrapper.animatedIn) return 24
+                        if (!widgetWrapper.animatedIn) return 14
                         if (widgetWrapper.isBeingDragged) return widgetWrapper.dragFollowY
                         return widgetWrapper.displacementY
                     }

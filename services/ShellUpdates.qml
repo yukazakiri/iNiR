@@ -44,6 +44,12 @@ Singleton {
     property string lastError: ""
     property bool available: false  // git is available and repo exists
 
+    // Update progress tracking (populated from status file markers)
+    property int updateStep: 0           // Current step (1-based, 0 = not started / unknown)
+    property int updateTotalSteps: 0     // Total steps reported by setup
+    property string updateStepMessage: "" // Human-readable step label
+    property string _lastWatchdogStatus: "" // Staleness detection for watchdog
+
     // Notification tracking (prevent spam)
     property bool initialAvailabilityChecked: false
     property bool initialUpdateCheckDone: false
@@ -184,6 +190,10 @@ Singleton {
         if (isUpdating || !hasUpdate || !available || managedExternally) return
         root.isUpdating = true
         root.lastError = ""
+        root.updateStep = 0
+        root.updateTotalSteps = 0
+        root.updateStepMessage = ""
+        root._lastWatchdogStatus = ""
         root.overlayOpen = false
         Config.setNestedValue("shellUpdates.dismissedCommit", "")
         // Detached bash wrapper: writes status markers + logs all output.
@@ -194,7 +204,7 @@ Singleton {
         const repoDir = root.repoPath
         Quickshell.execDetached(["/usr/bin/bash", "-c",
             "echo 'updating' > '" + statusPath + "'; " +
-            "cd '" + repoDir + "' && ./setup update -y -q > '" + logPath + "' 2>&1; " +
+            "cd '" + repoDir + "' && ./setup -y -q update > '" + logPath + "' 2>&1; " +
             "rc=$?; " +
             "if [ $rc -ne 0 ]; then echo \"failed:$rc\" > '" + statusPath + "'; fi"
         ])
@@ -202,6 +212,8 @@ Singleton {
         print("[ShellUpdates] Log: " + logPath + " | Status: " + statusPath)
         // Start watchdog — if shell hasn't restarted after timeout, check status file
         updateWatchdog.restart()
+        // Start progress poller — reads status file every 2s for live progress
+        updateProgressPoller.restart()
     }
 
     function dismiss(): void {
@@ -490,11 +502,23 @@ Singleton {
         }
     }
 
+    // Lightweight git command prefix — disables LFS filter and auto-gc to prevent
+    // CPU spikes from global git-lfs config on repos with zero LFS objects.
+    readonly property var _gitCmd: [
+        "git",
+        "-c", "filter.lfs.process=",
+        "-c", "filter.lfs.required=false",
+        "-c", "filter.lfs.smudge=",
+        "-c", "filter.lfs.clean=",
+        "-c", "gc.auto=0",
+        "-C", root.repoPath
+    ]
+
     // Step 1: Check if git is available
     Process {
         id: availabilityProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--git-dir"]
+        command: [...root._gitCmd, "rev-parse", "--git-dir"]
         onExited: (exitCode, exitStatus) => {
             if (root.managedExternally) {
                 root.available = false
@@ -545,7 +569,7 @@ Singleton {
         id: recentLocalLogProc
         running: false
         command: [
-            "git", "-C", root.repoPath, "log",
+            ...root._gitCmd, "log",
             "--pretty=format:%h|%s|%cr|%an",
             "-15"
         ]
@@ -588,7 +612,7 @@ Singleton {
     Process {
         id: fetchProc
         running: false
-        command: ["git", "-C", root.repoPath, "fetch", "origin", "--quiet"]
+        command: [...root._gitCmd, "fetch", "origin", "--quiet", "--no-tags"]
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.isChecking = false
@@ -622,7 +646,7 @@ Singleton {
     Process {
         id: currentBranchProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--abbrev-ref", "HEAD"]
+        command: [...root._gitCmd, "rev-parse", "--abbrev-ref", "HEAD"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.currentBranch = (text ?? "").trim()
@@ -642,7 +666,7 @@ Singleton {
     Process {
         id: localCommitProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--short", "HEAD"]
+        command: [...root._gitCmd, "rev-parse", "--short", "HEAD"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.localCommit = (text ?? "").trim()
@@ -661,7 +685,7 @@ Singleton {
     Process {
         id: remoteCommitProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--short", "origin/" + root.currentBranch]
+        command: [...root._gitCmd, "rev-parse", "--short", "origin/" + root.currentBranch]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.remoteCommit = (text ?? "").trim()
@@ -682,7 +706,7 @@ Singleton {
     Process {
         id: remoteCommitFallbackProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--short", "origin/main"]
+        command: [...root._gitCmd, "rev-parse", "--short", "origin/main"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.remoteCommit = (text ?? "").trim()
@@ -703,7 +727,7 @@ Singleton {
     Process {
         id: remoteCommitFallback2Proc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-parse", "--short", "origin/master"]
+        command: [...root._gitCmd, "rev-parse", "--short", "origin/master"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.remoteCommit = (text ?? "").trim()
@@ -723,7 +747,7 @@ Singleton {
     Process {
         id: countCommitsProc
         running: false
-        command: ["git", "-C", root.repoPath, "rev-list", "--count", "HEAD..origin/" + root._remoteBranch]
+        command: [...root._gitCmd, "rev-list", "--count", "HEAD..origin/" + root._remoteBranch]
         stdout: StdioCollector {
             onStreamFinished: {
                 const count = parseInt((text ?? "0").trim())
@@ -755,7 +779,7 @@ Singleton {
     Process {
         id: latestMessageProc
         running: false
-        command: ["git", "-C", root.repoPath, "log", "--oneline", "-1", "origin/" + root._remoteBranch]
+        command: [...root._gitCmd, "log", "--oneline", "-1", "origin/" + root._remoteBranch]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.latestMessage = (text ?? "").trim()
@@ -776,7 +800,7 @@ Singleton {
         id: commitLogProc
         running: false
         command: [
-            "git", "-C", root.repoPath, "log",
+            ...root._gitCmd, "log",
             "--pretty=format:%h|%s|%cr|%an",
             "HEAD..origin/" + root._remoteBranch
         ]
@@ -795,7 +819,7 @@ Singleton {
         id: remoteVersionProc
         running: false
         command: [
-            "git", "-C", root.repoPath, "show",
+            ...root._gitCmd, "show",
             "origin/" + root._remoteBranch + ":VERSION"
         ]
         stdout: StdioCollector {
@@ -888,6 +912,49 @@ Singleton {
     // Note: Update runs via Quickshell.execDetached() in performUpdate()
     // so it survives the shell restart that ./setup update triggers.
 
+    // Progress poller: reads the status file every 2s while updating to parse
+    // structured progress markers written by setup's _report_progress().
+    Timer {
+        id: updateProgressPoller
+        interval: 2000
+        repeat: true
+        running: false
+        onTriggered: {
+            if (!root.isUpdating) {
+                updateProgressPoller.running = false
+                return
+            }
+            updateProgressReader.running = true
+        }
+    }
+
+    Process {
+        id: updateProgressReader
+        running: false
+        command: ["cat", Directories.updateStatusPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const status = (text ?? "").trim()
+                if (status.startsWith("progress:")) {
+                    // Format: progress:STEP:TOTAL:MESSAGE
+                    const parts = status.split(":")
+                    if (parts.length >= 4) {
+                        root.updateStep = parseInt(parts[1]) || 0
+                        root.updateTotalSteps = parseInt(parts[2]) || 0
+                        root.updateStepMessage = parts.slice(3).join(":")
+                    }
+                } else if (status === "updating") {
+                    // Legacy/initial marker — no granular progress yet
+                    root.updateStep = 0
+                    root.updateStepMessage = ""
+                } else if (status.startsWith("failed")) {
+                    // Update failed — stop polling, let watchdog handle error display
+                    updateProgressPoller.running = false
+                }
+            }
+        }
+    }
+
     // Watchdog: if the shell is still alive after 120s, the update likely failed.
     // On success, ./setup update restarts the shell — this timer never fires.
     Timer {
@@ -914,17 +981,53 @@ Singleton {
                     // Update process exited with error
                     const parts = status.split(":")
                     const code = parts.length > 1 ? parts[1] : "unknown"
+                    updateProgressPoller.running = false
                     root.isUpdating = false
+                    root.updateStep = 0
+                    root.updateTotalSteps = 0
+                    root.updateStepMessage = ""
                     root.lastError = "Update failed (exit " + code + "). Check " + Directories.updateLogPath + " for details."
                     print("[ShellUpdates] Update FAILED with exit code " + code)
+                } else if (status.startsWith("progress:")) {
+                    if (status === root._lastWatchdogStatus) {
+                        // Same progress marker seen twice — update is stuck
+                        updateProgressPoller.running = false
+                        root.isUpdating = false
+                        root.updateStep = 0
+                        root.updateTotalSteps = 0
+                        root.updateStepMessage = ""
+                        root.lastError = "Update stuck at: " + status.split(":").slice(3).join(":") + ". Check " + Directories.updateLogPath + " for details."
+                        print("[ShellUpdates] Update stuck — same progress seen twice: " + status)
+                    } else {
+                        // Different progress marker — still moving, extend watchdog
+                        root._lastWatchdogStatus = status
+                        print("[ShellUpdates] Watchdog: update still progressing, extending timeout")
+                        updateWatchdog.restart()
+                    }
                 } else if (status === "updating") {
                     // Still running after 120s — likely stuck
+                    updateProgressPoller.running = false
                     root.isUpdating = false
+                    root.updateStep = 0
+                    root.updateTotalSteps = 0
+                    root.updateStepMessage = ""
                     root.lastError = "Update appears stuck. Check " + Directories.updateLogPath + " for details."
                     print("[ShellUpdates] Update appears stuck (still 'updating' after watchdog)")
+                } else if (status === "success") {
+                    // Update completed successfully but shell wasn't restarted
+                    updateProgressPoller.running = false
+                    root.isUpdating = false
+                    root.updateStep = 0
+                    root.updateTotalSteps = 0
+                    root.updateStepMessage = ""
+                    print("[ShellUpdates] Update completed successfully (no restart)")
                 } else {
                     // Empty or unexpected — assume failed
+                    updateProgressPoller.running = false
                     root.isUpdating = false
+                    root.updateStep = 0
+                    root.updateTotalSteps = 0
+                    root.updateStepMessage = ""
                     root.lastError = "Update outcome unknown. Check " + Directories.updateLogPath + " for details."
                     print("[ShellUpdates] Update status unclear: '" + status + "'")
                 }
@@ -933,7 +1036,11 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0 && root.isUpdating) {
                 // Status file doesn't exist — update process may not have started
+                updateProgressPoller.running = false
                 root.isUpdating = false
+                root.updateStep = 0
+                root.updateTotalSteps = 0
+                root.updateStepMessage = ""
                 root.lastError = "Update may not have started. Check " + Directories.updateLogPath + " for details."
                 print("[ShellUpdates] Status file not found (cat exited " + exitCode + ")")
             }

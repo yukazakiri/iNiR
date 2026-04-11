@@ -127,7 +127,7 @@
             "enableChrome": true,
             "enableSpicetify": false,
             "enableAdwSteam": false,
-            "enablePearDesktop": false,
+            "enablePearDesktop": true,
             "colorStrength": 1.0,
             "useBackdropForColors": false,
             "colorsOnlyMode": false,
@@ -188,7 +188,7 @@
             }
         },
         "shellScale": 1.0,
-        "iconTheme": "",
+        "iconTheme": "WhiteSur-dark",
         "dockIconTheme": ""
     },
     "apps": {
@@ -294,7 +294,7 @@
         },
         "transition": {
             "enable": true,
-            "type": "crossfade",
+            "type": "random",
             "direction": "right",
             "duration": 800,
             "bezier": [
@@ -559,7 +559,7 @@
         "showWallpaperSchemeChips": false
     },
     "settingsUi": {
-        "overlayMode": false,
+        "overlayMode": true,
         "overlayAppearance": {
             "scrimDim": 35,
             "backgroundOpacity": 1.0,
@@ -840,6 +840,9 @@
             "playlists": [],
             "liked": [],
             "lastLikedSync": "",
+            "upNextNotifications": true,
+            "suppressUpNextInFullscreen": true,
+            "volume": 100,
             "profile": {
                 "name": "",
                 "avatar": "",
@@ -849,6 +852,18 @@
                 "playlists": [],
                 "albums": [],
                 "liked": []
+            },
+            "resume": {
+                "videoId": "",
+                "title": "",
+                "artist": "",
+                "thumbnail": "",
+                "url": "",
+                "position": 0,
+                "wasPlaying": false,
+                "activePlaylist": [],
+                "currentIndex": -1,
+                "activePlaylistSource": ""
             }
         },
         "wallhaven": {
@@ -1172,7 +1187,7 @@
                     "x": 100,
                     "y": 100,
                     "dim": 55,
-                    "fontFamily": "Segoe UI Variable Display",
+                    "fontFamily": "Roboto Flex",
                     "style": "hero",
                     "timeFormat": "system",
                     "dateStyle": "long",
@@ -1195,7 +1210,7 @@
             "leftAlignApps": false,
             "monochromeIcons": false,
             "activationWatermark": {
-                "enable": false
+                "enable": true
             },
             "desktopPeek": {
                 "hoverPeek": false,
@@ -1249,9 +1264,9 @@
         "widgetsPanel": {
             "showDateTime": true,
             "showWeather": true,
-            "showSystem": true,
+            "showSystem": false,
             "showMedia": true,
-            "showQuickActions": true,
+            "showQuickActions": false,
             "quickActions": [
                 "files",
                 "terminal",
@@ -1269,7 +1284,7 @@
             "showScreenshot": true,
             "showScreenRecord": true,
             "showSession": true,
-            "showColorScheme": true
+            "showColorScheme": false
         },
         "workspaceNames": {},
         "taskView": {
