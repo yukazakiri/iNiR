@@ -5,6 +5,26 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.0] - 2026-04-12
+
+### Added
+- **WiFi hotspot toggle**: Shared `HotspotToggle` model (nmcli-based) with SSID, password, and band configuration. ii family gets classic + android toggle styles with `HotspotDialog` and ServicesConfig settings. Waffle family gets ActionCenter toggle with `HotspotControl` panel and settings in WGeneralPage + WModulesPage. Config keys: `hotspot.ssid`, `hotspot.password`, `hotspot.band`.
+- **Panel tracking for user-disabled panels**: `knownPanels` now distinguishes "user deliberately disabled" from "new panel added by an update". First boot seeds with all existing panels; subsequent boots only auto-enable genuinely new ones. Family switch also updates the tracking list.
+
+### Fixed
+- **Light preset themes reverting to dark** *(#116)*: `applySchemeVariant()` was not forwarding the dark/light mode to `switchwall.sh`, causing it to fall back to gsettings (typically `prefer-dark`). Light presets with a palette variant active would flash light then immediately revert to dark. All 9 call sites now pass `--mode` explicitly.
+- **GameMode panel hiding**: Removed fullscreen counter and hysteresis threshold — auto-detect now directly maps focused-window-fullscreen to GameMode active state. `shouldHidePanels` is always false: auto-detect applies performance optimizations only (disable animations/effects/blur), matching manual mode behavior. Fixes bar and dock disappearing after exiting fullscreen *(#115)*.
+- **Angel glass hover/active brightness**: Mix ratios were inverted — `colGlassCardHover` was 70% foreground (blindingly bright), now 12%. `colGlassCardActive` was also 70%, now 22%. Same fix for popup variants. Affects both ii and waffle families.
+- **Waffle useMaterial toggle with glass styles**: Removed `effectiveUseMaterial` which forced material colors when glass was active, making the toggle inert for aurora/angel users. Implemented proper 3-path dispatch: material-derived colors, glass Win11 colors with elevated transparency, or flat Win11 colors.
+- **Wallpaper selector 100% CPU**: Fullscreen `MultiEffect` blur (blurMax:64 at native resolution) ran every frame while skew view was open. Gated the blur pipeline on `viewMode !== 'skew'` — measured drop from 100% to 0-1% idle.
+- **Audio output device switch**: Volume protection guard retained the old sink's state when switching devices, causing false "Illegal increment" errors and volume resets. Protection state and in-flight ramps now reset on sink change.
+- **Sidebar placeholder anchoring**: `MaterialPlaceholderMessage` components in AiChat, Anime, and Wallhaven were missing `anchors.fill: parent`.
+- **YTMusic mpv process orphaning**: `_stopMpv()` used `signal(15)` which left `running=true`, causing the next `running=true` assignment to no-op and orphan the old mpv process. Switched to `running=false`. Added belt-and-suspenders `pkill` on start, stop, and shutdown. Also fixed exponential title concatenation from MPRIS feedback loop.
+
+### Improved
+- **YTMusic UI overhaul**: HoverHandler+TapHandler replaces MouseArea for track items, rounded thumbnail corners, theme-compliant duration badges, compact flat player card layout, audio quality selector (best/medium/low), manual cookies.txt path support, and error messages with stderr hints.
+- **Waffle settings visual refresh**: Icons now render inside subtle accent-tinted pill backgrounds. Section headers across all pages gain contextual icons. ~50 generic `desktop` icons replaced with semantically appropriate Fluent icons (eye, shield, pulse, lock, etc.). Search index entries added for GameMode toggles.
+
 ## [2.20.0] - 2026-04-11
 
 Community contributions edition. Turns out people actually use this thing and want to make it better. Who knew.
