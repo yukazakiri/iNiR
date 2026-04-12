@@ -79,6 +79,7 @@ Singleton {
 
     // External process control (optional)
     readonly property bool disableDiscoverOverlay: Config.options?.gameMode?.disableDiscoverOverlay ?? true
+    readonly property bool suppressNotifications: Config.options?.gameMode?.suppressNotifications ?? true
     readonly property string _discoverOverlayServiceName: "discover-overlay.service"
 
     // Hysteresis: require N consecutive fullscreen checks before activating
