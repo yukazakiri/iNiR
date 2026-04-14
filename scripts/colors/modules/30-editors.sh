@@ -13,7 +13,8 @@ VSCODE_THEMEGEN_BIN="$STATE_DIR/user/generated/bin/inir-vscode-themegen"
 OPENCODE_THEMEGEN_BIN="$STATE_DIR/user/generated/bin/inir-opencode-themegen"
 NEOVIM_CONFIG_DIR="$XDG_CONFIG_HOME/nvim"
 NEOVIM_PLUGIN_DIR="$NEOVIM_CONFIG_DIR/lua/plugins"
-NEOVIM_THEME_FILE="$NEOVIM_PLUGIN_DIR/neovim.lua"
+NEOVIM_COLORS_FILE="$NEOVIM_PLUGIN_DIR/inir_colors.lua"
+NEOVIM_THEME_FILE="$NEOVIM_PLUGIN_DIR/inir_theme.lua"
 
 ensure_vscode_themegen() {
   command -v go &>/dev/null || return 1
@@ -46,33 +47,32 @@ json_color() {
 
 generate_neovim_spec() {
   mkdir -p "$NEOVIM_PLUGIN_DIR"
-  local tmp_file="${NEOVIM_THEME_FILE}.tmp"
-  cat > "$tmp_file" <<EOF
+
+  local tmp_colors="${NEOVIM_COLORS_FILE}.tmp"
+  cat > "$tmp_colors" <<'LUAEOF'
+-- inir color palette module (auto-generated)
 local generated_dir = vim.fn.expand("~/.local/state/quickshell/user/generated")
-local palette_file = generated_dir .. "/palette.json"
-local terminal_file = generated_dir .. "/terminal.json"
-local legacy_colors_file = generated_dir .. "/colors.json"
 
 local function read_json(path)
   local ok, lines = pcall(vim.fn.readfile, path)
   if not ok or not lines or vim.tbl_isempty(lines) then
     return {}
   end
-
   local ok_decode, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
   if not ok_decode or type(decoded) ~= "table" then
     return {}
   end
-
   return decoded
 end
 
-local function load_inir_colors()
-  local palette = read_json(palette_file)
+local M = {}
+
+function M.load()
+  local palette = read_json(generated_dir .. "/palette.json")
   if vim.tbl_isempty(palette) then
-    palette = read_json(legacy_colors_file)
+    palette = read_json(generated_dir .. "/colors.json")
   end
-  local terminal = read_json(terminal_file)
+  local terminal = read_json(generated_dir .. "/terminal.json")
 
   local function pick(tbl, key, fallback)
     local value = tbl[key]
@@ -80,38 +80,33 @@ local function load_inir_colors()
   end
 
   local fg = pick(palette, "on_background", "#E8E1DE")
-  local blue = pick(terminal, "term4", "#B19FB6")
-  local yellow = pick(terminal, "term11", "#E2CBB5")
+  local term4 = pick(terminal, "term4", "#B19FB6")
+  local term11 = pick(terminal, "term11", "#E2CBB5")
 
   return {
     bg = pick(palette, "background", "#151311"),
     dark_bg = pick(palette, "surface_container_low", "#1E1B19"),
     darker_bg = pick(palette, "surface_container_lowest", "#100D0C"),
     lighter_bg = pick(palette, "surface_container_highest", "#383432"),
-
     fg = fg,
-    dark_fg = pick(palette, "on_surface_variant", "#CFC4BD"),
-    light_fg = pick(terminal, "term15", fg),
-    bright_fg = pick(palette, "inverse_surface", fg),
+    fg_dim = pick(palette, "on_surface_variant", "#CFC4BD"),
+    fg_bright = pick(terminal, "term15", fg),
     muted = pick(palette, "outline", "#998F88"),
-
     red = pick(terminal, "term1", "#CA917F"),
-    yellow = yellow,
+    yellow = term11,
     orange = pick(palette, "primary", "#F3D9C5"),
     green = pick(terminal, "term2", "#BBBB97"),
     cyan = pick(terminal, "term6", "#B5C8AA"),
-    blue = blue,
+    blue = term4,
     purple = pick(terminal, "term5", "#BF9EA4"),
     brown = pick(palette, "secondary_container", "#50443B"),
-
     bright_red = pick(terminal, "term9", "#DDB2A6"),
-    bright_yellow = yellow,
+    bright_yellow = term11,
     bright_green = pick(terminal, "term10", "#D4D4B0"),
     bright_cyan = pick(terminal, "term14", "#D6E9CA"),
     bright_blue = pick(terminal, "term12", "#D2C0D9"),
     bright_purple = pick(terminal, "term13", "#E0BFC6"),
-
-    accent = pick(palette, "primary", blue),
+    accent = pick(palette, "primary", term4),
     cursor = fg,
     foreground = fg,
     background = pick(palette, "background", "#151311"),
@@ -121,98 +116,102 @@ local function load_inir_colors()
   }
 end
 
-return {
+return M
+LUAEOF
+
+  if [[ -f "$NEOVIM_COLORS_FILE" ]] && cmp -s "$tmp_colors" "$NEOVIM_COLORS_FILE" 2>/dev/null; then
+    rm -f "$tmp_colors"
+  else
+    mv "$tmp_colors" "$NEOVIM_COLORS_FILE"
+  fi
+
+  local tmp_theme="${NEOVIM_THEME_FILE}.tmp"
+  cat > "$tmp_theme" <<'EOF'
+-- inir aether theme (auto-generated)
+local colors = require("plugins.inir_colors")
+
+local inir_colors = colors.load()
+
+-- Load user customizations if exists
+local user_ok, user_spec = pcall(require, "plugins.99-inir-user")
+local user_specs = user_ok and user_spec or {}
+
+local base_specs = {
   {
     "bjarneo/aether.nvim",
     branch = "v3",
-    name = "inir-neovim",
+    name = "aether",
     priority = 1000,
     opts = {
-      colors = load_inir_colors(),
+      colors = inir_colors,
     },
     config = function(_, opts)
-      local uv = vim.uv or vim.loop
-      local watched_files = {
-        ["palette.json"] = true,
-        ["terminal.json"] = true,
-        ["colors.json"] = true,
-      }
-
-      local function apply_inir_theme(next_opts)
-        next_opts = vim.tbl_deep_extend("force", next_opts or {}, {
-          colors = load_inir_colors(),
-        })
-        require("aether").setup(next_opts)
-        vim.cmd.colorscheme("aether")
-      end
-
-      local function reload_inir_theme()
-        if vim.g.colors_name ~= "aether" then
-          return
-        end
-
-        apply_inir_theme(opts)
-        vim.cmd("redraw!")
-      end
-
-      apply_inir_theme(opts)
+      require("aether").setup(opts)
+      vim.cmd.colorscheme("aether")
       require("aether.hotreload").setup()
-
-      if vim.g.inir_aether_watch_started == 1 or not uv then
-        return
+      
+      local hl = vim.api.nvim_set_hl
+      local c = inir_colors
+      
+      local function apply_ui()
+        hl(0, "Normal", { bg = "NONE", fg = "NONE" })
+        hl(0, "NormalNC", { bg = "NONE", fg = "NONE" })
+        hl(0, "NormalSB", { bg = "NONE", fg = "NONE" })
+        hl(0, "SideBar", { bg = "NONE", fg = "NONE" })
+        hl(0, "VertSplit", { bg = "NONE", fg = "NONE" })
+        hl(0, "WinSeparator", { bg = "NONE", fg = "NONE" })
+        hl(0, "EndOfBuffer", { bg = "NONE", fg = "NONE" })
+        hl(0, "StatusLine", { bg = "NONE", fg = "NONE" })
+        hl(0, "StatusLineNC", { bg = "NONE", fg = "NONE" })
+        hl(0, "FloatBorder", { bg = "NONE", fg = c.muted })
+        hl(0, "Folded", { bg = "NONE", fg = c.muted })
+        hl(0, "FoldColumn", { bg = "NONE", fg = c.muted })
+        hl(0, "SignColumn", { bg = "NONE", fg = "NONE" })
+        hl(0, "LineNr", { bg = "NONE", fg = c.muted })
+        hl(0, "CursorLineNr", { bg = "NONE", fg = c.fg })
+        hl(0, "Pmenu", { bg = c.dark_bg, fg = c.fg })
+        hl(0, "PmenuSel", { bg = c.lighter_bg })
+        hl(0, "TabLine", { bg = "NONE", fg = "NONE" })
+        hl(0, "TabLineFill", { bg = "NONE", fg = "NONE" })
+        hl(0, "TabLineSel", { bg = "NONE", fg = "NONE" })
+        hl(0, "NvimTreeNormal", { bg = "NONE", fg = "NONE" })
+        hl(0, "NvimTreeNormalNC", { bg = "NONE", fg = "NONE" })
+        hl(0, "NvimTreeEndOfBuffer", { bg = "NONE", fg = "NONE" })
+        hl(0, "NeoTreeNormal", { bg = "NONE", fg = "NONE" })
+        hl(0, "NeoTreeNormalNC", { bg = "NONE", fg = "NONE" })
+        hl(0, "NeoTreeEndOfBuffer", { bg = "NONE", fg = "NONE" })
       end
-
-      local reload_pending = false
-      local watchers = {}
-
-      local function schedule_reload()
-        if reload_pending then
-          return
-        end
-
-        reload_pending = true
-        vim.defer_fn(function()
-          reload_pending = false
-          reload_inir_theme()
-        end, 120)
-      end
-
-      local fs_event = uv.new_fs_event()
-      if fs_event then
-        fs_event:start(generated_dir, {}, function(err, fname)
-          if err then
-            return
-          end
-          if fname and not watched_files[fname] then
-            return
-          end
-          schedule_reload()
-        end)
-        watchers[#watchers + 1] = fs_event
-      end
-
-      if #watchers == 0 then
-        return
-      end
-
-      vim.g.inir_aether_watch_started = 1
-      vim.__inir_aether_fs_events = watchers
+      
+      apply_ui()
+      
+      vim.api.nvim_create_autocmd("Colorscheme", { callback = apply_ui })
+      vim.api.nvim_create_autocmd({ "VimEnter", "UIEnter" }, {
+        callback = function() vim.defer_fn(apply_ui, 100) end,
+      })
     end,
   },
   {
     "LazyVim/LazyVim",
-    opts = {
-      colorscheme = "aether",
-    },
+    opts = { colorscheme = "aether" },
   },
 }
+
+-- Merge user specs into return (LazyVim will handle merging)
+if type(user_specs) == "table" and #user_specs > 0 then
+  for _, spec in ipairs(user_specs) do
+    base_specs[#base_specs + 1] = spec
+  end
+end
+
+return base_specs
 EOF
-  if [[ -f "$NEOVIM_THEME_FILE" ]] && cmp -s "$tmp_file" "$NEOVIM_THEME_FILE"; then
-    rm -f "$tmp_file"
+
+  if [[ -f "$NEOVIM_THEME_FILE" ]] && cmp -s "$tmp_theme" "$NEOVIM_THEME_FILE" 2>/dev/null; then
+    rm -f "$tmp_theme"
     return 0
   fi
 
-  mv "$tmp_file" "$NEOVIM_THEME_FILE"
+  mv "$tmp_theme" "$NEOVIM_THEME_FILE"
 }
 
 apply_code_editors() {
