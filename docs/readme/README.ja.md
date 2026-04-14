@@ -247,7 +247,7 @@ inir update                     # pull + マイグレーション + 再起動
 | [IPC.md](../IPC.md) | スクリプトとキーバインド用 IPC ターゲット |
 | [PACKAGES.md](../PACKAGES.md) | すべての依存関係とその理由 |
 | [LIMITATIONS.md](../LIMITATIONS.md) | 既知の制限と回避策 |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | 技術アーキテクチャ概要 |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 技術アーキテクチャ概要 |
 
 ---
 

@@ -247,7 +247,7 @@ inir update                     # pull + миграции + перезапуск
 | [IPC.md](../IPC.md) | IPC-цели для скриптов и пользовательских привязок |
 | [PACKAGES.md](../PACKAGES.md) | Каждый пакет и зачем он нужен |
 | [LIMITATIONS.md](../LIMITATIONS.md) | Известные ограничения и обходные пути |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Техническая архитектура проекта |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Техническая архитектура проекта |
 
 ---
 

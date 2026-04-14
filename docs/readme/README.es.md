@@ -247,7 +247,7 @@ Lista completa: [KEYBINDS.md](../KEYBINDS.md)
 | [IPC.md](../IPC.md) | Targets IPC para scripting y atajos custom |
 | [PACKAGES.md](../PACKAGES.md) | Cada paquete y por qué está |
 | [LIMITATIONS.md](../LIMITATIONS.md) | Limitaciones conocidas y workarounds |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Arquitectura técnica del proyecto |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Arquitectura técnica del proyecto |
 
 ---
 

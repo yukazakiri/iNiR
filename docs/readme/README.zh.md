@@ -247,7 +247,7 @@ inir update                     # 拉取 + 迁移 + 重启
 | [IPC.md](../IPC.md) | 用于脚本和快捷键的 IPC 目标 |
 | [PACKAGES.md](../PACKAGES.md) | 每个依赖及其用途 |
 | [LIMITATIONS.md](../LIMITATIONS.md) | 已知限制和解决方法 |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | 技术架构概述 |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 技术架构概述 |
 
 ---
 
