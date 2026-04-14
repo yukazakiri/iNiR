@@ -457,6 +457,34 @@ apply_qt_runtime_env() {
         done
     fi
 
+    # NIRI_SOCKET — NiriService.qml reads this via Quickshell.env("NIRI_SOCKET")
+    # as a readonly property at instantiation time, so it must be present in the
+    # process environment before QS starts.
+    # At session boot, inir.service races with Niri's own import-environment call:
+    # graphical-session.target activates → systemd starts inir.service immediately,
+    # but Niri only propagates NIRI_SOCKET to the user manager a moment later.
+    # Result: QS reads an empty string → NiriService never connects → workspaces,
+    # window management, and all Niri IPC broken until inir restart.
+    # Fix: detect the socket directly from the filesystem so QS always gets a valid
+    # path regardless of import-environment timing.
+    # Niri socket format: $XDG_RUNTIME_DIR/niri.wayland-N.PID.sock
+    # Older/some builds also use: $XDG_RUNTIME_DIR/niri/socket
+    if [[ -z "${NIRI_SOCKET:-}" ]]; then
+        local _runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        local _niri_cand
+        # Current Niri format: niri.wayland-N.PID.sock
+        for _niri_cand in "$_runtime_dir"/niri.wayland-*.sock; do
+            if [[ -S "$_niri_cand" ]]; then
+                export NIRI_SOCKET="$_niri_cand"
+                break
+            fi
+        done
+        # Legacy/alternative path
+        if [[ -z "${NIRI_SOCKET:-}" && -S "$_runtime_dir/niri/socket" ]]; then
+            export NIRI_SOCKET="$_runtime_dir/niri/socket"
+        fi
+    fi
+
     # Qt platform theme drives icon resolution (QIcon::fromTheme) and widget styling.
     # Override via INIR_QT_QPA_PLATFORMTHEME / INIR_QT_STYLE_OVERRIDE if needed.
     if [[ -n "${INIR_QT_QPA_PLATFORMTHEME+x}" ]]; then
@@ -628,7 +656,7 @@ ensure_systemd_graphical_env() {
     if ! grep -q '^WAYLAND_DISPLAY=' <<< "$sys_env" 2>/dev/null; then
         local wl_sock=""
         local candidate
-        for candidate in /run/user/"$(id -u)"/wayland-[0-9]; do
+        for candidate in /run/user/"$(id -u)"/wayland-[0-9]*; do
             if [[ -S "$candidate" ]]; then
                 wl_sock="$(basename "$candidate")"
                 break
@@ -637,6 +665,23 @@ ensure_systemd_graphical_env() {
         if [[ -n "$wl_sock" ]]; then
             vars_to_import+=("WAYLAND_DISPLAY=$wl_sock")
         fi
+    fi
+
+    # NIRI_SOCKET — required for NiriService IPC (workspaces, windows, outputs).
+    # Propagate to systemd user manager so service restarts also inherit it.
+    # Niri socket format: $XDG_RUNTIME_DIR/niri.wayland-N.PID.sock
+    if ! grep -q '^NIRI_SOCKET=' <<< "$sys_env" 2>/dev/null; then
+        local _niri_runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        local _niri_found=""
+        local _nc
+        for _nc in "$_niri_runtime"/niri.wayland-*.sock; do
+            if [[ -S "$_nc" ]]; then
+                _niri_found="$_nc"
+                break
+            fi
+        done
+        [[ -z "$_niri_found" && -S "$_niri_runtime/niri/socket" ]] && _niri_found="$_niri_runtime/niri/socket"
+        [[ -n "$_niri_found" ]] && vars_to_import+=("NIRI_SOCKET=$_niri_found")
     fi
 
     # QT_QPA_PLATFORMTHEME — required for icon theme resolution
