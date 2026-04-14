@@ -13,7 +13,7 @@ Singleton {
     property int readWriteDelay: 50 // milliseconds
     property bool blockWrites: false
 
-    signal configChanged()
+    signal configChanged
 
     function flushWrites(): void {
         fileWriteTimer.stop();
@@ -69,12 +69,14 @@ Singleton {
     // Batch multiple key-value pairs, emitting configChanged only once.
     // Usage: Config.setNestedValues({ "a.b.c": 1, "x.y": "hello" })
     function setNestedValues(updates) {
-        if (!updates || typeof updates !== "object") return;
+        if (!updates || typeof updates !== "object")
+            return;
         const paths = Object.keys(updates);
         for (let i = 0; i < paths.length; ++i) {
             _applyNestedKey(paths[i], updates[paths[i]]);
         }
-        if (paths.length > 0) root.configChanged();
+        if (paths.length > 0)
+            root.configChanged();
     }
 
     Timer {
@@ -82,7 +84,7 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
-            configFileView.reload()
+            configFileView.reload();
         }
     }
 
@@ -91,7 +93,7 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
-            configFileView.writeAdapter()
+            configFileView.writeAdapter();
         }
     }
 
@@ -105,10 +107,10 @@ Singleton {
         onLoaded: root.ready = true
         onLoadFailed: error => {
             if (error == FileViewError.FileNotFound) {
-                console.log("[Config] File not found, creating new file.")
+                console.log("[Config] File not found, creating new file.");
                 // Ensure parent directory exists
-                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
+                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'));
+                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir]);
                 writeAdapter();
             }
             // Set ready even on failure so UI doesn't stay blank
@@ -119,12 +121,7 @@ Singleton {
             id: configOptionsJsonAdapter
 
             // Panel system
-            property list<string> enabledPanels: [
-                "iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", "iiMediaControls",
-                "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", "iiOverlay",
-                "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen",
-                "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate"
-            ]
+            property list<string> enabledPanels: ["iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate"]
             property list<string> knownPanels: [] // Tracks panels the user has seen; used to distinguish "user disabled" from "new in update"
             property string panelFamily: "ii" // "ii" or "waffle"
             property bool familyTransitionAnimation: true // Show animated overlay when switching families
@@ -139,12 +136,16 @@ Singleton {
                 property string tool: "functions" // search, functions, or none
                 property list<var> extraModels: [
                     {
-                        "api_format": "openai", // Most of the time you want "openai". Use "gemini" for Google's models
+                        "api_format": "openai" // Most of the time you want "openai". Use "gemini" for Google's models
+                        ,
                         "description": "This is a custom model. Edit the config to add more! | Anyway, this is DeepSeek R1 Distill LLaMA 70B",
                         "endpoint": "https://openrouter.ai/api/v1/chat/completions",
-                        "homepage": "https://openrouter.ai/deepseek/deepseek-r1-distill-llama-70b:free", // Not mandatory
-                        "icon": "spark-symbolic", // Not mandatory
-                        "key_get_link": "https://openrouter.ai/settings/keys", // Not mandatory
+                        "homepage": "https://openrouter.ai/deepseek/deepseek-r1-distill-llama-70b:free" // Not mandatory
+                        ,
+                        "icon": "spark-symbolic" // Not mandatory
+                        ,
+                        "key_get_link": "https://openrouter.ai/settings/keys" // Not mandatory
+                        ,
                         "key_id": "openrouter",
                         "model": "deepseek/deepseek-r1-distill-llama-70b:free",
                         "name": "Custom: DS R1 Dstl. LLaMA 70B",
@@ -315,6 +316,7 @@ Singleton {
                     property bool enableAdwSteam: false
                     property bool enablePearDesktop: true
                     property bool enableOpenCode: false
+                    property bool enableNeovim: false
                     property real colorStrength: 1.0
                     property JsonObject vscodeEditors: JsonObject {
                         property bool code: true           // Official VSCode
@@ -718,7 +720,7 @@ Singleton {
                     property bool monochromeIcons: true
                     property bool showItemId: false
                     property bool invertPinnedItems: true // Makes the below a whitelist for the tray and blacklist for the pinned area
-                    property list<string> pinnedItems: [ ]
+                    property list<string> pinnedItems: []
                     property bool filterPassive: true
                 }
                 property JsonObject workspaces: JsonObject {
@@ -1033,6 +1035,7 @@ Singleton {
 
             property JsonObject resources: JsonObject {
                 property int updateInterval: 3000
+                property bool monitorGpu: true
             }
 
             property JsonObject musicRecognition: JsonObject {
@@ -1237,10 +1240,26 @@ Singleton {
 
                     // QuickLaunch shortcuts
                     property list<var> quickLaunch: [
-                        { "icon": "folder", "name": "Files", "cmd": "/usr/bin/nautilus" },
-                        { "icon": "terminal", "name": "Terminal", "cmd": "/usr/bin/kitty" },
-                        { "icon": "web", "name": "Browser", "cmd": "/usr/bin/firefox" },
-                        { "icon": "code", "name": "Code", "cmd": "/usr/bin/code" }
+                        {
+                            "icon": "folder",
+                            "name": "Files",
+                            "cmd": "/usr/bin/nautilus"
+                        },
+                        {
+                            "icon": "terminal",
+                            "name": "Terminal",
+                            "cmd": "/usr/bin/kitty"
+                        },
+                        {
+                            "icon": "web",
+                            "name": "Browser",
+                            "cmd": "/usr/bin/firefox"
+                        },
+                        {
+                            "icon": "code",
+                            "name": "Code",
+                            "cmd": "/usr/bin/code"
+                        }
                     ]
 
                     // QuickWallpaper settings
@@ -1266,12 +1285,30 @@ Singleton {
                     property JsonObject android: JsonObject {
                         property int columns: 5
                         property list<var> toggles: [
-                            { "size": 2, "type": "network" },
-                            { "size": 2, "type": "bluetooth"  },
-                            { "size": 1, "type": "idleInhibitor" },
-                            { "size": 1, "type": "mic" },
-                            { "size": 2, "type": "audio" },
-                            { "size": 2, "type": "nightLight" }
+                            {
+                                "size": 2,
+                                "type": "network"
+                            },
+                            {
+                                "size": 2,
+                                "type": "bluetooth"
+                            },
+                            {
+                                "size": 1,
+                                "type": "idleInhibitor"
+                            },
+                            {
+                                "size": 1,
+                                "type": "mic"
+                            },
+                            {
+                                "size": 2,
+                                "type": "audio"
+                            },
+                            {
+                                "size": 2,
+                                "type": "nightLight"
+                            }
                         ]
                     }
                 }
@@ -1364,7 +1401,7 @@ Singleton {
                 property bool monochromeIcons: true
                 property bool showItemId: false
                 property bool invertPinnedItems: true
-                property list<string> pinnedItems: [ ]
+                property list<string> pinnedItems: []
                 property bool filterPassive: true
             }
             property JsonObject updates: JsonObject {
@@ -1519,7 +1556,7 @@ Singleton {
                     property bool showUnreadCount: true
                 }
                 property JsonObject actionCenter: JsonObject {
-                    property list<string> toggles: [ "network", "hotspot", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker" ]
+                    property list<string> toggles: ["network", "hotspot", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker"]
                 }
                 property JsonObject calendar: JsonObject {
                     property bool force2CharDayOfWeek: true
