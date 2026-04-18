@@ -231,8 +231,13 @@ Scope {
                 // so the source is oversized by blurOverflow on every side.
                 readonly property int blurOverflow: 64
 
+                // Skew view manages its own scrim; disable the expensive
+                // fullscreen blur pipeline to avoid GPU/CPU spike.
+                readonly property bool blurActive: root._viewMode !== "skew"
+
                 Item {
                     id: blurSource
+                    visible: scrim.blurActive
                     anchors.fill: parent
                     anchors.margins: -scrim.blurOverflow
 
@@ -255,13 +260,14 @@ Scope {
 
                 MultiEffect {
                     id: backdropBlur
+                    visible: scrim.blurActive
                     source: blurSource
                     anchors.fill: parent
                     anchors.margins: -scrim.blurOverflow
-                    blurEnabled: Appearance.effectsEnabled
+                    blurEnabled: Appearance.effectsEnabled && scrim.blurActive
                     blurMax: 64
-                    blur: Appearance.effectsEnabled ? 1.0 : 0
-                    saturation: Appearance.effectsEnabled ? 0.15 : 0
+                    blur: (Appearance.effectsEnabled && scrim.blurActive) ? 1.0 : 0
+                    saturation: (Appearance.effectsEnabled && scrim.blurActive) ? 0.15 : 0
                 }
 
                 // Dark scrim over the blur

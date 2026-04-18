@@ -711,15 +711,15 @@ Singleton {
         readonly property color colGlassCard: ColorUtils.transparentize(
             root.colors.colLayer1Base, cardTransparentize)
         readonly property color colGlassCardHover: ColorUtils.transparentize(
-            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.3), cardTransparentize)
+            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.88), cardTransparentize)
         readonly property color colGlassCardActive: ColorUtils.transparentize(
-            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.3), cardTransparentize)
+            ColorUtils.mix(root.colors.colLayer1Base, root.colors.colOnLayer1, 0.78), cardTransparentize)
         readonly property color colGlassPopup: ColorUtils.transparentize(
             root.colors.colLayer2Base, popupTransparentize)
         readonly property color colGlassPopupHover: ColorUtils.transparentize(
-            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.3), popupTransparentize)
+            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.88), popupTransparentize)
         readonly property color colGlassPopupActive: ColorUtils.transparentize(
-            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.85), popupTransparentize)
+            ColorUtils.mix(root.colors.colLayer2Base, root.colors.colOnLayer2, 0.78), popupTransparentize)
         readonly property color colGlassTooltip: ColorUtils.transparentize(
             root.colors.colLayer3Base, tooltipTransparentize)
         readonly property color colGlassDialog: ColorUtils.transparentize(

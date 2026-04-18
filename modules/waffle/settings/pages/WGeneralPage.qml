@@ -138,11 +138,11 @@ WSettingsPage {
     
     WSettingsCard {
         title: Translation.tr("Windows & Sounds")
-        icon: "speaker-2-filled"
+        icon: "app-generic"
         
         WSettingsSwitch {
             label: Translation.tr("Confirm before closing")
-            icon: "dismiss"
+            icon: "shield"
             description: Translation.tr("Show dialog when closing windows with Super+Q")
             checked: Config.options?.closeConfirm?.enabled ?? false
             onCheckedChanged: Config.setNestedValue("closeConfirm.enabled", checked)
@@ -150,14 +150,14 @@ WSettingsPage {
         
         WSettingsSwitch {
             label: Translation.tr("Battery sounds")
-            icon: "speaker-2-filled"
+            icon: "speaker"
             checked: Config.options?.sounds?.battery ?? false
             onCheckedChanged: Config.setNestedValue("sounds.battery", checked)
         }
         
         WSettingsSwitch {
             label: Translation.tr("Notification sounds")
-            icon: "alert-filled"
+            icon: "music-note-2"
             checked: Config.options?.sounds?.notifications ?? true
             onCheckedChanged: Config.setNestedValue("sounds.notifications", checked)
         }
@@ -169,7 +169,7 @@ WSettingsPage {
         
         WSettingsSpinBox {
             label: Translation.tr("Screen off timeout")
-            icon: "desktop"
+            icon: "flash-off"
             description: Translation.tr("Turn off screen after inactivity (0 = never)")
             suffix: "s"
             from: 0; to: 1800; stepSize: 30
@@ -212,7 +212,7 @@ WSettingsPage {
         
         WSettingsSwitch {
             label: Translation.tr("Auto-detect fullscreen")
-            icon: "games"
+            icon: "eye"
             description: Translation.tr("Enable game mode when apps go fullscreen")
             checked: Config.options?.gameMode?.autoDetect ?? true
             onCheckedChanged: Config.setNestedValue("gameMode.autoDetect", checked)
@@ -236,7 +236,7 @@ WSettingsPage {
         
         WSettingsSwitch {
             label: Translation.tr("Disable Niri animations")
-            icon: "desktop"
+            icon: "pulse"
             description: Translation.tr("Turn off compositor animations in game mode")
             checked: Config.options?.gameMode?.disableNiriAnimations ?? true
             onCheckedChanged: Config.setNestedValue("gameMode.disableNiriAnimations", checked)
@@ -244,7 +244,7 @@ WSettingsPage {
 
         WSettingsSwitch {
             label: Translation.tr("Disable Discover overlay")
-            icon: "eye-off"
+            icon: "headphones"
             description: Translation.tr("Stop discover-overlay while game mode is active")
             checked: Config.options?.gameMode?.disableDiscoverOverlay ?? true
             onCheckedChanged: Config.setNestedValue("gameMode.disableDiscoverOverlay", checked)
@@ -252,7 +252,7 @@ WSettingsPage {
 
         WSettingsSwitch {
             label: Translation.tr("Minimal mode")
-            icon: "auto"
+            icon: "leaf-two"
             description: Translation.tr("Make shell surfaces lighter while game mode is active")
             checked: Config.options?.gameMode?.minimalMode ?? true
             onCheckedChanged: Config.setNestedValue("gameMode.minimalMode", checked)
@@ -268,10 +268,39 @@ WSettingsPage {
 
         WSettingsSwitch {
             label: Translation.tr("Hide reload toasts")
-            icon: "alert-off"
+            icon: "alert-snooze"
             description: Translation.tr("Suppress reload notifications when Game Mode is active")
             checked: Config.options?.gameMode?.disableReloadToasts ?? true
             onCheckedChanged: Config.setNestedValue("gameMode.disableReloadToasts", checked)
+        }
+    }
+
+    WSettingsCard {
+        title: Translation.tr("Hotspot")
+        icon: "wifi-tethering"
+
+        WSettingsTextField {
+            label: Translation.tr("Network name (SSID)")
+            icon: "wifi-tethering"
+            description: Translation.tr("The name your hotspot will broadcast")
+            text: Config.options?.hotspot?.ssid ?? "iNiR Hotspot"
+            onTextEdited: (newText) => Config.setNestedValue("hotspot.ssid", newText)
+        }
+
+        WSettingsTextField {
+            label: Translation.tr("Password")
+            icon: "key"
+            description: Translation.tr("WPA2 passphrase for the hotspot")
+            text: Config.options?.hotspot?.password ?? "inirhotspot"
+            onTextEdited: (newText) => Config.setNestedValue("hotspot.password", newText)
+        }
+
+        WSettingsSwitch {
+            label: Translation.tr("Use 5 GHz band")
+            icon: "pulse"
+            description: Translation.tr("Use 5 GHz (802.11a) instead of 2.4 GHz. Requires adapter support.")
+            checked: (Config.options?.hotspot?.band ?? "bg") === "a"
+            onCheckedChanged: Config.setNestedValue("hotspot.band", checked ? "a" : "bg")
         }
     }
 }

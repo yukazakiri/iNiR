@@ -203,6 +203,7 @@ Item {
 
             MaterialPlaceholderMessage {
                 id: placeholderItem
+                anchors.fill: parent
                 z: 2
                 shown: root.responses.length === 0
                 icon: "image"

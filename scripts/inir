@@ -102,7 +102,7 @@ Runtime:
   start, stop, run, restart, kill, terminal, browser, close-window
 
 Maintenance (delegates to setup):
-  install, update, doctor, status, migrate, rollback, my-changes, uninstall
+  install, reinstall, update, doctor, status, migrate, rollback, my-changes, uninstall
   config, info, backup, logs, setup
 
 Other:
@@ -203,13 +203,32 @@ check_qs_abi() {
         mismatch_msg="$(echo "$qs_output" | grep -iE "built against Qt|Qt.*mismatch|incompatible Qt" | head -1)"
     fi
 
-    # Secondary: compare compile-time Qt (from binary strings) vs runtime Qt (from lib symlink)
+    # Secondary: compare compile-time Qt (from binary strings) vs runtime Qt (from lib symlink).
+    # Cache the result keyed on binary mtimes to avoid re-running `strings` on every start.
     if ! $mismatch_detected && command -v strings >/dev/null 2>&1; then
+        local abi_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/inir"
+        local abi_cache_file="$abi_cache_dir/abi-check"
+        local qs_mtime qt_mtime abi_cache_key
+        qs_mtime="$(stat -c %Y "$qs_bin" 2>/dev/null || echo 0)"
+        local qt_lib_path=""
+        if [[ -e /usr/lib/libQt6Core.so.6 ]]; then
+            qt_lib_path="/usr/lib/libQt6Core.so.6"
+        elif [[ -e /usr/lib64/libQt6Core.so.6 ]]; then
+            qt_lib_path="/usr/lib64/libQt6Core.so.6"
+        fi
+        qt_mtime="$(stat -c %Y "$(readlink -f "$qt_lib_path" 2>/dev/null || echo "$qt_lib_path")" 2>/dev/null || echo 0)"
+        abi_cache_key="${qs_mtime}:${qt_mtime}"
+
+        if [[ -f "$abi_cache_file" ]] && [[ "$(<"$abi_cache_file")" == "$abi_cache_key" ]]; then
+            # Cached pass — same binaries as last successful check
+            return 0
+        fi
+
         local buildtime_qt=""
         local runtime_qt=""
         buildtime_qt="$(strings "$qs_bin" 2>/dev/null | grep -P '^6\.\d+\.\d+$' | head -1 || true)"
-        if [[ -L /usr/lib/libQt6Core.so.6 ]]; then
-            runtime_qt="$(readlink -f /usr/lib/libQt6Core.so.6 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+        if [[ -n "$qt_lib_path" ]]; then
+            runtime_qt="$(readlink -f "$qt_lib_path" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+$' || true)"
         fi
         if [[ -z "$runtime_qt" ]] && command -v pkg-config >/dev/null 2>&1; then
             runtime_qt="$(pkg-config --modversion Qt6Core 2>/dev/null || true)"
@@ -221,6 +240,12 @@ check_qs_abi() {
                 mismatch_detected=true
                 mismatch_msg="Quickshell built against Qt $buildtime_qt but system has Qt $runtime_qt"
             fi
+        fi
+
+        # Cache successful result so next start skips the expensive strings scan
+        if ! $mismatch_detected; then
+            mkdir -p "$abi_cache_dir" 2>/dev/null || true
+            printf '%s' "$abi_cache_key" > "$abi_cache_file" 2>/dev/null || true
         fi
     fi
 
@@ -369,6 +394,52 @@ apply_shell_scale() {
     export QT_SCALE_FACTOR=1
 }
 
+wait_for_wayland_socket() {
+    # Block until a Wayland compositor socket appears in XDG_RUNTIME_DIR.
+    # At session boot, systemd may start inir.service before the compositor
+    # (Niri/Hyprland) has created its socket.  Without WAYLAND_DISPLAY, Qt
+    # falls back to XCB and crashes (SIGABRT — no X11 server on Wayland-only).
+    # Polling here is cheaper than crash-restart loops and gives instant start
+    # the moment the socket appears.
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] && return 0
+
+    local runtime_dir="/run/user/$(id -u)"
+    local max_polls=50  # 50 × 0.2s = 10 seconds max
+    local i=0
+
+    while (( i < max_polls )); do
+        local candidate
+        for candidate in "$runtime_dir"/wayland-[0-9]*; do
+            if [[ -S "$candidate" ]]; then
+                export WAYLAND_DISPLAY="$(basename "$candidate")"
+                return 0
+            fi
+        done
+        sleep 0.2
+        (( i++ )) || true
+    done
+
+    echo "Warning: No Wayland socket found after ~10s — Qt may crash" >&2
+    return 1
+}
+
+apply_hot_reload_policy_for_dir() {
+    local dir="$1"
+
+    if [[ -n "${INIR_DISABLE_HOT_RELOAD+x}" || -z "$dir" ]]; then
+        return
+    fi
+
+    # Developer checkouts keep .git; deployed runtime payloads do not.
+    # Disable file watching for deployed payloads to reduce startup overhead,
+    # while preserving hot reload when running directly from a git checkout.
+    if [[ -e "$dir/.git" ]]; then
+        return
+    fi
+
+    export INIR_DISABLE_HOT_RELOAD=1
+}
+
 apply_qt_runtime_env() {
     # Ensure WAYLAND_DISPLAY is set — required for Qt to select the wayland
     # platform backend.  When systemd starts inir.service at boot, the
@@ -384,6 +455,34 @@ apply_qt_runtime_env() {
                 break
             fi
         done
+    fi
+
+    # NIRI_SOCKET — NiriService.qml reads this via Quickshell.env("NIRI_SOCKET")
+    # as a readonly property at instantiation time, so it must be present in the
+    # process environment before QS starts.
+    # At session boot, inir.service races with Niri's own import-environment call:
+    # graphical-session.target activates → systemd starts inir.service immediately,
+    # but Niri only propagates NIRI_SOCKET to the user manager a moment later.
+    # Result: QS reads an empty string → NiriService never connects → workspaces,
+    # window management, and all Niri IPC broken until inir restart.
+    # Fix: detect the socket directly from the filesystem so QS always gets a valid
+    # path regardless of import-environment timing.
+    # Niri socket format: $XDG_RUNTIME_DIR/niri.wayland-N.PID.sock
+    # Older/some builds also use: $XDG_RUNTIME_DIR/niri/socket
+    if [[ -z "${NIRI_SOCKET:-}" ]]; then
+        local _runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        local _niri_cand
+        # Current Niri format: niri.wayland-N.PID.sock
+        for _niri_cand in "$_runtime_dir"/niri.wayland-*.sock; do
+            if [[ -S "$_niri_cand" ]]; then
+                export NIRI_SOCKET="$_niri_cand"
+                break
+            fi
+        done
+        # Legacy/alternative path
+        if [[ -z "${NIRI_SOCKET:-}" && -S "$_runtime_dir/niri/socket" ]]; then
+            export NIRI_SOCKET="$_runtime_dir/niri/socket"
+        fi
     fi
 
     # Qt platform theme drives icon resolution (QIcon::fromTheme) and widget styling.
@@ -412,6 +511,55 @@ apply_qt_runtime_env() {
         [[ -d "/var/lib/flatpak/exports/share" ]] && \
             XDG_DATA_DIRS="/var/lib/flatpak/exports/share:$XDG_DATA_DIRS"
         true
+    fi
+
+    # Import missing graphical-session variables from the systemd user manager.
+    #
+    # When inir.service races compositor startup (graphical-session.target),
+    # the process environment is minimal (PATH=/usr/local/bin:/usr/bin, no
+    # XDG_SESSION_TYPE, no DISPLAY, no XCURSOR_*, etc.).  By the time
+    # wait_for_wayland_socket() returns, the compositor (niri/hyprland) has
+    # already run its import-environment step, so the systemd user manager's
+    # environment is complete.  We pull any still-missing critical vars into
+    # this process so that Quickshell's INITIAL_ENVIRONMENT snapshot — which
+    # is frozen at QS startup and inherited by every app launched via
+    # DesktopEntry.execute() — contains them.
+    #
+    # Without this:
+    #   • Chromium/Brave/Electron apps don't see XDG_SESSION_TYPE=wayland and
+    #     fall back to X11; with no DISPLAY set they fail silently.
+    #   • Apps in ~/.local/bin, flatpak exports, nvm, pnpm, etc. are not found
+    #     because PATH is the bare systemd minimum.
+    #   • Cursor theme/size are absent, so spawned apps render the default cursor.
+    local _qs_sys_env
+    _qs_sys_env="$(systemctl --user show-environment 2>/dev/null)" || true
+    if [[ -n "$_qs_sys_env" ]]; then
+        local _qs_var _qs_val
+        for _qs_var in XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION \
+                       DISPLAY XCURSOR_THEME XCURSOR_SIZE \
+                       LANG LC_ALL XDG_MENU_PREFIX; do
+            if [[ -z "${!_qs_var:-}" ]]; then
+                _qs_val="$(grep "^${_qs_var}=" <<< "$_qs_sys_env" | head -1 | cut -d= -f2- || true)"
+                [[ -n "$_qs_val" ]] && export "${_qs_var}=${_qs_val}"
+            fi
+        done
+        # Use the manager's rich PATH (set by compositor + PAM login) which
+        # includes user dirs (~/.local/bin, flatpak exports, nvm, pnpm, etc.)
+        # absent from the minimal systemd unit PATH.  All apps launched via
+        # DesktopEntry.execute() inherit Quickshell's INITIAL_ENVIRONMENT, so
+        # they need the full PATH to locate binaries outside /usr/bin.
+        local _qs_sys_path
+        _qs_sys_path="$(grep '^PATH=' <<< "$_qs_sys_env" | head -1 | cut -d= -f2- || true)"
+        if [[ -n "$_qs_sys_path" && "$_qs_sys_path" != "$PATH" ]]; then
+            local _qs_merged="$_qs_sys_path"
+            for _qs_p in /usr/local/bin /usr/bin; do
+                case ":${_qs_merged}:" in
+                    *":${_qs_p}:"*) ;;
+                    *) _qs_merged="${_qs_merged}:${_qs_p}" ;;
+                esac
+            done
+            export PATH="$_qs_merged"
+        fi
     fi
 }
 
@@ -445,10 +593,13 @@ resolve_config_dir() {
     # Prefer the path of an already-running instance to avoid path-identity
     # mismatches where the launcher would target a different path than the
     # running shell (e.g. dev repo vs setup-installed symlink).
-    local running
-    if running="$(detect_running_instance_dir)"; then
-        config_dir="$(canonicalize_path "$running")"
-        return
+    # Skip this probe during session boot (no running instance, saves a qs subprocess).
+    if [[ "${_skip_running_detect:-}" != true ]]; then
+        local running
+        if running="$(detect_running_instance_dir)"; then
+            config_dir="$(canonicalize_path "$running")"
+            return
+        fi
     fi
 
     local candidate
@@ -554,7 +705,7 @@ ensure_systemd_graphical_env() {
     if ! grep -q '^WAYLAND_DISPLAY=' <<< "$sys_env" 2>/dev/null; then
         local wl_sock=""
         local candidate
-        for candidate in /run/user/"$(id -u)"/wayland-[0-9]; do
+        for candidate in /run/user/"$(id -u)"/wayland-[0-9]*; do
             if [[ -S "$candidate" ]]; then
                 wl_sock="$(basename "$candidate")"
                 break
@@ -563,6 +714,23 @@ ensure_systemd_graphical_env() {
         if [[ -n "$wl_sock" ]]; then
             vars_to_import+=("WAYLAND_DISPLAY=$wl_sock")
         fi
+    fi
+
+    # NIRI_SOCKET — required for NiriService IPC (workspaces, windows, outputs).
+    # Propagate to systemd user manager so service restarts also inherit it.
+    # Niri socket format: $XDG_RUNTIME_DIR/niri.wayland-N.PID.sock
+    if ! grep -q '^NIRI_SOCKET=' <<< "$sys_env" 2>/dev/null; then
+        local _niri_runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        local _niri_found=""
+        local _nc
+        for _nc in "$_niri_runtime"/niri.wayland-*.sock; do
+            if [[ -S "$_nc" ]]; then
+                _niri_found="$_nc"
+                break
+            fi
+        done
+        [[ -z "$_niri_found" && -S "$_niri_runtime/niri/socket" ]] && _niri_found="$_niri_runtime/niri/socket"
+        [[ -n "$_niri_found" ]] && vars_to_import+=("NIRI_SOCKET=$_niri_found")
     fi
 
     # QT_QPA_PLATFORMTHEME — required for icon theme resolution
@@ -582,6 +750,13 @@ ensure_systemd_graphical_env() {
     # XDG_CURRENT_DESKTOP — used by portal and theme detection
     if ! grep -q '^XDG_CURRENT_DESKTOP=' <<< "$sys_env" 2>/dev/null; then
         vars_to_import+=("XDG_CURRENT_DESKTOP=niri")
+    fi
+
+    # XDG_SESSION_TYPE — required by Chromium/Electron/Wine to select the Wayland
+    # backend.  Without it they fall back to X11; if DISPLAY is also absent (common
+    # in systemd-launched shells) they fail to open a window entirely.
+    if ! grep -q '^XDG_SESSION_TYPE=' <<< "$sys_env" 2>/dev/null; then
+        vars_to_import+=("XDG_SESSION_TYPE=wayland")
     fi
 
     if [[ ${#vars_to_import[@]} -gt 0 ]]; then
@@ -611,6 +786,7 @@ start_background() {
         return 0
     fi
 
+    apply_hot_reload_policy_for_dir "$dir"
     nohup "$qs_bin" -n -d -p "$dir" >/dev/null 2>&1 &
 }
 
@@ -1412,7 +1588,13 @@ run_ipc_target_command() {
         echo "Timed out waiting for iNiR to start" >&2
         exit 1
     fi
-    exec "$qs_bin" -p "$config_dir" ipc call "$target" "$@"
+    # IPC handlers for most panels register ~500ms after shell start (deferred panel
+    # loading at boot). If the first call fails while the shell is still initializing,
+    # retry once after a brief wait before giving up.
+    if ! "$qs_bin" -p "$config_dir" ipc call "$target" "$@" 2>/dev/null; then
+        has_instances "$config_dir" && sleep 0.5
+        exec "$qs_bin" -p "$config_dir" ipc call "$target" "$@"
+    fi
 }
 
 launch_configured_browser() {
@@ -1518,6 +1700,7 @@ case "$command_name" in
     run)
         require_qs
         foreground=true
+        _session_boot=false
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)
@@ -1528,8 +1711,13 @@ case "$command_name" in
                     foreground=false
                     shift
                     ;;
-                --foreground|--session)
+                --foreground)
                     foreground=true
+                    shift
+                    ;;
+                --session)
+                    foreground=true
+                    _session_boot=true
                     shift
                     ;;
                 -h|--help)
@@ -1542,7 +1730,25 @@ case "$command_name" in
                     ;;
             esac
         done
+
+        if [[ "$_session_boot" == true ]]; then
+            # ── Session boot fast path ──
+            # The service unit pre-seeds QT_SCALE_FACTOR and QT_LOGGING_RULES, so
+            # apply_shell_scale / apply_qt_logging_rules are no-ops here.
+            # Skip: ABI check, version sync, instance detection, service-active guard.
+            # Systemd manages lifecycle (Restart=on-failure) and I/O priority.
+            _skip_running_detect=true
+            resolve_config_dir
+            apply_hot_reload_policy_for_dir "$config_dir"
+            wait_for_wayland_socket       # block until compositor socket exists
+            apply_qt_runtime_env          # WAYLAND_DISPLAY + platformtheme fallback
+            ensure_systemd_graphical_env & # export env to systemd for other services
+            exec "$qs_bin" -n -p "$config_dir"
+        fi
+
+        # ── Normal run path (manual invocation) ──
         resolve_config_dir
+        apply_hot_reload_policy_for_dir "$config_dir"
         apply_shell_scale
         apply_qt_runtime_env
         apply_qt_logging_rules
@@ -1729,7 +1935,10 @@ case "$command_name" in
             echo "Timed out waiting for iNiR to start" >&2
             exit 1
         fi
-        exec "$qs_bin" -p "$config_dir" ipc call "$@"
+        if ! "$qs_bin" -p "$config_dir" ipc call "$@" 2>/dev/null; then
+            has_instances "$config_dir" && sleep 0.5
+            exec "$qs_bin" -p "$config_dir" ipc call "$@"
+        fi
         ;;
     settings|open)
         require_qs
@@ -1875,7 +2084,7 @@ case "$command_name" in
     service)
         run_service_command "$@"
         ;;
-    doctor|migrate|status|update|rollback|my-changes|uninstall|config|info|backup|logs)
+    doctor|migrate|status|update|reinstall|rollback|my-changes|uninstall|config|info|backup|logs)
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)

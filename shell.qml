@@ -5,6 +5,7 @@
 //@ pragma Env QT_LOGGING_RULES=quickshell.dbus.properties=false
 //@ pragma Env QT_QUICK_CONTROLS_STYLE=Basic
 //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
+//@ pragma Env QSG_RENDER_LOOP=threaded
 // Launcher keeps QT_SCALE_FACTOR=1; shell scaling lives in appearance.typography.sizeScale
 // DISABLED: webapps — requires quickshell-webengine rebuild
 //-@ pragma Env QTWEBENGINE_CHROMIUM_FLAGS=--disable-features=ThirdPartyCookieBlocking,StorageAccessAPI
@@ -22,37 +23,64 @@ import qs.services
 ShellRoot {
     id: root
 
+    readonly property bool disableHotReload: Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "1"
+        || Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "true"
+
     function _log(msg: string): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(msg);
     }
 
-    // Force singleton instantiation
+    // Force singleton instantiation — startup-critical only
     property var _idleService: Idle
-    property var _gameModeService: GameMode
-    property var _windowPreviewService: WindowPreviewService
-    property var _weatherService: Weather
     property var _powerProfilePersistence: PowerProfilePersistence
-    property var _voiceSearchService: VoiceSearch
-    property var _fontSyncService: FontSyncService
+
+    // Deferred singletons — initialized after first frame to reduce boot contention
+    property var _gameModeService
+    property var _windowPreviewService
+    property var _weatherService
+    property var _voiceSearchService
+    property var _fontSyncService
 
     Component.onCompleted: {
-        Quickshell.watchFiles = true;
-        root._log("[Shell] Initializing singletons");
-        Hyprsunset.load();
+        Quickshell.watchFiles = !disableHotReload;
+        root._log("[Shell] Initializing startup-critical singletons");
         FirstRunExperience.load();
         ConflictKiller.load();
         // Reset shell entry state (hot-reload may preserve singletons)
         GlobalStates.shellEntryReady = false;
-        if (Config.ready) shellEntryTimer.start();
+        GlobalStates.deferredPanelsReady = false;
+        if (Config.ready) {
+            shellEntryTimer.start();
+            deferredInitTimer.start();
+        }
     }
 
     // Shell entry animation: panels start hidden, slide in after a brief delay
-    // 400ms ensures LazyLoader panels are created and rendered in hidden state first
+    // 200ms is enough for LazyLoader panels to be created on warm cache;
+    // on cold boot the progressive slide-in is better UX than extra blank time
     Timer {
         id: shellEntryTimer
-        interval: Appearance.animationsEnabled ? 400 : 0
+        interval: Appearance.animationsEnabled ? 200 : 0
         repeat: false
         onTriggered: GlobalStates.shellEntryReady = true
+    }
+
+    // Deferred initialization: load non-critical services and panels after the first frame
+    // is rendered, spreading startup work over time to reduce the boot contention burst
+    Timer {
+        id: deferredInitTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            root._log("[Shell] Deferred init: loading non-critical services and panels");
+            root._gameModeService = GameMode;
+            root._windowPreviewService = WindowPreviewService;
+            root._weatherService = Weather;
+            root._voiceSearchService = VoiceSearch;
+            root._fontSyncService = FontSyncService;
+            Hyprsunset.load();
+            GlobalStates.deferredPanelsReady = true;
+        }
     }
 
     Connections {
@@ -64,6 +92,8 @@ ShellRoot {
                 Qt.callLater(() => IconThemeService.ensureInitialized());
                 // Kick off shell entry animation after panels have been created
                 shellEntryTimer.start();
+                // Schedule deferred init (non-critical services + panels) after first frame
+                deferredInitTimer.start();
                 // Only reset enabledPanels if it's empty or undefined (first run / corrupted config)
                 if (!Config.options?.enabledPanels || Config.options.enabledPanels.length === 0) {
                     const family = Config.options?.panelFamily ?? "ii"
@@ -87,13 +117,41 @@ ShellRoot {
         let panels = [...(Config.options?.enabledPanels ?? [])];
         let changed = false;
 
-        // Ensure all base panels for current family are present (adds new panels from updates)
+        // Only add genuinely NEW panels (from updates), not panels the user deliberately disabled.
+        // knownPanels tracks what the user has seen. If a panel is in knownPanels but not in
+        // enabledPanels, the user removed it — don't re-add.
         const basePanels = root.panelFamilies[family] ?? [];
-        for (const panel of basePanels) {
-            if (!panels.includes(panel)) {
-                root._log("[Shell] Adding new panel to enabledPanels: " + panel);
-                panels.push(panel);
-                changed = true;
+        let known = [...(Config.options?.knownPanels ?? [])];
+        const isFirstRun = known.length === 0;
+
+        if (isFirstRun) {
+            // First boot with this logic — seed knownPanels with ALL families' panels.
+            // This prevents re-adding panels that existing users already disabled,
+            // including across family switches.
+            const allPanels = [];
+            for (const fam of root.families) {
+                for (const p of (root.panelFamilies[fam] ?? [])) {
+                    if (!allPanels.includes(p)) allPanels.push(p);
+                }
+            }
+            Config.setNestedValue("knownPanels", allPanels);
+        } else {
+            // Subsequent boots: only add panels that are new (not in knownPanels)
+            let knownChanged = false;
+            for (const panel of basePanels) {
+                if (!known.includes(panel)) {
+                    // Genuinely new panel from an update
+                    if (!panels.includes(panel)) {
+                        root._log("[Shell] Adding new panel to enabledPanels: " + panel);
+                        panels.push(panel);
+                        changed = true;
+                    }
+                    known.push(panel);
+                    knownChanged = true;
+                }
+            }
+            if (knownChanged) {
+                Config.setNestedValue("knownPanels", known);
             }
         }
 
@@ -215,6 +273,17 @@ ShellRoot {
             if (!merged.includes(panel)) merged.push(panel)
         }
         Config.setNestedValue("enabledPanels", merged)
+
+        // Update knownPanels so the new family's panels are tracked before the user can disable them
+        const known = [...(Config.options?.knownPanels ?? [])]
+        let knownChanged = false
+        for (const panel of basePanels) {
+            if (!known.includes(panel)) {
+                known.push(panel)
+                knownChanged = true
+            }
+        }
+        if (knownChanged) Config.setNestedValue("knownPanels", known)
     }
 
     function cyclePanelFamily() {

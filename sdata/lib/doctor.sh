@@ -58,6 +58,7 @@ check_dependencies() {
         "wl-paste:wl-clipboard"
         "fuzzel:fuzzel"
         "awww:awww"
+        "awww-daemon:awww"
         "hyprpicker:hyprpicker"
         "playerctl:playerctl"
         "notify-send:libnotify"

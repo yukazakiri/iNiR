@@ -401,6 +401,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             }
 
             MaterialPlaceholderMessage {
+                anchors.fill: parent
                 z: 2
                 shown: Ai.messageIDs.length === 0
                 icon: "neurology"
