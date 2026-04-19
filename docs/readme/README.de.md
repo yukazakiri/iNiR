@@ -247,7 +247,7 @@ Vollständige Liste: [KEYBINDS.md](../KEYBINDS.md)
 | [IPC.md](../IPC.md) | IPC-Ziele für Scripting und benutzerdefinierte Tastenkürzel |
 | [PACKAGES.md](../PACKAGES.md) | Jede Abhängigkeit und warum sie da ist |
 | [LIMITATIONS.md](../LIMITATIONS.md) | Bekannte Einschränkungen und Lösungen |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Technische Architekturübersicht |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Technische Architekturübersicht |
 
 ---
 

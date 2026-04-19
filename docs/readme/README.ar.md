@@ -257,7 +257,7 @@ inir update                     # سحب + ترحيل + إعادة تشغيل
 | [IPC.md](../IPC.md) | أهداف IPC للنصوص البرمجية والاختصارات |
 | [PACKAGES.md](../PACKAGES.md) | كل تبعية ولماذا هي موجودة |
 | [LIMITATIONS.md](../LIMITATIONS.md) | القيود المعروفة والحلول البديلة |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | نظرة عامة على البنية التقنية |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | نظرة عامة على البنية التقنية |
 
 ---
 

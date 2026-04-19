@@ -247,7 +247,7 @@ Liste complète : [KEYBINDS.md](../KEYBINDS.md)
 | [IPC.md](../IPC.md) | Cibles IPC pour scripts et raccourcis personnalisés |
 | [PACKAGES.md](../PACKAGES.md) | Chaque dépendance et pourquoi elle est là |
 | [LIMITATIONS.md](../LIMITATIONS.md) | Limitations connues et solutions |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Vue d'ensemble de l'architecture technique |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Vue d'ensemble de l'architecture technique |
 
 ---
 

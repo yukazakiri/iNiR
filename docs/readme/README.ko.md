@@ -247,7 +247,7 @@ inir update                     # pull + 마이그레이션 + 재시작
 | [IPC.md](../IPC.md) | 스크립팅 및 단축키용 IPC 대상 |
 | [PACKAGES.md](../PACKAGES.md) | 모든 의존성과 이유 |
 | [LIMITATIONS.md](../LIMITATIONS.md) | 알려진 제한 사항과 해결 방법 |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | 기술 아키텍처 개요 |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 기술 아키텍처 개요 |
 
 ---
 

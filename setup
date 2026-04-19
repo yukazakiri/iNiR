@@ -274,6 +274,7 @@ show_help() {
     tui_list_item "rollback    Restore previous snapshot"
     tui_list_item "my-changes  View/restore your preserved modifications"
     tui_list_item "uninstall   Remove iNiR from system"
+    tui_list_item "reinstall   Re-run install pipeline for current setup"
     tui_list_item "config      View and edit shell settings"
     tui_list_item "theme       Change wallpaper and color scheme"
     tui_list_item "info        System and shell details dashboard"
@@ -292,6 +293,7 @@ show_help() {
 
     tui_subtitle "Examples"
     tui_dim "  ./setup install      # Install iNiR once"
+    tui_dim "  ./setup reinstall    # Re-run install for current setup"
     tui_dim "  ./setup theme        # Change wallpaper & colors"
     tui_dim "  ./setup config       # View/edit shell settings"
     tui_dim "  ./setup info         # Rich system dashboard"
@@ -2055,7 +2057,7 @@ COMMAND=""
 SUBCMD_ARGS=()
 while [[ $# -gt 0 ]]; do
     case $1 in
-        install|update|migrate|doctor|rollback|my-changes|uninstall|status|config|theme|info|backup|logs|extras)
+        install|reinstall|update|migrate|doctor|rollback|my-changes|uninstall|status|config|theme|info|backup|logs|extras)
             COMMAND="$1"; shift
             SUBCMD_ARGS=("$@")
             break
@@ -2083,6 +2085,16 @@ fi
 ###############################################################################
 case "$COMMAND" in
     install) run_install ;;
+    reinstall)
+        for _arg in "${SUBCMD_ARGS[@]}"; do
+            case "$_arg" in
+                -y|--yes) ask=false ;;
+                -q|--quiet) quiet=true ;;
+            esac
+        done
+        IS_UPDATE=true
+        run_install
+        ;;
     update)
         for _arg in "${SUBCMD_ARGS[@]}"; do
             case "$_arg" in

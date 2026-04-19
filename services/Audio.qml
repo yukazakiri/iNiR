@@ -33,7 +33,12 @@ Singleton {
 
     property bool _wpctlMicStateKnown: false
     property bool _wpctlMicMuted: false
+    property bool _wpctlMicVolumeKnown: false
+    property real _wpctlMicVolume: 0
+    property bool _pendingSourceVolumeApply: false
+    property real _pendingSourceVolume: 0
     readonly property bool micMuted: _wpctlMicStateKnown ? _wpctlMicMuted : (source?.audio?.muted ?? false)
+    readonly property real micVolume: _wpctlMicVolumeKnown ? _wpctlMicVolume : (source?.audio?.volume ?? 0)
 
     function friendlyDeviceName(node) {
         return node ? (node.nickname || node.description || Translation.tr("Unknown")) : Translation.tr("Unknown");
@@ -68,23 +73,9 @@ Singleton {
 
         if (physicalSink) return physicalSink
 
-        // Fallback: find the first non-virtual, non-EasyEffects hardware sink.
-        // This handles cases where EasyEffects uses pw-loopback/filter-chain and
-        // driver-id doesn't point directly to the hardware sink node.
-        const fallbackSink = Pipewire.nodes.values.find(candidate => {
-            if (!root.correctType(candidate, true) || candidate.isStream) return false
-            const cProps = candidate.properties ?? {}
-            const cName = String(cProps["node.name"] ?? candidate.name ?? "")
-            const cAppId = String(cProps["application.id"] ?? "")
-            const cVirtual = String(cProps["node.virtual"] ?? "false") === "true"
-            const cPassthrough = String(cProps["monitor.passthrough"] ?? "false") === "true"
-            const isEE = cName === "easyeffects_sink"
-                || cAppId === "com.github.wwmm.easyeffects"
-                || (cVirtual && cPassthrough)
-            return !isEE
-        })
-
-        return fallbackSink ?? node
+        // Keep EasyEffects sink if physical mapping is unavailable.
+        // Avoid picking an arbitrary non-virtual sink during reconnect/profile churn.
+        return node
     }
 
     // Lists
@@ -120,7 +111,11 @@ Singleton {
         if (root.source?.audio) {
             root.source.audio.volume = clamped
         }
-        if (wpctlSetSourceVolume.running) return
+        if (wpctlSetSourceVolume.running) {
+            root._pendingSourceVolumeApply = true
+            root._pendingSourceVolume = clamped
+            return
+        }
         wpctlSetSourceVolume.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", String(clamped)]
         wpctlSetSourceVolume.running = true
     }
@@ -149,7 +144,15 @@ Singleton {
     Process {
         id: wpctlSetSourceVolume
         command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", "1.0"]
-        onExited: refreshMicState()
+        onExited: {
+            refreshMicState()
+            if (!root._pendingSourceVolumeApply) return
+
+            const queuedVolume = Math.max(0, Math.min(root.hardMaxValue, root._pendingSourceVolume))
+            root._pendingSourceVolumeApply = false
+            wpctlSetSourceVolume.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", String(queuedVolume)]
+            wpctlSetSourceVolume.running = true
+        }
     }
 
     Process {
@@ -167,6 +170,15 @@ Singleton {
 
             root._wpctlMicStateKnown = true
             root._wpctlMicMuted = out.toUpperCase().includes("MUTED")
+
+            const match = out.match(/Volume:\s*([0-9]*\.?[0-9]+)/i)
+            if (match && match[1] !== undefined) {
+                const parsed = Number(match[1])
+                if (Number.isFinite(parsed)) {
+                    root._wpctlMicVolumeKnown = true
+                    root._wpctlMicVolume = Math.max(0, Math.min(root.hardMaxValue, parsed))
+                }
+            }
         }
     }
 

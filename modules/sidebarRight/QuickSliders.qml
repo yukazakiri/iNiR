@@ -78,11 +78,8 @@ Rectangle {
             active: Config.options?.sidebar?.quickSliders?.showMic ?? false
             sourceComponent: QuickSlider {
                 materialSymbol: "mic"
-                modelValue: Audio.source?.audio?.volume ?? 0
-                onMoved: {
-                    if (Audio.source?.audio)
-                        Audio.source.audio.volume = value
-                }
+                modelValue: Audio.micVolume
+                onMoved: Audio.setSourceVolume(value)
             }
         }
     }

@@ -247,7 +247,7 @@ inir update                     # pull + माइग्रेशन + रीस
 | [IPC.md](../IPC.md) | स्क्रिप्टिंग और कीबाइंड के लिए IPC टारगेट |
 | [PACKAGES.md](../PACKAGES.md) | हर डिपेंडेंसी और उसका कारण |
 | [LIMITATIONS.md](../LIMITATIONS.md) | ज्ञात सीमाएँ और समाधान |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | तकनीकी आर्किटेक्चर ओवरव्यू |
+| [ARCHITECTURE.md](../../ARCHITECTURE.md) | तकनीकी आर्किटेक्चर ओवरव्यू |
 
 ---
 

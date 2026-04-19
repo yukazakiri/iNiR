@@ -3,18 +3,33 @@ Description=iNiR shell
 PartOf=graphical-session.target
 After=graphical-session.target
 Wants=graphical-session.target
+# Rate-limit restarts: max 5 attempts in 30 seconds, then stop trying.
+# These MUST live in [Unit], not [Service] — systemd ignores them elsewhere.
+StartLimitIntervalSec=30
+StartLimitBurst=5
 
 [Service]
 Type=simple
+
+# Pre-seed stable environment so the bash wrapper skips detection at boot.
+# QT_SCALE_FACTOR must be 1 — shell scaling is handled in QML.
+# QT_LOGGING_RULES suppresses noisy Qt/KF warnings.
+Environment=QT_SCALE_FACTOR=1
+Environment=QT_LOGGING_RULES=quickshell.dbus.properties=false;qt.qml.settings.warning=false;qt.core.qsettings.warning=false;kf.xmlgui=false;kf.coreaddons=false;kf.config.core=false;kf.iconthemes=false
+
 ExecStart=/usr/bin/inir run --session
 SuccessExitStatus=143
+
 KillMode=process
 KillSignal=SIGTERM
+
 Restart=on-failure
 RestartSec=3
-StartLimitIntervalSec=30
-StartLimitBurst=5
 TimeoutStopSec=15
+
+# Boost I/O priority so QML/Qt library loading wins over background services
+# during cold-boot I/O contention (portals, tray apps, etc.)
+IOSchedulingPriority=2
 
 [Install]
 WantedBy=graphical-session.target
