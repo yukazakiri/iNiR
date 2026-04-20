@@ -15,7 +15,7 @@ Rectangle {
     id: kbd
     height: 290
     radius: kbd.themeRounding
-    color: ColorUtils.transparentize(kbd.themeBgColor, 0.06)
+    color: kbd.themeBgColor
     border.color: ColorUtils.transparentize(kbd.themeTextColor, 0.88)
     border.width: 1
 
@@ -28,7 +28,7 @@ Rectangle {
     property bool isShifted: false
 
     // Theme properties — defaults are ii (Appearance). Override for waffle (Looks).
-    property color themeBgColor: Appearance.colors.colLayer0
+    property color themeBgColor: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.06)
     property color themeKeySurfaceColor: Appearance.colors.colLayer1
     property color themeTextColor: Appearance.colors.colOnSurface
     property color themeSubtextColor: Appearance.colors.colOnSurfaceVariant
