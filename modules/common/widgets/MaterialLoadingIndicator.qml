@@ -46,7 +46,7 @@ Rectangle {
     }
     Timer {
         interval: 800
-        running: root.loading && Appearance.animationsEnabled
+        running: root.loading
         repeat: true
         onTriggered: leapAnimation.start()
     }

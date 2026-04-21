@@ -137,7 +137,7 @@ Scope {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation { properties: "y"; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                         NumberAnimation { properties: "opacity"; duration: Appearance.animation.elementMoveExit.duration; easing.type: Appearance.animation.elementMoveExit.type; easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve }
-                        NumberAnimation { properties: "scale"; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+                        NumberAnimation { properties: "scale"; duration: Appearance.animation.elementResize.duration; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
                     },
                     Transition {
                         from: "visible"

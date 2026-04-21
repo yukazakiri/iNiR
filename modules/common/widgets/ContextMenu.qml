@@ -119,9 +119,9 @@ Loader {
             target: popupWindow
             property: "sourceEdgeMargin"
             to: (root.ambientShadowWidth + root.visualMargin)
-            duration: Appearance.animation.elementMoveEnter.duration
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Appearance.animation.elementMoveFast.type
+            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
         }
         SequentialAnimation {
             id: closeAnim

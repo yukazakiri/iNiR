@@ -250,18 +250,18 @@ Scope {
                                 property: "opacity"
                                 from: 0
                                 to: 1
-                                duration: Appearance.animation.elementMoveEnter.duration
-                                easing.type: Appearance.animation.elementMoveEnter.type
-                                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                                duration: Appearance.animation.elementMoveFast.duration
+                                easing.type: Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                             }
                             NumberAnimation {
                                 target: parent
                                 property: "scale"
                                 from: 0.9
                                 to: 1
-                                duration: Appearance.animation.elementMoveEnter.duration
-                                easing.type: Appearance.animation.elementMoveEnter.type
-                                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                                duration: Appearance.animation.elementMoveFast.duration
+                                easing.type: Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                             }
                         }
                         
