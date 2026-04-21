@@ -5,6 +5,33 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2026-04-21
+
+### Added
+- **Lock screen overhaul**: multiple clock styles (default, minimal, analog, binary), configurable position, dim overlay with adjustable opacity, notification icons that expand to show details, on-screen keyboard, grouped notifications by app with count badges. Both ii and waffle families. Full settings UI integration.
+- **Recording OSD**: draggable overlay pill that shows elapsed time during screen recording. Collapsed/expanded modes with audio/mic toggles. Glass background for aurora/angel styles. Disabled by default, enable in Settings > Tools > Screen Recording.
+- **Chromium theme pipeline**: auto-generates a Chrome/Chromium theme from wallpaper colors, integrated into the color generation pipeline.
+- **Recording notification toggle**: suppress start/stop notifications independently from the OSD in settings.
+
+### Fixed
+- **Service spawning on KDE/GNOME**: removed `[Install]` section from systemd unit entirely. inir now wires itself to the compositor-specific service (niri.service, wayland-wm@Hyprland.service) via `.wants/` symlinks instead of `WantedBy=graphical-session.target`. Migration 022 moves existing users automatically.
+- **Animation token misapplication**: 21 animations across 16 files were using `elementMoveEnter` (400ms) instead of `elementMoveFast` (200ms) for fast feedback like popup opacity, hover states, and dock previews. Also fixed a timer interval incorrectly gated by `animationsEnabled`.
+- **Systray timeout**: overflow popup disappeared after 700ms, increased to 1500ms.
+- **Time format not following user preference**: lock screens and sidebar clock now use `DateTime.time` instead of hardcoded `Qt.formatTime`.
+- **Qt font clobbered on wallpaper change**: kdeglobals now reads the current gsettings font before writing, preserving user font choice.
+- **`inir status` false negative**: setup script wasn't resolving symlinks before passing paths to `qs -p`, so dev setups always reported "not running".
+- **Recording notification config ignored**: jq `//` operator treats `false` as falsy, so `false // true` returned `true`. Boolean config reads now use explicit null checks.
+- **Notify-send always firing**: bash `&&` binds tighter than `&`, so the is_truthy guard was being backgrounded unconditionally. Switched to if/then/fi.
+
+### Changed
+- **Neovim theming**: replaced inline lua generation with external `inir.nvim` plugin via `neovim_themegen.sh`.
+- **Systemd hardening**: coredumps disabled (LimitCORE=0), DISPLAY exported to systemd env on start.
+- **SDDM service**: enabled during install phase.
+- **Audio fallback**: wpctl now falls back to next available sink when USB audio disconnects.
+
+### Contributors
+Thanks to [@kirisaki-vk](https://github.com/kirisaki-vk) for the time format fix and Qt font preservation, [@orcusforyou](https://github.com/orcusforyou) for the systray timeout fix, and [@yukazakiri](https://github.com/yukazakiri) for the chromium theme pipeline and neovim plugin migration.
+
 ## [2.21.1] - 2026-04-16
 
 ### Added
