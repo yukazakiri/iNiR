@@ -19,7 +19,7 @@ Item {
 
     Timer {
         id: overflowAutoCloseTimer
-        interval: 700
+        interval: 1500
         repeat: false
         onTriggered: root.trayOverflowOpen = false
     }
