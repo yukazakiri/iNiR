@@ -131,8 +131,6 @@ sys
 # ── Wiki / MkDocs (WIP, not shipped yet) ─────────────────────
 mkdocs.yml
 site/
-!wiki/
-!wiki/**
 
 # ── Stale paths (prevent accidental commits) ─────────────────
 /src/
