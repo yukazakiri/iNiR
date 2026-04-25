@@ -129,9 +129,10 @@ sys
 *.ps
 
 # ── Wiki / MkDocs (WIP, not shipped yet) ─────────────────────
-wiki/
 mkdocs.yml
 site/
+!wiki/
+!wiki/**
 
 # ── Stale paths (prevent accidental commits) ─────────────────
 /src/

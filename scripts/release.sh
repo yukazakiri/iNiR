@@ -10,6 +10,10 @@ Usage:
 Commands:
   notes    Extract the matching CHANGELOG section and append release footer links.
   publish  Create the GitHub release for an existing local tag v<version>.
+
+Notes:
+  - This helper never pushes branches or tags.
+  - Push git refs explicitly as separate manual commands.
 EOF
 }
 
