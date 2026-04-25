@@ -294,6 +294,12 @@ Singleton {
         return (url ?? "").toString().trim()
     }
 
+    function _buildRelatedMixUrl(videoId, preferMusicMix): string {
+        if (!videoId) return ""
+        const listId = (preferMusicMix ? "RDAMVM" : "RDMM") + videoId
+        return `https://music.youtube.com/watch?v=${videoId}&list=${listId}`
+    }
+
     function _syncFromMpvPlayer(player): void {
         if (!player) return
 
@@ -515,18 +521,29 @@ Singleton {
         if (!item?.videoId) return
         root.activePlaylist = [item]
         root.currentIndex = 0
-        root.activePlaylistSource = "single"
+        root.activePlaylistSource = item.enableRelatedQueue ? "related-pending" : "single"
         _playInternal(item)
+        if (item.enableRelatedQueue) {
+            root._startRelatedQueue(item)
+        } else {
+            root._clearRelatedQueue()
+        }
     }
     
     function playFromPlaylist(playlist, index, source): void {
         root._log("[YtMusic] playFromPlaylist. playlist.length=" + (playlist?.length ?? "null") + " index=" + index + " source=" + source)
         if (!playlist || index < 0 || index >= playlist.length) return
+        const item = playlist[index]
+        if (playlist.length === 1 && item?.enableRelatedQueue) {
+            root.play(item)
+            return
+        }
         root.activePlaylist = [...playlist]
         root.currentIndex = index
         root.activePlaylistSource = source || "custom"
+        root._clearRelatedQueue()
         root._log("[YtMusic] Set activePlaylist.length=" + root.activePlaylist.length + " currentIndex=" + root.currentIndex)
-        _playInternal(playlist[index])
+        _playInternal(item)
     }
     
     function playFromSearch(index): void {
@@ -586,7 +603,34 @@ Singleton {
         root.currentPosition = 0
         root.activePlaylist = []
         root.currentIndex = -1
+        root._clearRelatedQueue()
         root._clearResume()
+    }
+
+    function _startRelatedQueue(item): void {
+        if (!item?.videoId) return
+        root._relatedSeedVideoId = item.videoId
+        root._relatedSeedTitle = item.title || ""
+        root._relatedSeedArtist = item.artist || ""
+        root._relatedSeedDuration = item.duration || 0
+        root._relatedSeedThumbnail = item.thumbnail || root._getThumbnailUrl(item.videoId)
+        root._relatedSeedUrl = item.url || `https://www.youtube.com/watch?v=${item.videoId}`
+        root._relatedQueueTriedFallback = false
+        root._relatedQueuePending = true
+        if (!_relatedQueueProc.running) {
+            _relatedQueueProc.running = true
+        }
+    }
+
+    function _clearRelatedQueue(): void {
+        root._relatedSeedVideoId = ""
+        root._relatedSeedTitle = ""
+        root._relatedSeedArtist = ""
+        root._relatedSeedDuration = 0
+        root._relatedSeedThumbnail = ""
+        root._relatedSeedUrl = ""
+        root._relatedQueueTriedFallback = false
+        root._relatedQueuePending = false
     }
 
     function _didTrackEndNaturally(code: int, stderrText: string): bool {
@@ -1409,6 +1453,14 @@ print("")
     property string _resolveYoutubePlaylistUrl: ""
     property string _importPlaylistUrl: ""
     property string _importPlaylistName: ""
+    property string _relatedSeedVideoId: ""
+    property string _relatedSeedTitle: ""
+    property string _relatedSeedArtist: ""
+    property int _relatedSeedDuration: 0
+    property string _relatedSeedThumbnail: ""
+    property string _relatedSeedUrl: ""
+    property bool _relatedQueueTriedFallback: false
+    property bool _relatedQueuePending: false
 
     readonly property string _cookiesFilePath: Directories.shellConfig + "/yt-cookies.txt"
     readonly property var _firefoxForks: ["zen", "librewolf", "floorp", "waterfox"]
@@ -1866,7 +1918,8 @@ print("")
                         artist: data.channel || data.uploader || "",
                         duration: data.duration || 0,
                         thumbnail: root._getThumbnailUrl(videoId),
-                        url: data.webpage_url || data.url || root._resolveYoutubeTrackUrl
+                        url: data.webpage_url || data.url || root._resolveYoutubeTrackUrl,
+                        enableRelatedQueue: true
                     }
                 } catch (e) {}
             }
@@ -1922,6 +1975,94 @@ print("")
                     root.error = Translation.tr("Could not resolve this YouTube playlist.")
                 }
             }
+        }
+    }
+
+    Process {
+        id: _relatedQueueProc
+        property var items: []
+        property string requestVideoId: ""
+        property bool requestUsedFallback: false
+        command: ["/usr/bin/yt-dlp",
+            ...(root.googleConnected ? root._cookieArgs : []),
+            "--flat-playlist",
+            "--playlist-end", "25",
+            "--no-warnings",
+            "--quiet",
+            "-j",
+            root._buildRelatedMixUrl(root._relatedSeedVideoId, !root._relatedQueueTriedFallback)
+        ]
+        onStarted: {
+            items = []
+            requestVideoId = root._relatedSeedVideoId
+            requestUsedFallback = root._relatedQueueTriedFallback
+            root._relatedQueuePending = false
+        }
+        stdout: SplitParser {
+            onRead: line => {
+                try {
+                    const data = JSON.parse(line)
+                    if (!data.id) return
+                    const duration = data.duration || 0
+                    if (duration && (duration < 30 || duration > 900)) return
+                    items.push({
+                        videoId: data.id,
+                        title: data.title || "Unknown",
+                        artist: data.channel || data.uploader || "",
+                        duration: duration,
+                        thumbnail: root._getThumbnailUrl(data.id),
+                        url: data.url || data.webpage_url || `https://music.youtube.com/watch?v=${data.id}`
+                    })
+                } catch (e) {}
+            }
+        }
+        onRunningChanged: {
+            if (running) return
+
+            if (root._relatedQueuePending) {
+                _relatedQueueProc.running = true
+                return
+            }
+
+            if (items.length === 0 && requestVideoId && !requestUsedFallback && requestVideoId === root._relatedSeedVideoId) {
+                root._relatedQueueTriedFallback = true
+                _relatedQueueProc.running = true
+                return
+            }
+
+            if (!requestVideoId || requestVideoId !== root._relatedSeedVideoId) {
+                return
+            }
+
+            if (!root._relatedSeedVideoId || root.currentVideoId !== root._relatedSeedVideoId) {
+                root._clearRelatedQueue()
+                return
+            }
+
+            if (items.length === 0) {
+                root._clearRelatedQueue()
+                return
+            }
+
+            let playlist = [...items]
+            let currentIdx = playlist.findIndex(item => item.videoId === root._relatedSeedVideoId)
+
+            if (currentIdx < 0) {
+                playlist.unshift({
+                    videoId: root._relatedSeedVideoId,
+                    title: root._relatedSeedTitle || root.currentTitle,
+                    artist: root._relatedSeedArtist || root.currentArtist,
+                    duration: root._relatedSeedDuration || root.currentDuration,
+                    thumbnail: root._relatedSeedThumbnail || root.currentThumbnail,
+                    url: root._relatedSeedUrl || root.currentUrl
+                })
+                currentIdx = 0
+            }
+
+            root.activePlaylist = playlist
+            root.currentIndex = currentIdx
+            root.activePlaylistSource = "related"
+            root._clearRelatedQueue()
         }
     }
 
