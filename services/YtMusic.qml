@@ -1986,9 +1986,9 @@ print("")
         }
     }
 
-    // Fetch metadata (title, artist, thumbnail) for a single track/video URL
-    // before playback so the sidebar shows proper info immediately instead of
-    // waiting for MPRIS sync (which may never deliver good data for Spotify).
+    // Fetch metadata for a single track/video URL and populate searchResults
+    // so the sidebar shows the resolved content. Falls back to ytsearch if the
+    // resolve fails — preserves the old search behavior as a safety net.
     Process {
         id: _resolveTrackProc
         property var item: null
@@ -2013,21 +2013,27 @@ print("")
                 } catch (e) {}
             }
         }
+        onStarted: { _resolveTrackProc.item = null }
         onRunningChanged: {
             if (!running) {
                 root.searching = false
-                if (root._resolveTrackProc.item) {
-                    root.play(root._resolveTrackProc.item)
+                if (_resolveTrackProc.item) {
+                    // Populate searchResults so the user sees the resolved item
+                    root.searchResults = [_resolveTrackProc.item]
                 } else {
-                    root.error = Translation.tr("Could not resolve track. Check the URL.")
+                    root._log("[YtMusic] Resolve failed, falling back to search for:", root._resolveTrackUrl)
+                    // Fallback: search yt-dlp for the URL text (old behavior)
+                    root.searching = true
+                    root.searchResults = []
+                    _searchQuery = root._resolveTrackUrl
+                    _searchProc.running = true
                 }
             }
         }
     }
 
     // Resolves playlist items into searchResults so the sidebar shows them inline.
-    // Users see the actual playlist content and can play individual tracks or
-    // hit "Play All" — no silent background import needed.
+    // Falls back to ytsearch when the resolve fails.
     Process {
         id: _resolvePlaylistProc
         property var items: []
@@ -2066,7 +2072,11 @@ print("")
                 if (items.length > 0) {
                     root.searchResults = items
                 } else {
-                    root.error = Translation.tr("Could not resolve playlist. Check the URL.")
+                    root._log("[YtMusic] Playlist resolve failed, falling back to search for:", root._resolvePlaylistUrl)
+                    root.searching = true
+                    root.searchResults = []
+                    _searchQuery = root._resolvePlaylistUrl
+                    _searchProc.running = true
                 }
             }
         }
