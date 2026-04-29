@@ -640,7 +640,8 @@
   },
   "osk": {
     "layout": "qwerty_full",
-    "pinnedOnStartup": false
+    "pinnedOnStartup": false,
+    "keepOnTop": false
   },
   "overlay": {
     "animationDurationMs": 120,
