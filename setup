@@ -1532,11 +1532,15 @@ run_update() {
 
     # Show current branch for awareness
     local current_branch
+    local tracked_branch
     current_branch="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
-    if [[ "$current_branch" != "main" && "$current_branch" != "master" && "$current_branch" != "unknown" ]]; then
+    tracked_branch="$(get_update_tracking_branch 2>/dev/null || echo "main")"
+    if [[ "$current_branch" == "HEAD" ]]; then
+        tui_warn "Detached HEAD checkout. Updates will track origin/${tracked_branch}."
+    elif [[ "$current_branch" != "main" && "$current_branch" != "master" && "$current_branch" != "unknown" ]]; then
         tui_warn "On branch '$current_branch' (non-release). Updates will track this branch."
     else
-        tui_info "Branch: $current_branch"
+        tui_info "Branch: $tracked_branch"
     fi
 
     local installed_mode=$(get_installed_install_mode)
@@ -1609,6 +1613,12 @@ run_update() {
             # Updates available
             show_pending_commits
 
+            if [[ "$current_branch" == "HEAD" ]]; then
+                tui_error "Detached HEAD checkout cannot pull updates automatically."
+                tui_info "Check out a branch first, then run ./setup update again."
+                return 1
+            fi
+
             if $ask; then
                 if ! tui_confirm "Pull and apply these updates?"; then
                     echo "Cancelled."
@@ -1625,8 +1635,8 @@ run_update() {
             # Pull changes
             _report_progress 1 "Pulling changes"
             tui_info "Pulling changes..."
-            if ! git -C "$REPO_ROOT" pull --ff-only origin 2>/dev/null; then
-                tui_error "Git pull failed. You may have local changes."
+            if ! git -C "$REPO_ROOT" pull --ff-only origin "$tracked_branch" 2>/dev/null; then
+                tui_error "Git pull from origin/${tracked_branch} failed. You may have local changes."
                 tui_info "Try: git stash && ./setup update"
                 return 1
             fi
@@ -1641,9 +1651,24 @@ run_update() {
             reexec_args+=("update")
             export _II_POST_PULL=1
             exec "$REPO_ROOT/setup" "${reexec_args[@]}"
+        elif [[ "$update_rc" -eq 3 ]]; then
+            tui_warn "Local checkout is ahead of origin/${tracked_branch}. Skipping git pull."
+            show_local_ahead_commits
+            tui_info "Syncing from the current local repo state..."
+        elif [[ "$update_rc" -eq 4 ]]; then
+            show_diverged_commits
+            if [[ "$tracked_branch" == "main" || "$tracked_branch" == "master" ]]; then
+                tui_error "Remote branch '${tracked_branch}' diverged from this checkout."
+                tui_info "Release branch history should not be rewritten. Refusing automatic update."
+            else
+                tui_error "Branch '${current_branch}' diverged from origin/${tracked_branch}."
+                tui_info "Non-release branches may be rewritten during testing. Refusing to auto-reset this checkout."
+                tui_info "If the rewrite was intentional, realign manually: git fetch origin && git reset --hard origin/${tracked_branch}"
+            fi
+            return 1
         elif [[ "$update_rc" -eq 2 ]]; then
-            # Could not check remote (offline or not a git repo)
-            tui_warn "Could not check for remote updates (offline or not a git repo)"
+            # Could not check remote (offline/no git/missing tracked branch)
+            tui_warn "Could not check for remote updates (offline, not a git repo, or missing tracked branch)"
             tui_info "Checking local repo vs installed version..."
         fi
         # Fall through: rc=1 (no updates) or rc=2 (error) — check local repo vs installed
