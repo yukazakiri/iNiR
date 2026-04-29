@@ -79,10 +79,6 @@ Scope {
                 }
                 color: "transparent"
 
-                BackgroundEffect.blurRegion: Region {
-                    item: (Appearance.effectsEnabled && (Config.options?.performance?.compositorBlur ?? true)) ? barContent : null
-                }
-
                 anchors {
                     left: !(Config.options?.bar?.bottom ?? false)
                     right: (Config.options?.bar?.bottom ?? false)

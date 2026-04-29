@@ -99,16 +99,15 @@ Disable the shell's agent with `QS_DISABLE_POLKIT=1` if it causes issues.
 
 ## Idle management
 
-Idle timeouts are handled natively via the `ext-idle-notify-v1` Wayland protocol (Quickshell `IdleMonitor`), configured through Settings or IPC:
+Idle timeouts are handled by swayidle, configured through Settings or IPC:
 
-- **Screen off**: turn off monitors after inactivity (default: 5 minutes). Ignores idle inhibitors so the screen always blanks on schedule.
-- **Lock**: lock the session after inactivity (default: 10 minutes). Respects idle inhibitors (won't lock during fullscreen video).
-- **Suspend**: suspend the system after inactivity (default: off). Respects idle inhibitors.
-- **Lock before sleep**: extra D-Bus listener on logind's `PrepareForSleep` signal locks the session right before suspend, regardless of timeout chain.
+- **Screen off**: turn off monitors after inactivity (default: 5 minutes)
+- **Lock**: lock the session after inactivity (default: 10 minutes)
+- **Suspend**: suspend the system after inactivity (default: off)
 
 ```bash
 inir idle getTimeouts    # current timeout values
 inir idle inhibit        # prevent idle actions temporarily
 ```
 
-Apps that need to keep the session awake (video players, presentations) use the standard `idle-inhibit-unstable-v1` Wayland protocol — honoured by lock and suspend, not by screen-off.
+Fullscreen video players and presentations automatically inhibit idle via the idle-inhibit Wayland protocol.

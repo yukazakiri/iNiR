@@ -34,6 +34,7 @@ depends=(
   quickshell
   rsync
   slurp
+  swayidle
   swaylock
   syntax-highlighting
   ttf-jetbrains-mono-nerd

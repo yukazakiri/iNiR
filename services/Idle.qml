@@ -4,14 +4,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs.modules.common
 import qs.modules.common.functions
 
-/**
- * Idle service backed by Quickshell IdleMonitor (ext-idle-notify-v1).
- * Replaces the previous swayidle-based implementation.
- */
 Singleton {
     id: root
 
@@ -20,6 +15,11 @@ Singleton {
     readonly property int lockTimeout: Config.options?.idle?.lockTimeout ?? 600
     readonly property int suspendTimeout: Config.options?.idle?.suspendTimeout ?? 0
     readonly property string launcherPath: Quickshell.shellPath("scripts/inir")
+
+    onScreenOffTimeoutChanged: _restartSwayidle()
+    onLockTimeoutChanged: _restartSwayidle()
+    onSuspendTimeoutChanged: _restartSwayidle()
+    onInhibitChanged: _restartSwayidle()
 
     function toggleInhibit(active = null): void {
         if (active !== null) {
@@ -30,75 +30,63 @@ Singleton {
         Persistent.states.idle.inhibit = inhibit;
     }
 
-    // ── Screen off ───────────────────────────────────────────────
-    // respectInhibitors: false — the screen turns off after the user's
-    // configured timeout regardless of what's playing. A monitor sitting
-    // bright at 100% during a movie is the bug, not the feature.
-    IdleMonitor {
-        id: screenOffMonitor
-        enabled: !root.inhibit && root.screenOffTimeout > 0
-        timeout: root.screenOffTimeout
-        respectInhibitors: false
-        onIsIdleChanged: {
-            console.log("[Idle] screen-off isIdle=" + isIdle + " (timeout=" + timeout + "s)")
-            if (isIdle) CompositorService.powerOffMonitors()
-            else        CompositorService.powerOnMonitors()
-        }
+    function _restartSwayidle() {
+        _stopSwayidle()
+        if (!inhibit) _startSwayidleDelayed.start()
     }
 
-    // ── Lock ─────────────────────────────────────────────────────
-    // respectInhibitors: true (default) — don't lock during fullscreen video.
-    IdleMonitor {
-        id: lockMonitor
-        enabled: !root.inhibit && root._effectiveLockTimeout > 0
-        timeout: root._effectiveLockTimeout
-        onIsIdleChanged: {
-            console.log("[Idle] lock isIdle=" + isIdle + " (timeout=" + timeout + "s)")
-            if (isIdle)
-                Quickshell.execDetached([root.launcherPath, "lock", "activate"])
-        }
+    function _stopSwayidle() {
+        Quickshell.execDetached(["/usr/bin/pkill", "-x", "swayidle"])
     }
 
-    // ── Suspend ──────────────────────────────────────────────────
-    // respectInhibitors: true (default) — don't suspend during a video call.
-    IdleMonitor {
-        id: suspendMonitor
-        enabled: !root.inhibit && root.suspendTimeout > 0
-        timeout: root.suspendTimeout
-        onIsIdleChanged: {
-            console.log("[Idle] suspend isIdle=" + isIdle + " (timeout=" + timeout + "s)")
-            if (isIdle)
-                Quickshell.execDetached(["/usr/bin/systemctl", "suspend", "-i"])
-        }
-    }
+    function _startSwayidle() {
+        if (inhibit) return
 
-    // ── Lock before sleep (logind PrepareForSleep D-Bus signal) ─
-    Process {
-        id: sleepWatcher
-        running: Config.options?.idle?.lockBeforeSleep !== false
-        command: [
-            "/usr/bin/dbus-monitor", "--system", "--profile",
-            "type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'"
-        ]
-        stdout: SplitParser {
-            onRead: (line) => {
-                // dbus-monitor --profile emits tab-separated lines; the signal line contains "PrepareForSleep"
-                if (line.includes("PrepareForSleep"))
-                    Quickshell.execDetached([root.launcherPath, "lock", "activate"])
+        const cmd = ["/usr/bin/swayidle", "-w"]
+        const lockBeforeSleep = Config.options?.idle?.lockBeforeSleep !== false
+
+        if (screenOffTimeout > 0) {
+            cmd.push("timeout", screenOffTimeout.toString(), "/usr/bin/niri msg action power-off-monitors", "resume", "/usr/bin/niri msg action power-on-monitors")
+        }
+
+        // Determine effective lock timeout
+        // If suspend is configured and lockBeforeSleep is enabled, ensure lock happens before suspend
+        let effectiveLockTimeout = lockTimeout
+        if (suspendTimeout > 0 && lockBeforeSleep) {
+            // Lock should happen before suspend - use 5 seconds before suspend if lockTimeout is 0 or > suspendTimeout
+            const lockBeforeSuspendTime = Math.max(1, suspendTimeout - 5)
+            if (lockTimeout <= 0 || lockTimeout > lockBeforeSuspendTime) {
+                effectiveLockTimeout = lockBeforeSuspendTime
             }
         }
+
+        if (effectiveLockTimeout > 0) {
+            cmd.push("timeout", effectiveLockTimeout.toString(), `'${StringUtils.shellSingleQuoteEscape(root.launcherPath)}' lock activate`)
+        }
+
+        if (suspendTimeout > 0) {
+            cmd.push("timeout", suspendTimeout.toString(), "/usr/bin/systemctl suspend -i")
+        }
+
+        if (lockBeforeSleep) {
+            cmd.push("before-sleep", `'${StringUtils.shellSingleQuoteEscape(root.launcherPath)}' lock activate`)
+        }
+
+        console.log("[Idle] Starting swayidle")
+        Quickshell.execDetached(cmd)
     }
 
-    // Effective lock timeout accounts for suspend overlap
-    readonly property int _effectiveLockTimeout: {
-        const lockBeforeSleep = Config.options?.idle?.lockBeforeSleep !== false
-        let t = root.lockTimeout
-        if (root.suspendTimeout > 0 && lockBeforeSleep) {
-            const lockBeforeSuspendTime = Math.max(1, root.suspendTimeout - 5)
-            if (t <= 0 || t > lockBeforeSuspendTime)
-                t = lockBeforeSuspendTime
+    Timer {
+        id: _startSwayidleDelayed
+        interval: 200
+        onTriggered: root._startSwayidle()
+    }
+
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready) root._restartSwayidle()
         }
-        return t
     }
 
     Connections {
@@ -108,4 +96,6 @@ Singleton {
                 root.inhibit = true
         }
     }
+
+    Component.onDestruction: _stopSwayidle()
 }

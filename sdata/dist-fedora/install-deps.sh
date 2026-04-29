@@ -44,6 +44,7 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [fish]="fish"
     [magick]="ImageMagick"
     [swaylock]="swaylock"
+    [swayidle]="swayidle"
     [grim]="grim"
     [mpv]="mpv"
     [cliphist]="cliphist"
@@ -267,6 +268,7 @@ FEDORA_TOOLKIT_PKGS=(
   brightnessctl
   ddcutil
   geoclue2
+  swayidle
   swaylock
   grim
   slurp

@@ -90,6 +90,7 @@ check_dependencies() {
         "xdg-settings:xdg-utils"
         "mpv:mpv"
         "swaylock:swaylock"
+        "swayidle:swayidle"
         "wlsunset:wlsunset"
         "songrec:SongRec"
         "trans:translate-shell"

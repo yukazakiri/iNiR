@@ -2,8 +2,6 @@ import QtQuick
 
 QtObject {
     required property var lastIpcObject
-    property var _qsNetwork: null
-
     readonly property string ssid: lastIpcObject.ssid
     readonly property string bssid: lastIpcObject.bssid
     readonly property int strength: lastIpcObject.strength

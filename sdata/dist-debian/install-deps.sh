@@ -64,6 +64,7 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [fish]="fish"
     [magick]="imagemagick"
     [swaylock]="swaylock"
+    [swayidle]="swayidle"
     [grim]="grim"
     [mpv]="mpv"
     [cliphist]="cliphist"
@@ -426,6 +427,7 @@ DEBIAN_TOOLKIT_PKGS=(
   brightnessctl
   ddcutil
   geoclue-2.0
+  swayidle
   swaylock
   grim
   slurp
