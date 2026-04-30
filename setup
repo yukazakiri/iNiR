@@ -60,6 +60,7 @@ cd "$REPO_ROOT"
 
 # Handle Ctrl+C gracefully
 cleanup() {
+    type _tui_kill_spinner &>/dev/null && _tui_kill_spinner 2>/dev/null || true
     echo ""
     echo -e "\033[33mCancelled.\033[0m"
     rm -rf /tmp/buildyay /tmp/buildparu 2>/dev/null
@@ -88,7 +89,7 @@ run_migrate() {
     fi
 }
 trap cleanup INT
-trap 'rm -rf /tmp/buildyay /tmp/buildparu 2>/dev/null' EXIT TERM
+trap 'type _tui_kill_spinner &>/dev/null && _tui_kill_spinner 2>/dev/null || true; rm -rf /tmp/buildyay /tmp/buildparu 2>/dev/null' EXIT TERM
 
 # Load core libraries
 source ./sdata/lib/environment-variables.sh
@@ -458,6 +459,7 @@ show_help() {
     tui_list_item "-y, --yes              Skip prompts (auto-yes)"
     tui_list_item "-q, --quiet            Minimal output"
     tui_list_item "--local                Sync local repo to install (skip git pull)"
+    tui_list_item "--simulate             Walk the update flow visually without touching files (update only)"
     tui_list_item "--set-default-shell    Set Fish as default shell (uses chsh)"
     tui_list_item "-h, --help             Show this help"
     tui_section_end
@@ -1733,6 +1735,110 @@ _report_progress() {
     echo "progress:${step}:${_update_total_steps}:${msg}" > "$_update_status_file" 2>/dev/null || true
 }
 
+# Composed helpers: write the status marker AND start the animated visual line.
+# Use these in run_update for any phase that should show as one of the 7 steps;
+# fall back to bare _report_progress if you want the marker without the spinner
+# (rare — almost everything user-facing should use these).
+_step_phase_start() {
+    local step="$1" msg="$2"
+    _report_progress "$step" "$msg"
+    tui_step_start "$step" "$_update_total_steps" "$msg"
+}
+
+_step_phase_done() { tui_step_done "${1:-}"; }
+_step_phase_fail() { tui_step_fail "${1:-}"; }
+_step_phase_warn() { tui_step_warn "${1:-}"; }
+_step_phase_skip() { tui_step_skip "${1:-}"; }
+
+# Header-only variant: writes the status marker AND prints the dot indicator +
+# step counter, but no spinner. Use for phases where verbose output (per-file
+# rsync, per-dependency check, per-package install) would compete with the
+# spinner animation. Each verbose line still uses the existing tui_* primitives.
+_step_phase_header() {
+    local step="$1" msg="$2"
+    _report_progress "$step" "$msg"
+    local dots
+    dots="$(_tui_step_dots "$step" "$_update_total_steps")"
+    printf '\n  %b %b[%d/%d]%b %b%s%b\n\n' \
+        "$dots" \
+        "$STY_FAINT" "$step" "$_update_total_steps" "$STY_RST" \
+        "$STY_PURPLE" "$msg" "$STY_RST"
+}
+
+# Simulated update: same step pacing and visuals as the real flow, but with
+# sleeps in place of git pull / rsync / migrations / makepkg. Writes the same
+# progress markers so ShellUpdates resume logic can be exercised end-to-end
+# without touching the user's installation. Triggered by `setup update --simulate`.
+run_update_simulated() {
+    local started=$SECONDS
+
+    tui_hero_card "Simulated Update" \
+        "Walks the seven update phases with the real visuals — no files touched, no git pull, no shell restart." \
+        "Status markers are still written to update-status so the bar indicator and resume logic can be exercised."
+
+    tui_warn "Simulation mode — the installation will not change."
+
+    # Step 1 — fast atomic op: animated spinner
+    _step_phase_start 1 "Pulling changes"
+    sleep 2
+    _step_phase_done "Pulled 4 commits from origin/prerelease"
+
+    # Step 2 — verbose op: header + simulated per-file lines
+    _step_phase_header 2 "Syncing files"
+    tui_info "Syncing iNiR..."
+    sleep 1
+    tui_check_ok "scripts/inir         (current)"
+    tui_check_ok "modules/bar          (3 files updated)"
+    tui_check_ok "services/Audio.qml   (current)"
+    tui_check_ok "translations/es.json (current)"
+    sleep 1
+    tui_success "Synced 1247 files (12 modified, 3 added)"
+
+    # Step 3 — fast atomic op: animated spinner
+    _step_phase_start 3 "Running migrations"
+    sleep 1
+    _step_phase_done "All migrations up to date (0 pending)"
+
+    # Step 4 — verbose op: header + simulated service-refresh lines
+    _step_phase_header 4 "Finalizing"
+    tui_info "Refreshing systemd unit..."
+    sleep 1
+    tui_check_ok "inir.service reloaded"
+    tui_check_ok "Launcher path verified"
+    tui_success "Service file refreshed"
+
+    # Step 5 — verbose op: header + simulated dependency-check lines
+    _step_phase_header 5 "Checking dependencies"
+    sleep 1
+    tui_check_ok "pipewire             (installed)"
+    tui_check_ok "niri                 (installed)"
+    tui_check_ok "matugen              (installed)"
+    tui_check_ok "fish                 (installed)"
+    sleep 1
+    tui_success "All 47 runtime dependencies satisfied"
+
+    # Step 6 — verbose op: header + simulated python-pkg lines
+    _step_phase_header 6 "Python packages"
+    sleep 1
+    tui_check_ok "matugen              (current)"
+    tui_check_ok "mutagen              (current)"
+    tui_check_ok "requests             (current)"
+    sleep 1
+    tui_success "Python venv up to date"
+
+    # Mirror the real flow's order: write success BEFORE the final "Restarting" marker.
+    echo "success" > "$_update_status_file" 2>/dev/null || true
+
+    # Step 7 — fast atomic op: animated spinner
+    _step_phase_start 7 "Restarting shell"
+    sleep 1
+    _step_phase_done "Shell restart skipped in simulation"
+
+    echo ""
+    tui_alert "success" "Simulation complete" \
+        "Total elapsed: $(tui_elapsed "$started"). Run './setup update' (without --simulate) for the real thing."
+}
+
 refresh_sddm_theme_on_update() {
     local ask_mode="${1:-true}"
 
@@ -1752,6 +1858,14 @@ refresh_sddm_theme_on_update() {
 }
 
 run_update() {
+    # Short-circuit to the simulated walkthrough — no git pull, no rsync,
+    # no migrations, no shell restart. Useful for previewing the new TUI
+    # visuals or exercising the resume-from-status-file logic.
+    if [[ "${INIR_SIMULATE_UPDATE:-}" == "1" ]]; then
+        run_update_simulated
+        return $?
+    fi
+
     echo ""
     tui_title "Checking for updates..."
     echo ""
@@ -1859,14 +1973,14 @@ run_update() {
             tui_success "Snapshot: $snapshot_id"
 
             # Pull changes
-            _report_progress 1 "Pulling changes"
-            tui_info "Pulling changes..."
+            _step_phase_start 1 "Pulling changes"
             if ! git -C "$REPO_ROOT" pull --ff-only origin "$tracked_branch" 2>/dev/null; then
+                _step_phase_fail "Git pull failed"
                 tui_error "Git pull from origin/${tracked_branch} failed. You may have local changes."
                 tui_info "Try: git stash && ./setup update"
                 return 1
             fi
-            tui_success "Changes pulled"
+            _step_phase_done "Pulled changes from origin/${tracked_branch}"
 
             # Re-exec to pick up updated library code from the pull.
             # Without this, functions sourced at startup (doctor, migrations, etc.)
@@ -1932,8 +2046,7 @@ run_update() {
     local repo_ver=$(get_repo_version)
     local repo_commit=$(get_repo_commit)
 
-    echo ""
-    _report_progress 2 "Syncing files"
+    _step_phase_header 2 "Syncing files"
     tui_info "Syncing iNiR..."
 
     II_SOURCE="${REPO_ROOT}"
@@ -2129,7 +2242,7 @@ run_update() {
     fi
 
     # Migrations
-    _report_progress 3 "Running migrations"
+    _step_phase_header 3 "Running migrations"
     local pending=$(count_pending_migrations)
     if [[ "$pending" -gt 0 ]]; then
         echo ""
@@ -2144,7 +2257,7 @@ run_update() {
         fi
     fi
 
-    _report_progress 4 "Finalizing"
+    _step_phase_header 4 "Finalizing"
     _service_refresh_status=1
     if sync_user_inir_service_from_repo_if_present; then
         _service_refresh_status=0
@@ -2202,10 +2315,7 @@ run_update() {
     # fi
 
     # Post-update: check for missing dependencies and offer to install them
-    _report_progress 5 "Checking dependencies"
-    echo ""
-    tui_title "Dependency check"
-    echo ""
+    _step_phase_header 5 "Checking dependencies"
     check_dependencies
     if [[ ${#doctor_missing_deps[@]} -gt 0 ]]; then
         tui_warn "Missing packages detected: ${doctor_missing_deps[*]}"
@@ -2293,10 +2403,7 @@ run_update() {
     # fi
 
     # Update Python venv packages
-    _report_progress 6 "Python packages"
-    echo ""
-    tui_title "Python packages"
-    echo ""
+    _step_phase_header 6 "Python packages"
     local venv_dir="${XDG_STATE_HOME}/quickshell/.venv"
     local req_file="${REPO_ROOT}/sdata/uv/requirements.txt"
 
@@ -2321,10 +2428,8 @@ run_update() {
     echo "success" > "$_update_status_file" 2>/dev/null || true
 
     # Restart shell (only if we have access to the session)
-    echo ""
     if [[ -n "$NIRI_SOCKET" ]] || [[ -n "$WAYLAND_DISPLAY" ]]; then
-        _report_progress 7 "Restarting shell"
-        tui_info "Restarting shell..."
+        _step_phase_start 7 "Restarting shell"
         if command -v systemctl >/dev/null 2>&1 && systemctl --user cat inir.service >/dev/null 2>&1; then
             nohup systemctl --user restart inir.service >/dev/null 2>&1 &
             disown
@@ -2337,8 +2442,9 @@ run_update() {
             nohup qs -p "${II_TARGET}" >/dev/null 2>&1 &
             disown
         fi
-        tui_success "Shell restarted"
+        _step_phase_done "Shell restart triggered"
     else
+        _step_phase_header 7 "Restarting shell"
         tui_warn "Not in graphical session - shell restart skipped"
         tui_info "The shell will use new files on next restart"
         tui_info "Or run: inir restart"
@@ -2411,6 +2517,7 @@ case "$COMMAND" in
                 -y|--yes) ask=false ;;
                 -q|--quiet) quiet=true ;;
                 --local) export _II_POST_PULL=local ;;
+                --simulate|--dry-run) export INIR_SIMULATE_UPDATE=1 ;;
             esac
         done
         run_update
