@@ -267,6 +267,91 @@ Singleton {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Resume update display after shell restart
+    // ─────────────────────────────────────────────────────────────────────────
+    // `setup update` triggers `systemctl --user restart inir.service` as its
+    // last step, killing the shell mid-flow. The new shell instance must
+    // detect the prior state from the status file and either clean up
+    // (if the final step was reached) or resume polling so the bar indicator
+    // and overlay don't go silent while the update keeps running underneath.
+    Timer {
+        id: resumeUpdateCheck
+        interval: 1000  // 1s — get the indicator back up fast
+        repeat: false
+        running: true
+        onTriggered: updateResumeReader.running = true
+    }
+
+    Process {
+        id: updateResumeReader
+        running: false
+        command: ["cat", Directories.updateStatusPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const status = (text ?? "").trim()
+                if (status.length === 0) return
+
+                if (status === "success") {
+                    // Previous update finished cleanly — clear stale marker
+                    clearStatusFileProc.running = true
+                    return
+                }
+
+                if (status.startsWith("failed")) {
+                    const code = status.split(":")[1] || "unknown"
+                    root.lastError = "Last update failed (exit " + code + "). Check " + Directories.updateLogPath + " for details."
+                    print("[ShellUpdates] Detected failed update from previous shell: exit " + code)
+                    clearStatusFileProc.running = true
+                    return
+                }
+
+                if (status.startsWith("progress:")) {
+                    const parts = status.split(":")
+                    const step = parts.length > 1 ? (parseInt(parts[1]) || 0) : 0
+                    const total = parts.length > 2 ? (parseInt(parts[2]) || 0) : 0
+                    const msg = parts.length > 3 ? parts.slice(3).join(":") : ""
+
+                    // Final step reached — the restart we just survived was
+                    // the last action. Mark complete and clear.
+                    if (total > 0 && step >= total) {
+                        print("[ShellUpdates] Resume detected final step (" + step + "/" + total + "), assuming complete: " + msg)
+                        clearStatusFileProc.running = true
+                        return
+                    }
+
+                    // Mid-flight update — restore visible state and keep polling
+                    root.updateStep = step
+                    root.updateTotalSteps = total
+                    root.updateStepMessage = msg
+                    root._lastWatchdogStatus = status
+                    root.isUpdating = true
+                    updateProgressPoller.restart()
+                    updateWatchdog.restart()
+                    print("[ShellUpdates] Resuming in-flight update display: " + status)
+                    return
+                }
+
+                if (status === "updating") {
+                    // Initial marker, no granular progress yet
+                    root.isUpdating = true
+                    updateProgressPoller.restart()
+                    updateWatchdog.restart()
+                    print("[ShellUpdates] Resuming update display (no granular progress yet)")
+                    return
+                }
+
+                print("[ShellUpdates] Unknown status file content on resume: '" + status + "'")
+            }
+        }
+    }
+
+    Process {
+        id: clearStatusFileProc
+        running: false
+        command: ["rm", "-f", Directories.updateStatusPath]
+    }
+
     // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir)
     Process {
         id: loadRepoPathProc
