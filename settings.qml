@@ -896,7 +896,7 @@ ApplicationWindow {
             section: Translation.tr("Screen Recording"),
             label: Translation.tr("Screen recording"),
             description: Translation.tr("Screen recording settings and shortcuts"),
-            keywords: ["screen", "record", "recording", "video", "capture", "wf-recorder"]
+            keywords: ["screen", "record", "recording", "video", "capture", "wf-recorder", "discord", "compress", "10mb"]
         },
         {
             pageIndex: 6, pageName: pages[6].name,

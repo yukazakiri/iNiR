@@ -1427,6 +1427,15 @@ Singleton {
                 property int crf: 21
                 property string vaapiFilter: "scale_vaapi=format=nv12:out_range=full"
                 property bool enableFallback: true
+                property JsonObject discordCompress: JsonObject {
+                    property bool enabled: false
+                    property real targetSizeMb: 10
+                    property real safetyMarginMb: 0.5
+                    property bool onlyIfNeeded: true
+                    property int audioBitrateKbps: 96
+                    property string preset: "slow"
+                    property int maxDimension: 1280
+                }
             }
 
             property JsonObject windows: JsonObject {

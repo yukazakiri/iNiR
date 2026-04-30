@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -9,6 +10,8 @@ Loader {
     property color color: Appearance.colors.colOnSurfaceVariant
     active: KeyboardIndicators.hasPanelIndicators
     visible: active
+    Layout.preferredWidth: active && item ? item.implicitWidth : 0
+    Layout.preferredHeight: active && item ? item.implicitHeight : 0
 
     sourceComponent: Item {
         implicitWidth: root.vertical ? indicatorColumn.implicitWidth : indicatorRow.implicitWidth

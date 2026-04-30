@@ -1003,7 +1003,16 @@
     "preset": "veryfast",
     "crf": 21,
     "vaapiFilter": "scale_vaapi=format=nv12:out_range=full",
-    "enableFallback": true
+    "enableFallback": true,
+    "discordCompress": {
+      "enabled": false,
+      "targetSizeMb": 10,
+      "safetyMarginMb": 0.5,
+      "onlyIfNeeded": true,
+      "audioBitrateKbps": 96,
+      "preset": "slow",
+      "maxDimension": 1280
+    }
   },
   "windows": {
     "centerTitle": true,
