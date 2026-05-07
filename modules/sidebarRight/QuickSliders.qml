@@ -36,7 +36,7 @@ Rectangle {
     AngelPartialBorder {
         targetRadius: root.radius
         coverage: 0.5
-        visible: !root.compactSurface
+        visible: !root.compactSurface && Appearance.angelEverywhere
     }
 
     RowLayout {

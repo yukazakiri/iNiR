@@ -841,10 +841,10 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: root.compactPanelPadding
-            anchors.topMargin: bg.angelEverywhere ? root.compactPanelPadding + 4
-                : bg.inirEverywhere ? root.compactPanelPadding + 6 : root.compactPanelPadding
-            spacing: bg.angelEverywhere ? root.compactPanelPadding + 2
-                : bg.inirEverywhere ? root.compactPanelPadding + 4 : root.compactPanelPadding
+            anchors.topMargin: Appearance.angelEverywhere ? root.compactPanelPadding + 4
+                : Appearance.inirEverywhere ? root.compactPanelPadding + 6 : root.compactPanelPadding
+            spacing: Appearance.angelEverywhere ? root.compactPanelPadding + 2
+                : Appearance.inirEverywhere ? root.compactPanelPadding + 4 : root.compactPanelPadding
 
             Rectangle {
                 id: compactSurface
