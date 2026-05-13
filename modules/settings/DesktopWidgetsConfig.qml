@@ -1628,4 +1628,164 @@ ContentPage {
             }
         }
     }
+
+    // ── Custom Widgets ──────────────────────────────────────
+    SettingsCardSection {
+        visible: root.isIiActive
+        expanded: false
+        icon: "widgets"
+        title: Translation.tr("Custom Widgets")
+
+        SettingsGroup {
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Row {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    RippleButton {
+                        width: implicitWidth
+                        height: 32
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.12)
+                        colBackgroundHover: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.20)
+                        colRipple: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.24)
+                        downAction: () => Qt.openUrlExternally("file://" + CustomWidgets.widgetsDir)
+                        contentItem: Row {
+                            anchors.centerIn: parent
+                            spacing: 6
+                            leftPadding: 12; rightPadding: 12
+                            MaterialSymbol { text: "folder_open"; iconSize: 16; color: Appearance.colors.colPrimary; anchors.verticalCenter: parent.verticalCenter }
+                            StyledText { text: Translation.tr("Open folder"); color: Appearance.colors.colPrimary; font.pixelSize: Appearance.font.pixelSize.small; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                    }
+
+                    RippleButton {
+                        width: implicitWidth
+                        height: 32
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: "transparent"
+                        colBackgroundHover: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.08)
+                        colRipple: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.12)
+                        downAction: () => CustomWidgets.reload()
+                        contentItem: Row {
+                            anchors.centerIn: parent
+                            spacing: 6
+                            leftPadding: 12; rightPadding: 12
+                            MaterialSymbol { text: "refresh"; iconSize: 16; color: Appearance.colors.colOnLayer1; anchors.verticalCenter: parent.verticalCenter }
+                            StyledText { text: Translation.tr("Reload"); color: Appearance.colors.colOnLayer1; font.pixelSize: Appearance.font.pixelSize.small; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                    }
+                }
+
+                StyledText {
+                    visible: !CustomWidgets.ready || CustomWidgets.widgets.length === 0
+                    Layout.fillWidth: true
+                    Layout.topMargin: 8
+                    text: Translation.tr("No custom widgets found") + "\n~/.config/inir/widgets/"
+                    color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5)
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+        }
+
+        // Per-widget settings generated from manifest configKeys
+        Repeater {
+            model: CustomWidgets.ready ? CustomWidgets.widgets : []
+
+            SettingsGroup {
+                id: cwDelegate
+                required property var modelData
+                required property int index
+
+                SettingsSwitch {
+                    buttonIcon: cwDelegate.modelData.icon
+                    text: cwDelegate.modelData.name
+                    description: cwDelegate.modelData.author ? (cwDelegate.modelData.author + " · v" + cwDelegate.modelData.version) : ("v" + cwDelegate.modelData.version)
+                    checked: Config.options?.background?.widgets?.custom?.[cwDelegate.modelData.id]?.enable ?? true
+                    onCheckedChanged: Config.setNestedValue("background.widgets.custom." + cwDelegate.modelData.id + ".enable", checked)
+                }
+
+                // Validation warnings
+                StyledText {
+                    visible: !cwDelegate.modelData.valid
+                    Layout.fillWidth: true
+                    text: (cwDelegate.modelData.warnings || []).join(", ")
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.WordWrap
+                }
+
+                // Auto-generated controls from manifest configKeys
+                Repeater {
+                    model: {
+                        const keys = cwDelegate.modelData.configKeys || {};
+                        return Object.keys(keys).map(k => ({
+                            key: k, spec: keys[k],
+                            widgetId: cwDelegate.modelData.id
+                        }));
+                    }
+
+                    ConfigRow {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        StyledText { text: modelData.spec.label || modelData.key; color: Appearance.colors.colOnLayer1 }
+                        Item { Layout.fillWidth: true }
+
+                        // Bool → switch
+                        StyledSwitch {
+                            visible: modelData.spec.type === "bool"
+                            checked: CustomWidgets.getConfigValue(modelData.widgetId, modelData.key, modelData.spec.default ?? false)
+                            onCheckedChanged: CustomWidgets.setConfigValue(modelData.widgetId, modelData.key, checked)
+                        }
+
+                        // Int → spinbox
+                        StyledSpinBox {
+                            visible: modelData.spec.type === "int"
+                            from: modelData.spec.min ?? 0
+                            to: modelData.spec.max ?? 999
+                            stepSize: modelData.spec.step ?? 1
+                            value: CustomWidgets.getConfigValue(modelData.widgetId, modelData.key, modelData.spec.default ?? 0)
+                            onValueModified: CustomWidgets.setConfigValue(modelData.widgetId, modelData.key, value)
+                        }
+
+                        // Real → slider
+                        StyledSlider {
+                            visible: modelData.spec.type === "real"
+                            from: modelData.spec.min ?? 0
+                            to: modelData.spec.max ?? 100
+                            stepSize: modelData.spec.step ?? 1
+                            value: CustomWidgets.getConfigValue(modelData.widgetId, modelData.key, modelData.spec.default ?? 0)
+                            onMoved: CustomWidgets.setConfigValue(modelData.widgetId, modelData.key, Math.round(value * 100) / 100)
+                        }
+
+                        // String with options → selection
+                        ConfigSelectionArray {
+                            visible: modelData.spec.type === "string" && (modelData.spec.options !== undefined)
+                            Layout.fillWidth: false
+                            currentValue: CustomWidgets.getConfigValue(modelData.widgetId, modelData.key, modelData.spec.default ?? "")
+                            onSelected: newValue => CustomWidgets.setConfigValue(modelData.widgetId, modelData.key, newValue)
+                            options: (modelData.spec.options || []).map(o => ({ displayName: o, value: o }))
+                        }
+
+                        // String (freeform) → text field
+                        MaterialTextField {
+                            visible: modelData.spec.type === "string" && (modelData.spec.options === undefined)
+                            Layout.preferredWidth: 180
+                            text: CustomWidgets.getConfigValue(modelData.widgetId, modelData.key, modelData.spec.default ?? "")
+                            onAccepted: CustomWidgets.setConfigValue(modelData.widgetId, modelData.key, text)
+                        }
+                    }
+                }
+
+                WidgetAppearanceControls {
+                    configPath: "background.widgets.custom." + cwDelegate.modelData.id
+                    configEntry: Config.options?.background?.widgets?.custom?.[cwDelegate.modelData.id]
+                }
+            }
+        }
+    }
 }

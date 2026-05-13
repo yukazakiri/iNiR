@@ -22,6 +22,9 @@ AbstractWidget {
     property bool visibleWhenLocked: false
     property int widgetIndex: 0 // used to offset auto-placed widgets so they don't stack
     property var configEntry: Config.options?.background?.widgets?.[configEntryName] ?? {}
+    // Disable base class x/y behaviors — we define our own with _autoPosition gating
+    animateXPos: false
+    animateYPos: false
 
     // ── Per-widget customization (inherited by all widgets) ──
     readonly property real _baseScale: {
@@ -31,7 +34,8 @@ AbstractWidget {
     // scaleFactor: the final multiplier widgets use for layout dimensions and font sizes.
     // Includes press bump when dragging. Widgets should multiply their sizes by this
     // instead of relying on Item.scale (which causes bitmap blur).
-    readonly property real scaleFactor: ((draggable && containsPress) ? 1.05 : 1.0) * _baseScale
+    property bool _isResizing: false
+    readonly property real scaleFactor: ((draggable && containsPress && !_isResizing) ? 1.05 : 1.0) * _baseScale
     readonly property real widgetOpacity: {
         const v = Number(configEntry?.widgetOpacity ?? 100);
         return Math.max(0, Math.min(1, Number.isFinite(v) ? v / 100 : 1.0));
@@ -96,7 +100,7 @@ AbstractWidget {
         const current = root.placementStrategy;
         const idx = root._snapZones.indexOf(current);
         const next = root._snapZones[(idx + 1) % root._snapZones.length];
-        Config.setNestedValue("background.widgets." + root.configEntryName + ".placementStrategy", next);
+        root.snapToZone(next);
     }
 
     function snapToZone(zone: string): void {
@@ -155,7 +159,7 @@ AbstractWidget {
     }
 
     // Auto-position when NOT free and NOT actively being dragged in edit mode
-    readonly property bool _autoPosition: root.placementStrategy !== "free" && !(GlobalStates.widgetEditMode && root.containsPress)
+    readonly property bool _autoPosition: root.placementStrategy !== "free" && !(GlobalStates.widgetEditMode && (root.containsPress || root._isResizing))
     Binding {
         target: root
         property: "x"
@@ -229,13 +233,14 @@ AbstractWidget {
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.top
-            bottomMargin: 8 / root.scaleFactor
+            bottomMargin: 12 / root.scaleFactor
         }
         width: toolbarRow.implicitWidth + 12
         height: 36
+        // Scale from bottom edge so counter-scaling pushes toolbar up, not into widget
         transform: Scale {
             origin.x: editToolbar.width / 2
-            origin.y: editToolbar.height / 2
+            origin.y: editToolbar.height
             xScale: 1.0 / root.scaleFactor
             yScale: 1.0 / root.scaleFactor
         }
@@ -347,13 +352,13 @@ AbstractWidget {
             }
         }
 
-        // Inline popover panel (appears below the toolbar)
+        // Inline popover panel (appears above the toolbar, away from widget)
         Item {
             id: editPopoverPanel
             visible: false
             anchors {
-                top: toolbarRow.bottom
-                topMargin: 6
+                bottom: toolbarRow.top
+                bottomMargin: 6
                 horizontalCenter: toolbarRow.horizontalCenter
             }
             width: popoverLoader.item ? popoverLoader.item.implicitWidth + 16 : 200
@@ -420,11 +425,14 @@ AbstractWidget {
             yScale: 1.0 / root.scaleFactor
         }
 
-        // Track drag start state
+        // Track drag start state in canvas-space to avoid feedback loops
         property real _startWidth: 0
         property real _startHeight: 0
         property real _startX: 0
         property real _startY: 0
+        property real _canvasStartX: 0
+        property real _canvasStartY: 0
+        property real _startScaleFactor: 1.0
 
         MouseArea {
             id: rhArea
@@ -440,25 +448,29 @@ AbstractWidget {
             }
             preventStealing: true
 
-            property real _dragStartX: 0
-            property real _dragStartY: 0
-
             onPressed: (mouse) => {
                 rh._startWidth = root.width;
                 rh._startHeight = root.height;
                 rh._startX = root.x;
                 rh._startY = root.y;
-                rhArea._dragStartX = mouse.x;
-                rhArea._dragStartY = mouse.y;
+                rh._startScaleFactor = root.scaleFactor;
+                // Map to canvas space for stable delta (handles move with widget)
+                const mapped = rhArea.mapToItem(root.parent, mouse.x, mouse.y);
+                rh._canvasStartX = mapped.x;
+                rh._canvasStartY = mapped.y;
+                root._isResizing = true;
             }
 
             onPositionChanged: (mouse) => {
                 if (!pressed) return;
-                const dx = mouse.x - rhArea._dragStartX;
-                const dy = mouse.y - rhArea._dragStartY;
+                // Compute delta in canvas space — immune to handle repositioning
+                const mapped = rhArea.mapToItem(root.parent, mouse.x, mouse.y);
+                const dx = mapped.x - rh._canvasStartX;
+                const dy = mapped.y - rh._canvasStartY;
                 const prefix = "background.widgets." + root.configEntryName;
                 const axes = root.resizableAxes;
                 const isUniform = !!axes.uniform;
+                const sf = rh._startScaleFactor;
 
                 let newW = rh._startWidth;
                 let newH = rh._startHeight;
@@ -478,17 +490,15 @@ AbstractWidget {
                     newH = dh;
                 }
 
-                // Uniform: use the larger delta
                 if (isUniform) {
-                    const uniformSize = Math.round(Math.max(newW, newH));
+                    const uniformSize = Math.round(Math.max(newW, newH) / sf);
                     Config.setNestedValue(prefix + "." + axes.uniform, uniformSize);
                 } else {
                     if (axes.width && (rh.resizeLeft || rh.resizeRight))
-                        Config.setNestedValue(prefix + "." + axes.width, Math.round(newW / root.scaleFactor));
+                        Config.setNestedValue(prefix + "." + axes.width, Math.round(newW / sf));
                     if (axes.height && (rh.resizeTop || rh.resizeBottom))
-                        Config.setNestedValue(prefix + "." + axes.height, Math.round(newH / root.scaleFactor));
+                        Config.setNestedValue(prefix + "." + axes.height, Math.round(newH / sf));
                 }
-                // Update position for left/top resizing
                 if (rh.resizeLeft) {
                     Config.setNestedValue(prefix + ".x", Math.round(newX));
                     root.x = newX;
@@ -497,6 +507,10 @@ AbstractWidget {
                     Config.setNestedValue(prefix + ".y", Math.round(newY));
                     root.y = newY;
                 }
+            }
+
+            onReleased: {
+                root._isResizing = false;
             }
         }
     }
