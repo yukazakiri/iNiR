@@ -19,7 +19,8 @@ Singleton {
 
     function flushWrites(): void {
         fileWriteTimer.stop();
-        root._writeConfigWithCustomData();
+        configFileView.writeAdapter();
+        root._injectCustomDataSync();
     }
 
     function _applyNestedKey(nestedKey, value) {
@@ -85,7 +86,8 @@ Singleton {
 
     function setNestedValue(nestedKey, value) {
         _applyNestedKey(nestedKey, value);
-        // Ensure a file write even for property var paths (adapter can't detect those)
+        // Custom paths don't touch the adapter so onAdapterUpdated won't fire.
+        // Restart the timer explicitly to cover both adapter and custom writes.
         fileWriteTimer.restart();
         root.configChanged();
     }
@@ -115,11 +117,14 @@ Singleton {
         } catch (e) {}
     }
 
-    // Persist customWidgetData back into the JSON file alongside the adapter tree.
-    function _writeConfigWithCustomData(): void {
-        configFileView.writeAdapter();
+    // After writeAdapter() saves, inject customWidgetData into the file.
+    // writeAdapter() doesn't update the text buffer so we read via rawConfigReader.
+    property bool _pendingCustomInject: false
+    function _injectCustomDataSync(): void {
+        if (Object.keys(root.customWidgetData).length === 0) return;
         try {
-            const text = configFileView.text();
+            rawConfigReader.reload();
+            const text = rawConfigReader.text();
             if (!text) return;
             const obj = JSON.parse(text);
             if (!obj.background) obj.background = {};
@@ -144,7 +149,8 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
-            root._writeConfigWithCustomData();
+            root._pendingCustomInject = Object.keys(root.customWidgetData).length > 0;
+            configFileView.writeAdapter();
         }
     }
 
@@ -161,6 +167,12 @@ Singleton {
         blockWrites: root.blockWrites
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
+        onSaved: {
+            if (root._pendingCustomInject) {
+                root._pendingCustomInject = false;
+                root._injectCustomDataSync();
+            }
+        }
         onLoaded: {
             // Workaround: JsonAdapter doesn't populate property var inside nested JsonObjects.
             // Manually sync custom widget data from the raw JSON.
