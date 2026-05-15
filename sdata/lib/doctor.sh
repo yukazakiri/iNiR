@@ -1431,6 +1431,23 @@ check_qt_theming() {
     else
         doctor_pass "Darkly Qt style OK"
     fi
+
+    # Check kde-cli-tools when QT_QPA_PLATFORMTHEME=kde
+    # Without it, Dolphin "Open With" and other KDE dialogs fail silently
+    if $plugin_found; then
+        if command -v keditfiletype &>/dev/null || command -v keditfiletype6 &>/dev/null; then
+            doctor_pass "kde-cli-tools OK"
+        else
+            doctor_fail "kde-cli-tools not installed (Dolphin 'Open With' dialog won't work)"
+            case "${OS_GROUP_ID:-unknown}" in
+                arch) echo -e "    ${STY_FAINT}Run: sudo pacman -S kde-cli-tools${STY_RST}" ;;
+                fedora) echo -e "    ${STY_FAINT}Run: sudo dnf install kde-cli-tools${STY_RST}" ;;
+                debian|ubuntu) echo -e "    ${STY_FAINT}Run: sudo apt install kde-cli-tools${STY_RST}" ;;
+                opensuse) echo -e "    ${STY_FAINT}Run: sudo zypper install kde-cli-tools6${STY_RST}" ;;
+                *) echo -e "    ${STY_FAINT}Install kde-cli-tools using your package manager${STY_RST}" ;;
+            esac
+        fi
+    fi
 }
 
 check_niri_config() {

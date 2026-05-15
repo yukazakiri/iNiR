@@ -3249,13 +3249,10 @@ Singleton {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
         
-        // Manual preset themes must fan out to the SAME pipeline used by
-        // wallpaper auto-generation so terminals/editors/chrome/spicetify/sddm/
-        // steam/pear all stay in sync with shell tokens.
-        // Delay execution: FileView.setText() uses a 50ms debounce timer, so
-        // the generated JSON files are NOT on disk yet when this function runs.
-        // Without the timer, applycolor.sh reads stale files (first click fails,
-        // second click works because the first click's files finally flushed).
+        // Fan out to the same pipeline used by wallpaper auto-generation so
+        // terminals/editors/chrome/spicetify/sddm/steam/pear stay in sync.
+        // Delay: _writeDebounce (60ms) + bash write must finish before
+        // applycolor.sh reads the generated JSON files.
         // restart() coalesces the double-call from setTheme + onCurrentThemeChanged.
         if (enableAppsAndShell || enableTerminal) {
             _delayedExternalApplyTimer.restart();
@@ -3264,7 +3261,7 @@ Singleton {
 
     Timer {
         id: _delayedExternalApplyTimer
-        interval: 120  // > FileView 50ms flush timer, with margin
+        interval: 250  // > _writeDebounce (60ms) + bash write time, with margin
         repeat: false
         running: false
         onTriggered: {
@@ -3527,12 +3524,19 @@ Singleton {
         const terminalJson = buildTerminalJson(c);
         Object.assign(colorsJson, terminalJson)
 
-        const outputPath = Directories.generatedMaterialThemePath;
-        const jsonStr = JSON.stringify(colorsJson, null, 2);
+        const colorsJsonStr = JSON.stringify(colorsJson, null, 2);
+        const paletteJsonStr = JSON.stringify(generateColorsJsonObject(c), null, 2);
+        const terminalJsonStr = JSON.stringify(terminalJson, null, 2);
+        const themeMetaStr = JSON.stringify(buildThemeMeta(c), null, 2);
+        const scssStr = generateScssFromColors(c);
+        const chromiumRgb = hexToRgbTriplet(c.m3surfaceContainerLow || c.m3surface || c.m3background || "");
 
-        colorsJsonFileView.path = Qt.resolvedUrl(outputPath)
-        colorsJsonFileView.setText(jsonStr)
-        writeGeneratedThemeContracts(c)
+        // Write all generated files in one atomic bash process.
+        // FileView.setText() drops async write operations when called rapidly
+        // (applyPreset runs 2-3x on startup), causing preset colors to never
+        // reach disk — external apps then read stale wallpaper colors.
+        _writeGeneratedFiles(colorsJsonStr, paletteJsonStr, terminalJsonStr, themeMetaStr, scssStr, chromiumRgb);
+
         if ((Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true) !== false) {
             console.log("[ThemePresets] Triggering Vesktop theme generation wrapper")
             Quickshell.execDetached([
@@ -3540,31 +3544,44 @@ Singleton {
                 Directories.scriptsPath + "/colors/system24_palette.sh"
             ])
         }
-        console.log("[ThemePresets] colors.json written to:", outputPath);
+        console.log("[ThemePresets] colors.json written to:", Directories.generatedMaterialThemePath);
     }
 
-    FileView {
-        id: colorsJsonFileView
+    // Debounce rapid calls: applyPreset fires 2-3x on startup from
+    // onCurrentThemeChanged + shell.qml onReadyChanged + live-regen.
+    // Only the last invocation within 60ms actually writes.
+    property var _pendingWriteArgs: null
+    Timer {
+        id: _writeDebounce
+        interval: 60
+        repeat: false
+        onTriggered: {
+            if (!root._pendingWriteArgs) return;
+            const args = root._pendingWriteArgs;
+            root._pendingWriteArgs = null;
+            root._doWriteGeneratedFiles(args[0], args[1], args[2], args[3], args[4], args[5]);
+        }
     }
 
-    FileView {
-        id: paletteJsonFileView
+    function _writeGeneratedFiles(colorsJson, paletteJson, terminalJson, themeMeta, scss, chromiumRgb) {
+        root._pendingWriteArgs = [colorsJson, paletteJson, terminalJson, themeMeta, scss, chromiumRgb];
+        _writeDebounce.restart();
     }
 
-    FileView {
-        id: terminalJsonFileView
-    }
-
-    FileView {
-        id: themeMetaFileView
-    }
-
-    FileView {
-        id: scssFileView
-    }
-
-    FileView {
-        id: chromiumThemeFileView
+    function _doWriteGeneratedFiles(colorsJson, paletteJson, terminalJson, themeMeta, scss, chromiumRgb) {
+        const genDir = Directories.stateUserPath + "/generated";
+        // Build a single bash script that writes all files atomically.
+        // JSON uses double quotes only, so single-quoting is safe.
+        let script = `set -e; mkdir -p '${genDir}'\n`;
+        script += `printf '%s' '${colorsJson}' > '${Directories.generatedMaterialThemePath}'\n`;
+        script += `printf '%s' '${paletteJson}' > '${Directories.generatedPalettePath}'\n`;
+        script += `printf '%s' '${terminalJson}' > '${Directories.generatedTerminalPalettePath}'\n`;
+        script += `printf '%s' '${themeMeta}' > '${Directories.generatedThemeMetaPath}'\n`;
+        script += `printf '%s' '${scss}' > '${Directories.generatedMaterialScssPath}'\n`;
+        if (chromiumRgb.length > 0) {
+            script += `printf '%s\\n' '${chromiumRgb}' > '${Directories.generatedChromiumThemePath}'\n`;
+        }
+        Quickshell.execDetached(["/usr/bin/bash", "-c", script]);
     }
 
     function buildTerminalJson(c) {
@@ -3601,26 +3618,6 @@ Singleton {
         const g = parseInt(value.slice(2, 4), 16);
         const b = parseInt(value.slice(4, 6), 16);
         return `${r},${g},${b}`;
-    }
-
-    function writeGeneratedThemeContracts(c) {
-        paletteJsonFileView.path = Qt.resolvedUrl(Directories.generatedPalettePath)
-        paletteJsonFileView.setText(JSON.stringify(generateColorsJsonObject(c), null, 2))
-
-        terminalJsonFileView.path = Qt.resolvedUrl(Directories.generatedTerminalPalettePath)
-        terminalJsonFileView.setText(JSON.stringify(buildTerminalJson(c), null, 2))
-
-        themeMetaFileView.path = Qt.resolvedUrl(Directories.generatedThemeMetaPath)
-        themeMetaFileView.setText(JSON.stringify(buildThemeMeta(c), null, 2))
-
-        scssFileView.path = Qt.resolvedUrl(Directories.generatedMaterialScssPath)
-        scssFileView.setText(generateScssFromColors(c))
-
-        const chromiumThemeRgb = hexToRgbTriplet(c.m3surfaceContainerLow || c.m3surface || c.m3background || "")
-        if (chromiumThemeRgb.length > 0) {
-            chromiumThemeFileView.path = Qt.resolvedUrl(Directories.generatedChromiumThemePath)
-            chromiumThemeFileView.setText(`${chromiumThemeRgb}\n`)
-        }
     }
 
     // ========== Hover Preview System ==========
