@@ -876,7 +876,6 @@
   "Screen rounding": "تقريب الشاشة",
   "Type tags and hit Enter to search on wallhaven.cc\nUse #tag for multi-word tags (spaces become underscores)": "اكتب العلامات واضغط على Enter للبحث على wallhaven.cc\nاستخدم #tag للعلامات متعددة الكلمات (تتحول المسافات إلى شرطات سفلية)",
   "Searching...": "Searching...",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "قم بتطبيق ألوان المواد على Steam عبر Adwaita for Steam (يتطلب AdwSteamGtk)",
   "Intensity of the wallpaper blur": "شدة طمس ورق الحائط",
   "Shadow softness, spread, offset and color": "نعومة الظل وانتشاره وإزاحته ولونه",
   "Terminal harmony": "الانسجام النهائي",
@@ -1145,7 +1144,6 @@
   "Hollow": "جوفاء",
   "Enable animated preview": "تمكين المعاينة المتحركة",
   "Lap": "اللفة",
-  "Steam (Adwaita for Steam)": "ستيم (أدويتا للبخار)",
   "Noble Gas": "الغاز النبيل",
   "More comfortable viewing at night": "مشاهدة أكثر راحة في الليل",
   "Temp caution (°C)": "تحذير درجة الحرارة (درجة مئوية)",
@@ -3395,5 +3393,7 @@
   "Primary monitor": "جهاز المراقبة الأساسي",
   "Toggle WiFi": "تبديل واي فاي",
   "Only show the backdrop, hide the main wallpaper entirely": "قم بإظهار الخلفية فقط، وقم بإخفاء الخلفية الرئيسية بالكامل",
-  "Utility Buttons": "أزرار المساعدة"
+  "Utility Buttons": "أزرار المساعدة",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "تطبيق ألوان Material You على Steam عبر Millennium Material-Theme"
 }

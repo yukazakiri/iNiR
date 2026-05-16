@@ -1028,7 +1028,6 @@
   "Good Afternoon": "Добрый день",
   "Freeze parallax briefly while wallpaper transitions settle": "Ненадолго заморозьте параллакс, пока стабилизируются переходы между обоями.",
   "Thumbnails": "Миниатюры",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Примените цвета Material You в Steam через Adwaita для Steam (требуется AdwSteamGtk)",
   "Number of wallpapers to fetch per request": "Количество обоев для получения по запросу",
   "Core": "Ядро",
   "Current System": "Текущая система",
@@ -1611,7 +1610,6 @@
   "Quick Actions": "Быстрые действия",
   "Display notification count badge on clock": "Отображение значка количества уведомлений на часах",
   "Limit maximum charge to preserve battery health": "Ограничьте максимальный заряд, чтобы сохранить здоровье аккумулятора",
-  "Steam (Adwaita for Steam)": "Steam (Адвайта для Steam)",
   "Sync library": "Синхронизировать библиотеку",
   "Number of rows in the app launcher grid": "Количество строк в сетке панели запуска приложений",
   "Overlay large numbers on workspace previews": "Наложение больших чисел на предварительный просмотр рабочей области",
@@ -3395,5 +3393,7 @@
   "Size in pixels (typically 24 or 32)": "Размер в пикселях (обычно 24 или 32).",
   "GitHub Repository": "Репозиторий GitHub",
   "Crosshair code (in Valorant's format)": "Код прицела (в формате Valorant)",
-  "Font Families": "Семейства шрифтов"
+  "Font Families": "Семейства шрифтов",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Применить цвета Material You к Steam через Millennium Material-Theme"
 }

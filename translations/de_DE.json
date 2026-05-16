@@ -876,7 +876,6 @@
   "Screen rounding": "Bildschirmrundung",
   "Type tags and hit Enter to search on wallhaven.cc\nUse #tag for multi-word tags (spaces become underscores)": "Geben Sie Tags ein und drücken Sie die Eingabetaste, um auf wallhaven.cc zu suchen\nVerwenden Sie #tag für Tags mit mehreren Wörtern (Leerzeichen werden zu Unterstrichen).",
   "Searching...": "Searching...",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Anwenden von Material You-Farben auf Steam über Adwaita für Steam (erfordert AdwSteamGtk)",
   "Intensity of the wallpaper blur": "Intensität der Tapetenunschärfe",
   "Shadow softness, spread, offset and color": "Schattenweichheit, Ausbreitung, Offset und Farbe",
   "Terminal harmony": "Endgültige Harmonie",
@@ -1145,7 +1144,6 @@
   "Hollow": "Hohl",
   "Enable animated preview": "Aktivieren Sie die animierte Vorschau",
   "Lap": "Runde",
-  "Steam (Adwaita for Steam)": "Steam (Adwaita für Steam)",
   "Noble Gas": "Edelgas",
   "More comfortable viewing at night": "Bequemeres Betrachten bei Nacht",
   "Temp caution (°C)": "Temperaturwarnung (°C)",
@@ -3395,5 +3393,7 @@
   "Primary monitor": "Primärer Monitor",
   "Toggle WiFi": "WLAN umschalten",
   "Only show the backdrop, hide the main wallpaper entirely": "Zeigen Sie nur den Hintergrund an und blenden Sie den Haupthintergrund vollständig aus",
-  "Utility Buttons": "Utility-Tasten"
+  "Utility Buttons": "Utility-Tasten",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Material-You-Farben über Millennium Material-Theme auf Steam anwenden"
 }

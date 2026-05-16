@@ -979,7 +979,6 @@
   "Good Afternoon": "Chào buổi chiều",
   "Freeze parallax briefly while wallpaper transitions settle": "Đóng băng thị sai trong thời gian ngắn trong khi quá trình chuyển đổi hình nền ổn định",
   "Thumbnails": "Hình thu nhỏ",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Áp dụng màu Material You cho Steam thông qua Adwaita cho Steam (yêu cầu AdwSteamGtk)",
   "Number of wallpapers to fetch per request": "Số lượng hình nền để tìm nạp theo yêu cầu",
   "Core": "Cốt lõi",
   "Current System": "Hệ thống hiện tại",
@@ -1578,7 +1577,6 @@
   "Quick Actions": "Thao tác nhanh",
   "Display notification count badge on clock": "Hiển thị huy hiệu đếm thông báo trên đồng hồ",
   "Limit maximum charge to preserve battery health": "Giới hạn mức sạc tối đa để bảo vệ sức khỏe của pin",
-  "Steam (Adwaita for Steam)": "Hơi nước (Adwaita cho Steam)",
   "Sync library": "Thư viện đồng bộ",
   "Number of rows in the app launcher grid": "Số hàng trong lưới trình khởi chạy ứng dụng",
   "Overlay large numbers on workspace previews": "Xếp chồng số lượng lớn lên bản xem trước không gian làm việc",
@@ -3395,5 +3393,7 @@
   "Size in pixels (typically 24 or 32)": "Kích thước tính bằng pixel (thường là 24 hoặc 32)",
   "GitHub Repository": "Kho lưu trữ GitHub",
   "Crosshair code (in Valorant's format)": "Mã Crosshair (ở định dạng của Valorant)",
-  "Font Families": "Họ phông chữ"
+  "Font Families": "Họ phông chữ",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Áp dụng màu Material You cho Steam qua Millennium Material-Theme"
 }

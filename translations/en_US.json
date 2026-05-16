@@ -2740,7 +2740,6 @@
   "Low contrast - may be hard to read": "Low contrast - may be hard to read",
   "Colors only": "Colors only",
   "Position": "Position",
-  "Steam (Adwaita for Steam)": "Steam (Adwaita for Steam)",
   "Small radius": "Small radius",
   "Moderate showers": "Moderate showers",
   "Check Now": "Check Now",
@@ -3394,6 +3393,7 @@
   "Use smoother closing animations for popups": "Use smoother closing animations for popups",
   "Updates": "Updates",
   "Connection Options": "Connection Options",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)",
-  "Edge margin": "Edge margin"
+  "Edge margin": "Edge margin",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Apply Material You colors to Steam via Millennium Material-Theme"
 }

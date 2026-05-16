@@ -1270,7 +1270,6 @@
   "Capture a region of the screen": "स्क्रीन के एक क्षेत्र को कैप्चर करें",
   "No wallpaper": "कोई वॉलपेपर नहीं",
   "How often to check for iNiR updates (in minutes). Default: 360 (6 hours)": "iNiR अपडेट के लिए कितनी बार जांच करें (मिनटों में)।डिफ़ॉल्ट: 360 (6 घंटे)",
-  "Steam (Adwaita for Steam)": "भाप (भाप के लिए अद्वैत)",
   "%1 queries pending": "%1 प्रश्न लंबित हैं",
   "Couldn't recognize music": "संगीत पहचान नहीं सका",
   "View anime airing schedule, seasonal and top anime": "एनीमे प्रसारण कार्यक्रम, मौसमी और शीर्ष एनीमे देखें",
@@ -1892,7 +1891,6 @@
   "Enable or disable specific compositor animations": "विशिष्ट कंपोज़िटर एनिमेशन सक्षम या अक्षम करें",
   "iNiR Shell": "iNiR शैल",
   "Applications": "अनुप्रयोग",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "आपके द्वारा रंगी गई सामग्री को स्टीम के लिए अद्वैत के माध्यम से स्टीम पर लागू करें (AdwSteamGtk की आवश्यकता है)",
   "Trackpoint acceleration, scroll method and speed": "ट्रैकप्वाइंट त्वरण, स्क्रॉल विधि और गति",
   "Queue is empty": "कतार खाली है",
   "Playlist is empty": "प्लेलिस्ट खाली है",
@@ -3395,5 +3393,7 @@
   "Virtual keyboard for touch input": "टच इनपुट के लिए वर्चुअल कीबोर्ड",
   "gowall is not installed. Install it from github.com/Achno/gowall to use this feature.": "गोवल स्थापित नहीं है.इस सुविधा का उपयोग करने के लिए इसे github.com/Achno/gowall से इंस्टॉल करें।",
   "Overlay animation duration (ms)": "ओवरले एनीमेशन अवधि (एमएस)",
-  "System tray": "सिस्टम ट्रे"
+  "System tray": "सिस्टम ट्रे",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Millennium Material-Theme के जरिए Steam पर Material You रंग लागू करें"
 }

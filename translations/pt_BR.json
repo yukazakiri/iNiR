@@ -185,7 +185,6 @@
   "Appearance & Layout": "Aparência e layout",
   "Applications": "Aplicativos",
   "Apply": "Aplicar",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Aplique as cores do Material You ao Steam via Adwaita for Steam (requer AdwSteamGtk)",
   "Apply Material color scheme instead of Windows 11 grey": "Aplicar esquema de cores do material em vez do cinza do Windows 11",
   "Apply Theme": "Aplicar tema",
   "Apply a tuned set of zoom, workspace travel, panel travel and widget depth values.": "Aplique um conjunto ajustado de valores de zoom, deslocamento da área de trabalho, deslocamento do painel e profundidade do widget.",
@@ -2678,7 +2677,6 @@
   "Status": "Status",
   "Status Colors": "Cores de status",
   "Status Rings": "Anéis de status",
-  "Steam (Adwaita for Steam)": "Vapor (Adwaita para Steam)",
   "Steam theming": "Tema Steam",
   "Stiffness": "Rigidez",
   "Stop": "Parar",
@@ -3433,5 +3431,7 @@
   "↑/↓, J/K: Navigate • Enter: Paste": "↑/↓, J/K: Navegar • Enter: Colar",
   "☕ Break: %1 minutes": "☕ Intervalo: %1 minutos",
   "🌿 Long break: %1 minutes": "🌿 Pausa longa: %1 minutos",
-  "🔴 Focus: %1 minutes": "🔴 Foco: %1 minutos"
+  "🔴 Focus: %1 minutes": "🔴 Foco: %1 minutos",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Aplicar cores Material You ao Steam via Millennium Material-Theme"
 }

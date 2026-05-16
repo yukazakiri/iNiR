@@ -1121,7 +1121,6 @@
   "Good Afternoon": "צהריים טובים",
   "Freeze parallax briefly while wallpaper transitions settle": "הקפאת פרלקסה לזמן קצר בזמן שמעברי טפט מתיישבים",
   "Thumbnails": "תמונות ממוזערות",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "החל את צבעי החומר שלך על Steam דרך Adwaita עבור Steam (דורש AdwSteamGtk)",
   "Number of wallpapers to fetch per request": "מספר הטפטים להבאה לכל בקשה",
   "Core": "ליבה",
   "Current System": "מערכת נוכחית",
@@ -1681,7 +1680,6 @@
   "Quick Actions": "פעולות מהירות",
   "Display notification count badge on clock": "הצג את תג ספירת ההתראות על השעון",
   "Limit maximum charge to preserve battery health": "הגבל את הטעינה המקסימלית כדי לשמור על בריאות הסוללה",
-  "Steam (Adwaita for Steam)": "Steam (Adwaita עבור Steam)",
   "Sync library": "סנכרון ספריית",
   "Number of rows in the app launcher grid": "מספר השורות ברשת מפעיל האפליקציות",
   "Overlay large numbers on workspace previews": "שכבת-על של מספרים גדולים בתצוגות מקדימות של סביבת העבודה",
@@ -3395,5 +3393,7 @@
   "Separate icon theme for the dock": "נושא סמל נפרד עבור המזח",
   "Size in pixels (typically 24 or 32)": "גודל בפיקסלים (בדרך כלל 24 או 32)",
   "GitHub Repository": "מאגר GitHub",
-  "Font Families": "משפחות גופנים"
+  "Font Families": "משפחות גופנים",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "החלת צבעי Material You על Steam דרך Millennium Material-Theme"
 }

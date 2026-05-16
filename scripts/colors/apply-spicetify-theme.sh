@@ -8,7 +8,7 @@
 # - If Spotify is running and watch mode is active: just update files, watch reloads live
 # - If Spotify is running without watch mode: refresh once, then start watch mode
 #
-# Reads: palette.json first, then colors.json fallback
+# Reads: app-palette.json first, then palette.json/colors.json fallback
 # Writes: ~/.config/spicetify/Themes/Inir/color.ini
 #         ~/.config/spicetify/Themes/Inir/user.css  (bridge block only)
 
@@ -20,6 +20,7 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE_DIR="$XDG_STATE_HOME/quickshell"
 PALETTE_JSON="$STATE_DIR/user/generated/palette.json"
+APP_PALETTE_JSON="$STATE_DIR/user/generated/app-palette.json"
 COLORS_JSON="$STATE_DIR/user/generated/colors.json"
 LOG_FILE="$STATE_DIR/user/generated/spicetify_theme.log"
 WATCH_LOCK="$STATE_DIR/user/generated/spicetify_watch.lock"
@@ -101,11 +102,12 @@ release_watch_lock() {
 # ─── Color extraction ───────────────────────────────────────────────────────────
 
 read_colors() {
-  local color_source="$PALETTE_JSON"
+  local color_source="$APP_PALETTE_JSON"
+  [[ -f "$color_source" ]] || color_source="$PALETTE_JSON"
   [[ -f "$color_source" ]] || color_source="$COLORS_JSON"
 
   if [[ ! -f "$color_source" ]]; then
-    log "palette/colors JSON not found at $PALETTE_JSON or $COLORS_JSON"
+    log "palette/colors JSON not found at $APP_PALETTE_JSON, $PALETTE_JSON, or $COLORS_JSON"
     return 1
   fi
 
@@ -114,23 +116,23 @@ read_colors() {
     return 1
   fi
 
-  COLORS[primary]=$(jq -r '.primary // "#8caaee"' "$color_source")
-  COLORS[on_primary]=$(jq -r '.on_primary // "#1e3a5f"' "$color_source")
-  COLORS[on_primary_container]=$(jq -r '.on_primary_container // "#dce0e8"' "$color_source")
-  COLORS[on_surface]=$(jq -r '.on_surface // "#dce0e8"' "$color_source")
-  COLORS[on_surface_variant]=$(jq -r '.on_surface_variant // "#a6adc8"' "$color_source")
-  COLORS[surface]=$(jq -r '.surface // "#1e1e2e"' "$color_source")
-  COLORS[surface_variant]=$(jq -r '.surface_variant // "#45475a"' "$color_source")
-  COLORS[surface_container_low]=$(jq -r '.surface_container_low // "#181825"' "$color_source")
-  COLORS[surface_container]=$(jq -r '.surface_container // "#313244"' "$color_source")
-  COLORS[surface_container_high]=$(jq -r '.surface_container_high // "#45475a"' "$color_source")
-  COLORS[surface_container_highest]=$(jq -r '.surface_container_highest // "#494d64"' "$color_source")
-  COLORS[primary_container]=$(jq -r '.primary_container // "#313244"' "$color_source")
+  COLORS[primary]=$(jq -r '.app_accent // .primary // "#8caaee"' "$color_source")
+  COLORS[on_primary]=$(jq -r '.app_on_accent // .on_primary // "#1e3a5f"' "$color_source")
+  COLORS[on_primary_container]=$(jq -r '.app_on_selection // .on_primary_container // "#dce0e8"' "$color_source")
+  COLORS[on_surface]=$(jq -r '.app_foreground // .on_surface // "#dce0e8"' "$color_source")
+  COLORS[on_surface_variant]=$(jq -r '.app_subtext // .on_surface_variant // "#a6adc8"' "$color_source")
+  COLORS[surface]=$(jq -r '.app_background // .surface // "#1e1e2e"' "$color_source")
+  COLORS[surface_variant]=$(jq -r '.app_surface_elevated // .surface_variant // "#45475a"' "$color_source")
+  COLORS[surface_container_low]=$(jq -r '.app_sidebar_bg // .app_surface // .surface_container_low // "#181825"' "$color_source")
+  COLORS[surface_container]=$(jq -r '.app_surface // .surface_container // "#313244"' "$color_source")
+  COLORS[surface_container_high]=$(jq -r '.app_card_bg // .app_surface_elevated // .surface_container_high // "#45475a"' "$color_source")
+  COLORS[surface_container_highest]=$(jq -r '.app_surface_popup // .app_thumbnail_bg // .surface_container_highest // "#494d64"' "$color_source")
+  COLORS[primary_container]=$(jq -r '.app_selection // .primary_container // "#313244"' "$color_source")
   COLORS[secondary]=$(jq -r '.secondary // "#89b4fa"' "$color_source")
-  COLORS[secondary_container]=$(jq -r '.secondary_container // "#3d4c6b"' "$color_source")
+  COLORS[secondary_container]=$(jq -r '.app_selection_hover // .secondary_container // "#3d4c6b"' "$color_source")
   COLORS[tertiary]=$(jq -r '.tertiary // "#94e2d5"' "$color_source")
-  COLORS[outline]=$(jq -r '.outline // "#585b70"' "$color_source")
-  COLORS[outline_variant]=$(jq -r '.outline_variant // "#45475a"' "$color_source")
+  COLORS[outline]=$(jq -r '.app_border // .outline // "#585b70"' "$color_source")
+  COLORS[outline_variant]=$(jq -r '.app_border_subtle // .outline_variant // "#45475a"' "$color_source")
   COLORS[error]=$(jq -r '.error // "#f38ba8"' "$color_source")
   COLORS[shadow]=$(jq -r '.shadow // "#000000"' "$color_source")
 }

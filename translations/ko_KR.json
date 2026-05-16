@@ -876,7 +876,6 @@
   "Screen rounding": "화면 반올림",
   "Type tags and hit Enter to search on wallhaven.cc\nUse #tag for multi-word tags (spaces become underscores)": "wallhaven.cc에서 검색하려면 태그를 입력하고 Enter 키를 누르세요.\n여러 단어로 구성된 태그에는 #tag를 사용하세요(공백은 밑줄이 됩니다).",
   "Searching...": "Searching...",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Steam용 Adwaita를 통해 Steam에 재료 색상 적용(AdwSteamGtk 필요)",
   "Intensity of the wallpaper blur": "배경화면 흐림의 강도",
   "Shadow softness, spread, offset and color": "그림자의 부드러움, 확산, 오프셋 및 색상",
   "Terminal harmony": "터미널 하모니",
@@ -1145,7 +1144,6 @@
   "Hollow": "중공",
   "Enable animated preview": "애니메이션 미리보기 활성화",
   "Lap": "랩",
-  "Steam (Adwaita for Steam)": "Steam (Steam용 Adwaita)",
   "Noble Gas": "노블 가스",
   "More comfortable viewing at night": "밤에 더 편안하게 볼 수 있습니다.",
   "Temp caution (°C)": "온도주의(°C)",
@@ -3395,5 +3393,7 @@
   "Primary monitor": "기본 모니터",
   "Toggle WiFi": "WiFi 전환",
   "Only show the backdrop, hide the main wallpaper entirely": "배경화면만 표시하고 기본 배경화면은 완전히 숨깁니다.",
-  "Utility Buttons": "유틸리티 버튼"
+  "Utility Buttons": "유틸리티 버튼",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Millennium Material-Theme을 통해 Steam에 Material You 색상 적용"
 }

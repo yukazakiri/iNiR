@@ -1010,7 +1010,6 @@
   "Good Afternoon": "Buon pomeriggio",
   "Freeze parallax briefly while wallpaper transitions settle": "Congela brevemente la parallasse mentre le transizioni dello sfondo si stabilizzano",
   "Thumbnails": "Miniature",
-  "Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)": "Applica i colori del tuo materiale a Steam tramite Adwaita per Steam (richiede AdwSteamGtk)",
   "Number of wallpapers to fetch per request": "Numero di sfondi da recuperare per richiesta",
   "Core": "Nucleo",
   "Current System": "Sistema attuale",
@@ -1597,7 +1596,6 @@
   "Quick Actions": "Azioni rapide",
   "Display notification count badge on clock": "Visualizza il badge del conteggio delle notifiche sull'orologio",
   "Limit maximum charge to preserve battery health": "Limita la carica massima per preservare la salute della batteria",
-  "Steam (Adwaita for Steam)": "Steam (Adwaita per Steam)",
   "Sync library": "Sincronizza libreria",
   "Number of rows in the app launcher grid": "Numero di righe nella griglia di avvio delle app",
   "Overlay large numbers on workspace previews": "Sovrapponi grandi numeri alle anteprime dell'area di lavoro",
@@ -3395,5 +3393,7 @@
   "Size in pixels (typically 24 or 32)": "Dimensioni in pixel (tipicamente 24 o 32)",
   "GitHub Repository": "Repository GitHub",
   "Crosshair code (in Valorant's format)": "Codice mirino (nel formato Valorant)",
-  "Font Families": "Famiglie di caratteri"
+  "Font Families": "Famiglie di caratteri",
+  "Steam (Millennium)": "Steam (Millennium)",
+  "Apply Material You colors to Steam via Millennium Material-Theme": "Applica i colori Material You a Steam tramite Millennium Material-Theme"
 }
