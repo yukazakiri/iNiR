@@ -112,6 +112,7 @@ AbstractBackgroundWidget {
                     model: root._shapeOptions
                     Rectangle {
                         required property var modelData
+                        property alias hovered: shapeMouseArea.containsMouse
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         radius: Appearance.rounding.small
@@ -129,8 +130,10 @@ AbstractBackgroundWidget {
                                 ? root.accentPrimary : root.accentOnPrimaryContainer
                         }
                         MouseArea {
+                            id: shapeMouseArea
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
                             onClicked: Config.setNestedValue("background.widgets.weather.shape", modelData.value)
                         }
                         StyledToolTip { text: modelData.label }
