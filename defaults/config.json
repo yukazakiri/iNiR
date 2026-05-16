@@ -917,6 +917,10 @@
         "booru": {
             "allowNsfw": false,
             "defaultProvider": "yandere",
+            "downloadPath": {
+                "sfw": "",
+                "nsfw": ""
+            },
             "limit": 20,
             "zerochan": {
                 "username": "[unset]"

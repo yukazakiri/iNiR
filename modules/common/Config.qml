@@ -1495,6 +1495,10 @@ Singleton {
                     property JsonObject zerochan: JsonObject {
                         property string username: "[unset]"
                     }
+                    property JsonObject downloadPath: JsonObject {
+                        property string sfw: ""
+                        property string nsfw: ""
+                    }
                 }
                 // Wallhaven-specific sidebar module options
                 property JsonObject wallhaven: JsonObject {
