@@ -179,6 +179,7 @@ if should_apply_theme; then
     elevate tee "${SDDM_CONF}" > /dev/null << SDDM_EOF
 [General]
 DisplayServer=x11
+InputMethod=
 
 [Theme]
 Current=${THEME_NAME}
