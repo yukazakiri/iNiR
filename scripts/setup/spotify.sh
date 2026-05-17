@@ -74,9 +74,26 @@ if is_arch_like; then
     setup_progress 1 $TOTAL "Installing Spotify (AUR) and Spicetify CLI"
     install_arch -- spotify spicetify-cli
 
-    setup_progress 2 $TOTAL "Granting Spicetify write access to /opt/spotify"
-    sudo chmod a+wr /opt/spotify
-    sudo chmod a+wr /opt/spotify/Apps -R
+    # Detect the Spotify install directory. Prefer /opt/spotify (AUR package,
+    # has .spa files spicetify needs) over the spotify-launcher expanded dir.
+    _spotify_dir() {
+        for d in /opt/spotify "$HOME/.local/share/spotify-launcher/install/usr/share/spotify"; do
+            [[ -d "$d/Apps" ]] && echo "$d" && return
+        done
+    }
+
+    setup_progress 2 $TOTAL "Configuring Spicetify paths"
+    spotify_dir="$(_spotify_dir)"
+    if [[ -z "$spotify_dir" ]]; then
+        setup_fail "Could not find Spotify install directory."
+        setup_finish_pause
+        exit 1
+    fi
+    echo "  · Spotify at: $spotify_dir"
+    # Ensure spicetify points to the .spa-based install, not a launcher dir
+    spicetify config spotify_path "$spotify_dir" >/dev/null 2>&1 || true
+    sudo chmod a+wr "$spotify_dir"
+    sudo chmod a+wr "$spotify_dir/Apps" -R
 
     setup_progress 3 $TOTAL "Applying Spicetify backup"
     prefs="$(_find_prefs)"
@@ -85,7 +102,24 @@ if is_arch_like; then
         spicetify config prefs_path "$prefs" >/dev/null 2>&1 || true
     fi
 
-    if ! spicetify backup apply; then
+    _spicetify_apply() {
+        if spicetify backup apply; then return 0; fi
+        # Stale backup — try restore then redo
+        if spicetify restore backup apply; then return 0; fi
+        # Deadlocked (version mismatch) — nuke backup state and retry
+        local cfg_dir
+        cfg_dir="$(dirname "$(spicetify -c 2>/dev/null)" 2>/dev/null)"
+        if [[ -n "$cfg_dir" ]]; then
+            echo "  · Clearing stale backup state…"
+            rm -rf "${cfg_dir:?}/Backup" 2>/dev/null || true
+            # Clear [Backup] section values in config
+            sed -i '/^\[Backup\]/,/^\[/{/^\[Backup\]/!{/^\[/!d}}' \
+                "${cfg_dir}/config-xpui.ini" 2>/dev/null || true
+        fi
+        spicetify backup apply
+    }
+
+    if ! _spicetify_apply; then
         echo
         echo "  · backup apply failed (likely no prefs file yet)."
         echo "  · Launching Spotify so it can generate its prefs…"
@@ -102,7 +136,7 @@ if is_arch_like; then
         fi
         echo "  · Found prefs at $prefs"
         spicetify config prefs_path "$prefs" >/dev/null 2>&1 || true
-        spicetify backup apply
+        _spicetify_apply
     fi
 
     setup_progress 4 $TOTAL "Installing Spicetify Marketplace"
