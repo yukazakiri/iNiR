@@ -142,10 +142,14 @@ resolve_cava_input_source() {
     source=$(python3 "$CAVA_RESOLVE_SCRIPT" 2>/dev/null || true)
   fi
   if [[ -z "${source:-}" ]]; then
-    local default_sink
-    default_sink=$(pactl get-default-sink 2>/dev/null)
-    source="${default_sink:+${default_sink}.monitor}"
-    source="${source:-auto}"
+    if pactl list sink-inputs 2>/dev/null | grep -q "^Sink Input #"; then
+      source="__inir_no_music__"
+    else
+      local default_sink
+      default_sink=$(pactl get-default-sink 2>/dev/null)
+      source="${default_sink:+${default_sink}.monitor}"
+      source="${source:-auto}"
+    fi
   fi
   printf '%s\n' "$method" "$source"
 }
