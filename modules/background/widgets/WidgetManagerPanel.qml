@@ -317,6 +317,13 @@ Item {
         readonly property string _cfgPrefix: isCustom ? ("background.widgets.custom." + widgetKey) : ("background.widgets." + widgetKey)
         readonly property bool _enabled: Boolean(Config.getNestedValue(card._cfgPrefix + ".enable", card.defaultEnabled))
         readonly property bool _locked: Boolean(Config.getNestedValue(card._cfgPrefix + ".locked", false))
+        // Whether this widget uses WidgetSurface for its background. Weather and
+        // mediaControls have custom surfaces (pill, album-art card) so the universal
+        // background/blur/border controls don't apply to them — hide that section to
+        // avoid silent setNestedValue failures (their schemas don't expose those keys).
+        readonly property bool _supportsAppearance: !isCustom && [
+            "clock", "visualizer", "systemMonitor", "battery", "notes", "calendarUpcoming"
+        ].indexOf(widgetKey) !== -1
         readonly property bool _expanded: card._enabled && _expandToggle
         property bool _expandToggle: false
 
@@ -544,11 +551,12 @@ Item {
                     }
 
                     // Divider before appearance toggles
-                    Rectangle { width: parent.width; height: 1; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.06) }
+                    Rectangle { visible: card._supportsAppearance; width: parent.width; height: 1; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.06) }
 
                     // Background toggle (per-widget granularity — some users want a flat
                     // resources widget but a frosted-glass clock, etc.)
                     RowLayout {
+                        visible: card._supportsAppearance
                         width: parent.width
                         spacing: 8
                         MaterialSymbol { text: "format_color_fill"; iconSize: 16; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5) }
@@ -572,7 +580,7 @@ Item {
                     RowLayout {
                         width: parent.width
                         spacing: 8
-                        visible: (Appearance.auroraEverywhere || Appearance.angelEverywhere) && Appearance.effectsEnabled
+                        visible: card._supportsAppearance && (Appearance.auroraEverywhere || Appearance.angelEverywhere) && Appearance.effectsEnabled
                         MaterialSymbol { text: "blur_on"; iconSize: 16; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5) }
                         StyledText {
                             Layout.fillWidth: true
@@ -593,7 +601,7 @@ Item {
                     RowLayout {
                         width: parent.width
                         spacing: 8
-                        visible: Config.getNestedValue(card._cfgPrefix + ".showBackground", true)
+                        visible: card._supportsAppearance && Config.getNestedValue(card._cfgPrefix + ".showBackground", true)
                         MaterialSymbol { text: "opacity"; iconSize: 16; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5) }
                         StyledText {
                             text: Translation.tr("BG opacity")
@@ -613,6 +621,7 @@ Item {
 
                     // Border toggle
                     RowLayout {
+                        visible: card._supportsAppearance
                         width: parent.width
                         spacing: 8
                         MaterialSymbol { text: "border_style"; iconSize: 16; color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5) }
