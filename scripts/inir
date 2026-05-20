@@ -586,20 +586,15 @@ check_qs_abi() {
             return 0
         fi
     elif [[ "${_session_boot:-}" == "true" ]]; then
+        # In service mode, we can't reliably rebuild (no TTY for sudo).
+        # Instead of blocking startup entirely, warn and continue.
+        # The shell may partially work — enough for the user to open a terminal
+        # and run the fix. Blocking with exit 1 leaves them with no shell at all.
         echo "" >&2
-        echo "Attempting automatic rebuild (service mode)..." >&2
-        # AUR helpers (paru/yay) can rebuild without sudo in some configs,
-        # but pacman always needs it. Skip if the command requires sudo and
-        # we're in a non-interactive service context.
-        local _rebuild_cmd
-        _rebuild_cmd="$(_inir_quickshell_rebuild_cmd "$(_inir_quickshell_install_kind)")"
-        if [[ "$_rebuild_cmd" == sudo* ]]; then
-            echo "iNiR: cannot auto-rebuild in service mode (requires sudo)." >&2
-            echo "      Run manually: $_rebuild_cmd" >&2
-            echo "      Or: inir doctor --fix-abi" >&2
-        elif [[ -n "$_rebuild_cmd" ]] && _inir_run_quickshell_rebuild noninteractive; then
-            return 0
-        fi
+        echo "WARNING: Continuing despite ABI mismatch. Some features may crash." >&2
+        echo "         Fix: inir doctor --fix-abi" >&2
+        echo "" >&2
+        return 0
     fi
 
     # Auto-fix declined, unavailable, or failed — fall through to manual instructions.
