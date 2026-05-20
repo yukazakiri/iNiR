@@ -495,15 +495,24 @@ _inir_run_quickshell_rebuild() {
             ""|[Yy]*) ;;
             *) echo "iNiR: rebuild declined." >&2; return 1 ;;
         esac
+        # Interactive: strip --noconfirm so the AUR helper shows full progress
+        # and prompts naturally. The user already confirmed they want to proceed.
+        cmd="${cmd//--noconfirm/}"
     fi
 
-    echo "iNiR: rebuilding quickshell against the current Qt version (this can take a few minutes)..." >&2
+    echo "" >&2
+    echo "iNiR: rebuilding quickshell against the current Qt version..." >&2
+    echo "      This compiles from source and may take 2-5 minutes." >&2
+    echo "" >&2
     if eval "$cmd"; then
         rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/inir/abi-check" 2>/dev/null
-        echo "iNiR: Quickshell rebuilt successfully." >&2
+        echo "" >&2
+        echo "iNiR: Quickshell rebuilt successfully. Run 'inir restart' to apply." >&2
         return 0
     fi
-    echo "iNiR: rebuild failed. Try manually: ${cmd//--noconfirm/}" >&2
+    echo "" >&2
+    echo "iNiR: rebuild failed. Try manually:" >&2
+    echo "      ${cmd}" >&2
     return 1
 }
 
