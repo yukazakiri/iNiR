@@ -10,16 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Quickshell 0.3 + Qt 6.11.1 compatibility release. Fixes the #1 regression (settings not persisting) and several related issues surfaced by the update.
 
 ### Fixed
-- **Config writes not persisting across reload** *(#150)*: QS 0.3's JsonAdapter no longer emits `onSaved` when nested JsonObjects are mutated via JS assignment. Replaced `writeAdapter()` with direct JSON serialization via `setText()`, bypassing the broken dirty-detection entirely. Safety timer unsticks the write lock on edge cases.
+- **Config writes not persisting across reload** *(#150)*: QS 0.3's JsonAdapter no longer emits `onSaved` when nested JsonObjects are mutated via JS assignment. Now uses `writeAdapter()` as primary (emits proper QObject property signals for 2400+ consumers) with an in-memory JSON mirror as fallback when `onSaved` doesn't fire within 2s. Mirror is initialized from disk on load and updated synchronously on every `setNestedValue`.
 - **Static wallpaper (JPG/PNG) crash** *(#146)*: disabled `mipmap: true` on WallpaperCrossfader Image slots. Qt 6.11's multithreaded mipmap generator has a race condition causing segfaults on large images. Mipmap is unnecessary for screen-sized rendering.
 - **AwwwBackend binary detection failures** *(#148)*: probe now checks `/usr/bin/awww` directly instead of relying on login shell (`bash -lc`). Fixes false "binaries unavailable" on setups where PATH isn't populated in login shells.
 - **ABI check crash-loops the service**: when running as systemd service (`--session`), the ABI mismatch handler now attempts a noninteractive rebuild before exiting. Prevents indefinite crash loops after a Qt patch bump.
+- **Parallax pixelation**: wallpaper `sourceSize` no longer multiplied by parallax scale — was causing CPU upscaling and blurry rendering. GPU handles the zoom cleanly.
+- **Parallax widget positions**: widget canvas now uses `Translate` transform instead of oversized anchors. Widgets stay screen-sized and correctly positioned regardless of parallax state.
+- **Widget border bleeding background**: separated border into its own Rectangle overlay in WidgetSurface. Qt's antialiasing on transparent Rectangles with borders no longer causes visible fills.
+- **Widget blur toggle re-enabling on reload**: fallback value was `true`, causing the toggle to flip back ON every config reload. Now defaults to `false`.
+- **Widget blur activating on upgrade**: `useBlur` schema default changed from `true` to `false` so existing users don't get blur forced on after updating.
+- **Edit mode cursor flicker**: resize handle MouseArea now only tracks hover when the widget itself has focus, preventing cursor shape changes when hovering the bar.
+- **Binding loops**: fixed in AbstractBackgroundWidget (overflow guard) and BarMediaPopup (visible expression).
 - **Notification layout**: fixed `padding` reference ambiguity and `contentColumn` anchors in NotificationItem.
+- **Installer blocked by steam**: `millennium-bin` moved from hard dependency to optional. Installs no longer fail on systems without multilib/steam.
+- **Backdrop mipmap spam**: disabled `mipmap` on wallpaper-sized Backdrop images (blurred anyway, was generating excessive QSGPlainTexture warnings).
 
 ### Added
 - **Flatpak app launcher fallback** *(#149)*: `AppLauncher.launch()` now tries `DesktopEntries.heuristicLookup()` for single-word commands. Flatpak apps with `.desktop` files launch correctly even when the binary isn't in PATH.
 - **ShellId pragma for QS 0.3**: pinned `pragma ShellId inir` so symlinked configs don't get different shell IDs after QS stopped canonicalizing paths.
 - **`inir logs --full`**: new flag reads the binary qslog directly, bypassing `QT_LOGGING_RULES` filtering. Essential for debugging since journalctl hides real errors.
+- **Sidebar date format**: GlanceHeader now respects `Config.options.time.dateFormat` when configured, falling back to style-appropriate defaults.
 
 ## [2.25.0] - 2026-05-16
 
