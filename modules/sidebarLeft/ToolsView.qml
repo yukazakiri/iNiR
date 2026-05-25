@@ -180,17 +180,17 @@ Item {
                     ActionTile {
                         tileIcon: "terminal"
                         label: Translation.tr("Terminal")
-                        onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "terminal"])
+                        onClicked: AppLauncher.launch("terminal")
                     }
                     ActionTile {
                         tileIcon: "folder"
                         label: Translation.tr("Files")
-                        onClicked: Quickshell.execDetached(["/usr/bin/nautilus"])
+                        onClicked: ShellExec.execDetachedArgs(["/usr/bin/nautilus"], "Launch Files")
                     }
                     ActionTile {
                         tileIcon: "settings"
                         label: Translation.tr("Settings")
-                        onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "settings"])
+                        onClicked: ShellExec.execDetachedArgs([Quickshell.shellPath("scripts/inir"), "settings"], "Open iNiR settings")
                     }
                     ActionTile {
                         tileIcon: "tune"
@@ -205,7 +205,7 @@ Item {
                     ActionTile {
                         tileIcon: "code"
                         label: Translation.tr("Editor")
-                        onClicked: Quickshell.execDetached([Config.options?.apps?.editor ?? "/usr/bin/code"])
+                        onClicked: ShellExec.execCmd(Config.options?.apps?.editor ?? "/usr/bin/code")
                     }
                 }
             }

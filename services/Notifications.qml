@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
+import qs.modules.common.functions
 import qs
 import QtQuick
 import Quickshell
@@ -493,14 +494,14 @@ Singleton {
         for (const key of lookupKeys) {
             const de = DesktopEntries.heuristicLookup(key);
             if (de) {
-                de.execute();
+                AppSearch.launchEntry(de);
                 return;
             }
         }
 
         if (appIcon && appIcon.length > 0) {
             const cmd = "/usr/bin/gtk-launch \"" + appIcon + "\" || \"" + appIcon + "\"";
-            Quickshell.execDetached(["/usr/bin/bash", "-lc", cmd]);
+            ShellExec.execCmd(cmd);
         }
     }
 
