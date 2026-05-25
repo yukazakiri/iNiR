@@ -15,6 +15,7 @@ Item { // Wrapper
     readonly property string xdgConfigHome: Directories.config
     property string searchingText: ""
     property bool showResults: searchingText != ""
+    property bool panelVisible: true
     property real availableHeight: root.QsWindow?.window?.height ?? (root.QsWindow?.window?.screen?.height ?? 1080)
     readonly property bool actionMode: searchingText.startsWith(root.prefixAction)
     readonly property string actionQuery: actionMode ? StringUtils.cleanPrefix(searchingText, root.prefixAction) : ""
@@ -418,6 +419,7 @@ Item { // Wrapper
         fallbackColor: Appearance.colors.colBackgroundSurfaceContainer
         inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
+        wallpaperBackdropEnabled: root.panelVisible
         border.width: auroraEverywhere || inirEverywhere ? 1 : 0
         border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
             : inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border

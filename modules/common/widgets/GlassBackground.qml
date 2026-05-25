@@ -14,6 +14,7 @@ Rectangle {
     property color fallbackColor: Appearance.colors.colLayer1
     property color inirColor: Appearance.inir.colLayer1
     property real auroraTransparency: Appearance.aurora.popupTransparentize
+    property bool wallpaperBackdropEnabled: true
     
     // Screen-relative position for blur alignment (set by parent)
     property real screenX: 0
@@ -25,10 +26,11 @@ Rectangle {
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property string wallpaperUrl: Wallpapers.effectiveWallpaperUrl
+    readonly property bool useWallpaperBackdrop: root.wallpaperBackdropEnabled && root.auroraEverywhere && !root.inirEverywhere
     
-    color: auroraEverywhere ? "transparent"
-        : inirEverywhere ? inirColor
-        : fallbackColor
+    color: root.useWallpaperBackdrop ? "transparent"
+        : root.inirEverywhere ? root.inirColor
+        : root.fallbackColor
     
     property bool hovered: false
 
@@ -37,7 +39,7 @@ Rectangle {
 
     clip: true
     
-    layer.enabled: auroraEverywhere && !inirEverywhere
+    layer.enabled: root.useWallpaperBackdrop
     layer.effect: GE.OpacityMask {
         maskSource: Rectangle {
             width: root.width
@@ -52,8 +54,8 @@ Rectangle {
         y: -root.screenY
         width: root.screenWidth
         height: root.screenHeight
-        visible: root.auroraEverywhere && !root.inirEverywhere && status === Image.Ready
-        source: (root.auroraEverywhere && !root.inirEverywhere) ? root.wallpaperUrl : ""
+        visible: root.useWallpaperBackdrop && status === Image.Ready
+        source: root.useWallpaperBackdrop ? root.wallpaperUrl : ""
         fillMode: Image.PreserveAspectCrop
         // All GlassBackground instances share the same wallpaper URL and sourceSize,
         // so Qt's QPixmapCache serves a single decoded pixmap to all of them.
@@ -65,7 +67,7 @@ Rectangle {
         sourceSize.width: root.screenWidth
         sourceSize.height: root.screenHeight
 
-        layer.enabled: Appearance.effectsEnabled && root.auroraEverywhere && !root.inirEverywhere
+        layer.enabled: Appearance.effectsEnabled && root.useWallpaperBackdrop
         layer.effect: MultiEffect {
             source: blurredWallpaper
             anchors.fill: source
@@ -82,7 +84,7 @@ Rectangle {
 
     Rectangle {
         anchors.fill: parent
-        visible: root.auroraEverywhere && !root.inirEverywhere
+        visible: root.useWallpaperBackdrop
         color: root.angelEverywhere
             ? ColorUtils.transparentize(Appearance.colors.colLayer0Base, Appearance.angel.overlayOpacity)
             : ColorUtils.transparentize(Appearance.colors.colLayer0Base, root.auroraTransparency)

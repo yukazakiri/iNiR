@@ -36,6 +36,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
+    property bool panelVisible: false
     property bool showAudioOutputDialog: false
     property bool showAudioInputDialog: false
     property bool showBluetoothDialog: false
@@ -112,6 +113,11 @@ Item {
             const _dep3 = Wallpapers.effectiveWallpaperUrl
             return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
         }
+        readonly property bool useWallpaperBackdrop: root.panelVisible
+            && auroraEverywhere
+            && !inirEverywhere
+            && !gameModeMinimal
+            && wallpaperUrl.length > 0
 
         ColorQuantizer {
             id: sidebarRightWallpaperQuantizer
@@ -139,7 +145,7 @@ Item {
 
         clip: true
 
-        layer.enabled: !gameModeMinimal
+        layer.enabled: !gameModeMinimal && (root.panelVisible || !auroraEverywhere)
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: sidebarRightBackground.width
@@ -154,15 +160,15 @@ Item {
             y: -Appearance.sizes.hyprlandGapsOut
             width: root.screenWidth ?? 1920
             height: root.screenHeight ?? 1080
-            visible: sidebarRightBackground.auroraEverywhere && !sidebarRightBackground.inirEverywhere && !sidebarRightBackground.gameModeMinimal
-            source: sidebarRightBackground.wallpaperUrl
+            visible: sidebarRightBackground.useWallpaperBackdrop
+            source: sidebarRightBackground.useWallpaperBackdrop ? sidebarRightBackground.wallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
             sourceSize.width: root.screenWidth ?? 1920
             sourceSize.height: root.screenHeight ?? 1080
             asynchronous: true
 
-            layer.enabled: Appearance.effectsEnabled && sidebarRightBackground.auroraEverywhere && !sidebarRightBackground.inirEverywhere
+            layer.enabled: Appearance.effectsEnabled && sidebarRightBackground.useWallpaperBackdrop
             layer.effect: MultiEffect {
                 source: sidebarRightBlurredWallpaper
                 anchors.fill: source

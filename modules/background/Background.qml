@@ -873,7 +873,9 @@ Scope {
                     layer.enabled: Appearance.effectsEnabled && (bgRoot.effectsOptions.enableAnimatedBlur ?? false) && (bgRoot.effectsOptions.blurRadius ?? 0) > 0
                     layer.effect: GaussianBlur {
                         radius: Math.round((bgRoot.effectsOptions.blurRadius ?? 32) * Math.max(0, Math.min(1, (bgRoot.effectsOptions.thumbnailBlurStrength ?? 50) / 100)))
-                        samples: radius * 2 + 1
+                        // Cap samples — beyond ~33 the visual difference is imperceptible
+                        // but the fragment shader cost grows linearly. See #159.
+                        samples: Math.min(33, radius * 2 + 1)
                     }
                 }
 
@@ -956,7 +958,8 @@ Scope {
                     layer.enabled: Appearance.effectsEnabled && (bgRoot.effectsOptions.enableAnimatedBlur ?? false) && (bgRoot.effectsOptions.blurRadius ?? 0) > 0
                     layer.effect: GaussianBlur {
                         radius: Math.round((bgRoot.effectsOptions.blurRadius ?? 32) * Math.max(0, Math.min(1, (bgRoot.effectsOptions.thumbnailBlurStrength ?? 50) / 100)))
-                        samples: radius * 2 + 1
+                        // See #159 — cap samples to bound fragment shader cost
+                        samples: Math.min(33, radius * 2 + 1)
                     }
                 }
             }
@@ -983,7 +986,8 @@ Scope {
                         anchors.fill: parent
                         source: wallpaper
                         radius: bgRoot.effectsOptions.blurRadius ?? 32
-                        samples: radius * 2 + 1
+                        // See #159 — cap samples to bound fragment shader cost
+                        samples: Math.min(33, radius * 2 + 1)
                     }
                 }
             }
@@ -1006,7 +1010,8 @@ Scope {
                 sourceComponent: GaussianBlur {
                     source: wallpaperContainer
                     radius: GlobalStates.screenLocked ? (bgRoot.lockBlurOptions.radius ?? 0) : 0
-                    samples: radius * 2 + 1
+                    // See #159 — cap samples to bound fragment shader cost
+                    samples: Math.min(33, radius * 2 + 1)
                     Rectangle {
                         opacity: GlobalStates.screenLocked ? 1 : 0
                         anchors.fill: parent

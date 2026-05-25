@@ -52,6 +52,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
+    property bool panelVisible: false
 
     property bool showAudioOutputDialog: false
     property bool showAudioInputDialog: false
@@ -747,6 +748,11 @@ Item {
             const _d3 = Wallpapers.effectiveWallpaperUrl
             return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
         }
+        readonly property bool useWallpaperBackdrop: root.panelVisible
+            && auroraEverywhere
+            && !inirEverywhere
+            && !gameModeMinimal
+            && wallpaperUrl.length > 0
 
         ColorQuantizer {
             id: bgQuant
@@ -800,7 +806,7 @@ Item {
               : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         clip: true
 
-        layer.enabled: !gameModeMinimal
+        layer.enabled: !gameModeMinimal && (root.panelVisible || !auroraEverywhere)
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: bg.width; height: bg.height; radius: bg.radius
@@ -814,13 +820,13 @@ Item {
             y: -Appearance.sizes.hyprlandGapsOut
             width:  root.screenWidth  ?? 1920
             height: root.screenHeight ?? 1080
-            visible: bg.auroraEverywhere && !bg.inirEverywhere && !bg.gameModeMinimal
-            source: bg.wallpaperUrl
+            visible: bg.useWallpaperBackdrop
+            source: bg.useWallpaperBackdrop ? bg.wallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true; asynchronous: true
             sourceSize.width: root.screenWidth ?? 1920
             sourceSize.height: root.screenHeight ?? 1080
-            layer.enabled: Appearance.effectsEnabled && bg.auroraEverywhere && !bg.inirEverywhere
+            layer.enabled: Appearance.effectsEnabled && bg.useWallpaperBackdrop
             layer.effect: MultiEffect {
                 source: bgBlurWallpaper
                 anchors.fill: source

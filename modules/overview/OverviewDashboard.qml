@@ -21,6 +21,8 @@ Item {
     readonly property bool angelStyle: Appearance.angelEverywhere
     readonly property bool inirStyle: Appearance.inirEverywhere
     readonly property bool auroraStyle: Appearance.auroraEverywhere
+    property bool panelVisible: true
+    readonly property bool useWallpaperBackdrop: root.panelVisible && (root.angelStyle || root.auroraStyle) && !root.inirStyle && root.wallpaperUrl.length > 0
 
     // ── Screen & wallpaper for blur (angel/aurora) ──
     property int screenWidth: root.QsWindow?.window?.screen?.width ?? 1920
@@ -173,21 +175,21 @@ Item {
         id: blurBg
         required property Item targetCard
         anchors.fill: parent
-        visible: (root.angelStyle || root.auroraStyle) && !root.inirStyle
+        visible: root.useWallpaperBackdrop
 
         Image {
             id: blurBgImage
             anchors.centerIn: parent
             width: root.screenWidth
             height: root.screenHeight
-            source: root.wallpaperUrl
+            source: root.useWallpaperBackdrop ? root.wallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
             sourceSize.width: root.screenWidth
             sourceSize.height: root.screenHeight
             asynchronous: true
 
-            layer.enabled: Appearance.effectsEnabled
+            layer.enabled: Appearance.effectsEnabled && root.useWallpaperBackdrop
             layer.effect: MultiEffect {
                 source: blurBgImage
                 anchors.fill: source
@@ -230,6 +232,7 @@ Item {
         fallbackColor: Appearance.colors.colBackgroundSurfaceContainer
         inirColor: root.inirStyle ? Appearance.inir.colLayer1 : root.colCardBg
         auroraTransparency: Math.max(0.16, Appearance.aurora.popupTransparentize - 0.12)
+        wallpaperBackdropEnabled: root.panelVisible
         border.width: root.angelStyle || root.inirStyle || root.auroraStyle ? 1 : 0
         border.color: root.angelStyle ? Appearance.angel.colCardBorder
             : root.inirStyle ? Appearance.inir.colBorder
@@ -273,7 +276,7 @@ Item {
                 border.color: root.colBorder
                 clip: true
 
-                layer.enabled: (root.angelStyle || root.auroraStyle) && !root.inirStyle
+                layer.enabled: root.useWallpaperBackdrop
                 layer.effect: GE.OpacityMask {
                     maskSource: Rectangle { width: headerCard.width; height: headerCard.height; radius: headerCard.radius }
                 }
@@ -283,15 +286,15 @@ Item {
                     anchors.centerIn: parent
                     width: root.screenWidth
                     height: root.screenHeight
-                    visible: (root.angelStyle || root.auroraStyle) && !root.inirStyle
-                    source: root.wallpaperUrl
+                    visible: root.useWallpaperBackdrop
+                    source: root.useWallpaperBackdrop ? root.wallpaperUrl : ""
                     fillMode: Image.PreserveAspectCrop
                     cache: true
                     sourceSize.width: root.screenWidth
                     sourceSize.height: root.screenHeight
                     asynchronous: true
 
-                    layer.enabled: Appearance.effectsEnabled && (Appearance.auroraEverywhere || Appearance.angelEverywhere) && !Appearance.inirEverywhere
+                    layer.enabled: Appearance.effectsEnabled && root.useWallpaperBackdrop
                     layer.effect: MultiEffect {
                         saturation: root.angelStyle ? Appearance.angel.blurSaturation : 0.2
                         blurEnabled: Appearance.effectsEnabled

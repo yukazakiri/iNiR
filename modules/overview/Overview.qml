@@ -283,6 +283,7 @@ Scope {
                     id: searchWidget
                     anchors.horizontalCenter: parent.horizontalCenter
                     searchingText: root.searchingText
+                    panelVisible: root.visible
                     // Centered mode: limit search results to 60% of screen height
                     availableHeight: Math.max(220, root.height * 0.6)
                     onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
@@ -317,6 +318,7 @@ Scope {
                 OverviewDashboard {
                     id: dashboardPanel
                     anchors.horizontalCenter: parent.horizontalCenter
+                    panelVisible: root.visible
                     visible: (root.searchingText == "") && (Config.options?.overview?.dashboard?.enable ?? false)
                     opacity: GlobalStates.overviewOpen ? 1 : 0
 

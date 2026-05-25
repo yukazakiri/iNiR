@@ -14,11 +14,12 @@ Item {
     property alias styleColor: iconText.styleColor
     property bool animateChange: false  // Compatibility with StyledText
     property bool forceNerd: false  // Force Nerd Font rendering (text is already a glyph)
+    property bool animateFill: false
     
-    // Auto-switch to Nerd Font when inir is active
-    readonly property bool useNerd: forceNerd || Appearance.inirEverywhere
-    readonly property string nerdGlyph: forceNerd ? text : NerdIconMap.get(text)
-    readonly property bool hasNerdGlyph: nerdGlyph !== ""
+    // Use Nerd Font only when explicitly requested.
+    readonly property bool useNerd: forceNerd
+    readonly property string nerdGlyph: forceNerd ? text : ""
+    readonly property bool hasNerdGlyph: useNerd && nerdGlyph !== ""
     
     // Nerd fonts need slightly larger size to match Material Symbols visually
     readonly property real effectiveFontSize: (useNerd && hasNerdGlyph) ? iconSize * 1.1 : iconSize
@@ -29,9 +30,11 @@ Item {
     implicitHeight: effectiveSize
     
     readonly property real clampedFill: Math.max(0, Math.min(1, fill))
-    readonly property real effectiveFill: clampedFill < 0.01 ? 0 : (clampedFill > 0.99 ? 1 : clampedFill)
+    readonly property real effectiveFill: animateFill
+        ? (clampedFill < 0.01 ? 0 : (clampedFill > 0.99 ? 1 : clampedFill))
+        : Math.round(clampedFill)
     // Material Symbols variable font axis range is 20..48; keeping it in-range avoids distorted fill at small icon sizes.
-    readonly property real effectiveOpsz: Math.max(20, Math.min(48, iconSize))
+    readonly property real effectiveOpsz: 24
     
     Text {
         id: iconText
@@ -59,7 +62,7 @@ Item {
     }
 
     Behavior on fill {
-        enabled: Appearance.animationsEnabled
+        enabled: root.animateFill && Appearance.animationsEnabled
         NumberAnimation {
             duration: Appearance?.animation.elementMoveFast.duration ?? 200
             easing.type: Appearance?.animation.elementMoveFast.type ?? Easing.BezierSpline

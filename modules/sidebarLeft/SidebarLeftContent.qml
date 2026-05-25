@@ -23,6 +23,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
+    property bool panelVisible: false
 
     property bool aiChatEnabled: (Config.options?.policies?.ai ?? 0) !== 0
     property bool translatorEnabled: (Config.options?.sidebar?.translator?.enable ?? false)
@@ -117,6 +118,10 @@ Item {
             const _dep3 = Wallpapers.effectiveWallpaperUrl
             return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
         }
+        readonly property bool useWallpaperBackdrop: root.panelVisible
+            && auroraEverywhere
+            && !gameModeMinimal
+            && wallpaperUrl.length > 0
 
         ColorQuantizer {
             id: sidebarLeftWallpaperQuantizer
@@ -143,7 +148,7 @@ Item {
 
         clip: true
 
-        layer.enabled: auroraEverywhere && !gameModeMinimal
+        layer.enabled: useWallpaperBackdrop
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: sidebarLeftBackground.width
@@ -158,15 +163,15 @@ Item {
             y: -Appearance.sizes.hyprlandGapsOut
             width: root.screenWidth
             height: root.screenHeight
-            visible: sidebarLeftBackground.auroraEverywhere && !sidebarLeftBackground.gameModeMinimal
-            source: sidebarLeftBackground.wallpaperUrl
+            visible: sidebarLeftBackground.useWallpaperBackdrop
+            source: sidebarLeftBackground.useWallpaperBackdrop ? sidebarLeftBackground.wallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
             sourceSize.width: root.screenWidth
             sourceSize.height: root.screenHeight
             asynchronous: true
 
-            layer.enabled: Appearance.effectsEnabled && sidebarLeftBackground.auroraEverywhere && !sidebarLeftBackground.gameModeMinimal
+            layer.enabled: Appearance.effectsEnabled && sidebarLeftBackground.useWallpaperBackdrop
             layer.effect: MultiEffect {
                 source: sidebarLeftBlurredWallpaper
                 anchors.fill: source

@@ -281,7 +281,9 @@ Item { // Bar content region
             sourceSize.height: root.screen?.height ?? 1080
             asynchronous: true
 
-            layer.enabled: Appearance.effectsEnabled && barBackground.auroraEverywhere && !root.inirEverywhere
+            // Skip QML blur when the compositor is already blurring this layer
+            // (avoids double-blur and the FBO cost). See #159.
+            layer.enabled: Appearance.effectsEnabled && barBackground.auroraEverywhere && !root.inirEverywhere && !Appearance.compositorBlurActive
             layer.effect: MultiEffect {
                 source: blurredWallpaper
                 anchors.fill: source

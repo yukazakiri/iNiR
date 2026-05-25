@@ -13,7 +13,6 @@ Scope {
     property int sidebarWidth: Appearance.sizes.sidebarWidth
     readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
     readonly property string animationType: Config.options?.sidebar?.animationType ?? "slide"
-
     // Deferred slide trigger: ensures the Wayland surface is mapped before
     // the Behavior animation starts, so Qt tracks the "from" position correctly.
     property bool _sidebarShown: false
@@ -95,6 +94,7 @@ Scope {
                 screenWidth: sidebarRoot.screen?.width ?? 1920
                 screenHeight: sidebarRoot.screen?.height ?? 1080
                 panelScreen: sidebarRoot.screen ?? null
+                panelVisible: sidebarRoot.visible
             }
         }
 
@@ -104,6 +104,7 @@ Scope {
                 screenWidth: sidebarRoot.screen?.width ?? 1920
                 screenHeight: sidebarRoot.screen?.height ?? 1080
                 panelScreen: sidebarRoot.screen ?? null
+                panelVisible: sidebarRoot.visible
             }
         }
 

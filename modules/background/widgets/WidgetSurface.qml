@@ -70,15 +70,18 @@ Rectangle {
         y: -root.screenY
         width: root.screenWidth
         height: root.screenHeight
-        visible: root._glass && status === Image.Ready
-        source: root._glass ? root._wallpaperUrl : ""
+        // Don't load/blur when the compositor is already blurring underneath.
+        // Each WidgetSurface keeps its own FBO when layer.enabled is true; with
+        // many widgets enabled this multiplies fast. See #159.
+        visible: root._glass && !Appearance.compositorBlurActive && status === Image.Ready
+        source: (root._glass && !Appearance.compositorBlurActive) ? root._wallpaperUrl : ""
         fillMode: Image.PreserveAspectCrop
         cache: true
         asynchronous: true
         sourceSize.width: root.screenWidth
         sourceSize.height: root.screenHeight
 
-        layer.enabled: root._glass
+        layer.enabled: root._glass && !Appearance.compositorBlurActive
         layer.effect: MultiEffect {
             source: blurredWallpaper
             anchors.fill: source
