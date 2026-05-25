@@ -1144,14 +1144,19 @@ Scope {
                             }
                             
                             Rectangle {
-                                visible: listView.currentIndex === index
                                 anchors.bottom: parent.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 anchors.bottomMargin: 6
-                                width: 24
-                                height: 3
+                                implicitWidth: listView.currentIndex === index ? 24 : 0
+                                implicitHeight: 3
                                 radius: height / 2
+                                visible: implicitWidth > 0
+                                clip: true
                                 color: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.m3colors.m3primary
+                                Behavior on implicitWidth {
+                                    enabled: Appearance.animationsEnabled
+                                    NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
+                                }
                             }
                         }
                         
@@ -1469,7 +1474,12 @@ Scope {
                                     height: 8
                                     radius: width / 2
                                     color: Appearance.colors.colOnLayer1
-                                    visible: selected
+                                    opacity: selected ? 1 : 0
+                                    visible: opacity > 0
+                                    Behavior on opacity {
+                                        enabled: Appearance.animationsEnabled
+                                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                                    }
                                 }
                             }
 
