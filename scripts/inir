@@ -1215,6 +1215,14 @@ apply_shell_scale() {
     # which causes wallpaper/blur layers to appear smaller than the screen.
     export QT_SCALE_FACTOR=1
 
+    # Qt6 changed the default rounding policy from Round to PassThrough, which
+    # allows fractional DPR but causes blurry rendering when the compositor uses
+    # fractional scaling (e.g. 1.25). RoundPreferFloor rounds 1.25→1, 1.75→2,
+    # ensuring Qt renders at integer scale and the compositor doesn't need to
+    # resample the buffer. The shell handles its own scaling in QML, so this
+    # gives us crisp pixel-perfect rendering regardless of compositor scale.
+    export QT_SCALE_FACTOR_ROUNDING_POLICY=RoundPreferFloor
+
     # Unset DPI-forcing variables that cause blurry rendering when inherited from
     # the user's shell environment. These override the compositor's native DPI
     # and create a mismatch between the Qt logical size and the Wayland buffer
@@ -1224,6 +1232,9 @@ apply_shell_scale() {
     unset QT_WAYLAND_FORCE_DPI 2>/dev/null || true
     unset QT_FONT_DPI 2>/dev/null || true
     unset QT_AUTO_SCREEN_SCALE_FACTOR 2>/dev/null || true
+    unset QT_SCREEN_SCALE_FACTORS 2>/dev/null || true
+    unset GDK_SCALE 2>/dev/null || true
+    unset GDK_DPI_SCALE 2>/dev/null || true
 }
 
 wait_for_wayland_socket() {

@@ -89,7 +89,10 @@ The launcher sets these before starting Quickshell:
 | Variable | Value | Why |
 |----------|-------|-----|
 | `QT_SCALE_FACTOR` | `1` | Shell handles its own scaling in QML |
+| `QT_SCALE_FACTOR_ROUNDING_POLICY` | `RoundPreferFloor` | Prevents blurry rendering with fractional compositor scaling (1.25 etc) |
 | `QT_LOGGING_RULES` | (long list) | Suppress known-harmless Qt/QML warnings |
+
+The launcher also unsets inherited DPI variables that would cause blur: `QT_WAYLAND_FORCE_DPI`, `QT_FONT_DPI`, `QT_AUTO_SCREEN_SCALE_FACTOR`, `QT_SCREEN_SCALE_FACTORS`, `GDK_SCALE`, `GDK_DPI_SCALE`.
 
 The `--session` flag (used by systemd) also runs `ensure_systemd_graphical_env` in the background, which bridges critical Niri environment variables to the systemd user session. Without this, apps launched from the shell wouldn't get `WAYLAND_DISPLAY`, `NIRI_SOCKET`, or `ELECTRON_OZONE_PLATFORM_HINT`.
 
