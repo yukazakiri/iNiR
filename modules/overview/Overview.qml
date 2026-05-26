@@ -202,6 +202,11 @@ Scope {
 
             Column {
                 id: columnLayout
+
+                // Shell desaturation effect
+                layer.enabled: Appearance.shouldDesaturate("overlays") && columnLayout.visible
+                layer.effect: ShellDesaturationEffect {}
+
                 property real animTranslateY: GlobalStates.overviewOpen ? 0 : -16
                 opacity: GlobalStates.overviewOpen ? 1 : 0
                 visible: opacity > 0.001

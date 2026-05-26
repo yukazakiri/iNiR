@@ -15,6 +15,10 @@ import Qt5Compat.GraphicalEffects as GE
 Item { // Bar content region
     id: root
 
+    // Shell desaturation effect
+    layer.enabled: Appearance.shouldDesaturate("bar") && root.visible
+    layer.effect: ShellDesaturationEffect {}
+
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground

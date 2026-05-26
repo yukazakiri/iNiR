@@ -162,6 +162,11 @@ Scope {
         Loader {
             id: sidebarContentLoader
             active: GlobalStates.sidebarRightOpen || (Config?.options?.sidebar?.keepRightSidebarLoaded ?? true)
+
+            // Shell desaturation effect
+            layer.enabled: Appearance.shouldDesaturate("sidebars") && sidebarContentLoader.visible
+            layer.effect: ShellDesaturationEffect {}
+
             anchors {
                 top: parent.top
                 right: parent.right

@@ -135,7 +135,11 @@ Scope {
 
                         Item {
                             id: dockBackground
-                            
+
+                            // Shell desaturation effect
+                            layer.enabled: Appearance.shouldDesaturate("dock") && dockBackground.visible
+                            layer.effect: ShellDesaturationEffect {}
+
                             anchors {
                                 top: !root.isVertical ? parent.top : undefined
                                 bottom: !root.isVertical ? parent.bottom : undefined

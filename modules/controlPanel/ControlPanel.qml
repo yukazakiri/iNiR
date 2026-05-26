@@ -118,6 +118,11 @@ Scope {
         Loader {
             id: contentLoader
             active: GlobalStates.controlPanelOpen || (Config?.options?.controlPanel?.keepLoaded ?? false)
+
+            // Shell desaturation effect
+            layer.enabled: Appearance.shouldDesaturate("overlays") && contentLoader.visible
+            layer.effect: ShellDesaturationEffect {}
+
             property real panelTranslateY: -24
             states: [
                 State {

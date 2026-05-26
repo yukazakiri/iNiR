@@ -110,6 +110,11 @@ Scope {
         Loader {
             id: sidebarContentLoader
             active: GlobalStates.sidebarLeftOpen || (Config?.options?.sidebar?.keepLeftSidebarLoaded ?? true)
+
+            // Shell desaturation effect
+            layer.enabled: Appearance.shouldDesaturate("sidebars") && sidebarContentLoader.visible
+            layer.effect: ShellDesaturationEffect {}
+
             anchors {
                 top: parent.top
                 left: parent.left
