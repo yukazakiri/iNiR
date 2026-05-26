@@ -202,9 +202,12 @@ Scope {
 
             Column {
                 id: columnLayout
-                visible: GlobalStates.overviewOpen
+                property real animTranslateY: GlobalStates.overviewOpen ? 0 : -16
+                opacity: GlobalStates.overviewOpen ? 1 : 0
+                visible: opacity > 0.001
                 transformOrigin: Item.Top
-                scale: GlobalStates.overviewOpen ? 1.0 : 0.97
+                scale: GlobalStates.overviewOpen ? 1.0 : 0.95
+                transform: Translate { y: columnLayout.animTranslateY }
                 
                 // Always center the overview vertically - this is the default behavior.
                 // Never use verticalCenter anchor with dynamic Column - causes blur and erratic positioning.
@@ -246,7 +249,15 @@ Scope {
                 }
                 spacing: -8
 
+                Behavior on opacity {
+                    enabled: Appearance.animationsEnabled
+                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                }
                 Behavior on scale {
+                    enabled: Appearance.animationsEnabled
+                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                }
+                Behavior on animTranslateY {
                     enabled: Appearance.animationsEnabled
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
