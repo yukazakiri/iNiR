@@ -426,6 +426,98 @@ ContentPage {
         }
     }
 
+    // ── Power Saving ──────────────────────────────────────────
+    SettingsCardSection {
+        expanded: false
+        icon: "battery_saver"
+        title: Translation.tr("Power Saving")
+
+        SettingsGroup {
+            WidgetSettingRow {
+                label: Translation.tr("Enable power saving")
+                icon: "power_settings_new"
+                WidgetToggleChip {
+                    configPath: "background.widgets.powerSaving.enable"
+                    defaultValue: true
+                    buttonIcon: "power_settings_new"
+                    buttonText: toggled ? Translation.tr("Enabled") : Translation.tr("Disabled")
+                }
+            }
+            WidgetSettingRow {
+                label: Translation.tr("Pause on GameMode")
+                icon: "sports_esports"
+                WidgetToggleChip {
+                    configPath: "background.widgets.powerSaving.pauseOnGameMode"
+                    defaultValue: true
+                    buttonIcon: "sports_esports"
+                    buttonText: toggled ? Translation.tr("Yes") : Translation.tr("No")
+                }
+                StyledToolTip { text: Translation.tr("Pause expensive widget operations when GameMode is active") }
+            }
+            WidgetSettingRow {
+                label: Translation.tr("Pause on fullscreen")
+                icon: "fullscreen"
+                WidgetToggleChip {
+                    configPath: "background.widgets.powerSaving.pauseOnFullscreen"
+                    defaultValue: true
+                    buttonIcon: "fullscreen"
+                    buttonText: toggled ? Translation.tr("Yes") : Translation.tr("No")
+                }
+                StyledToolTip { text: Translation.tr("Pause when any fullscreen window is present") }
+            }
+            WidgetSettingRow {
+                label: Translation.tr("Pause when windows present")
+                icon: "web_asset"
+                WidgetToggleChip {
+                    configPath: "background.widgets.powerSaving.pauseWhenWindowsPresent"
+                    defaultValue: true
+                    buttonIcon: "web_asset"
+                    buttonText: toggled ? Translation.tr("Yes") : Translation.tr("No")
+                }
+                StyledToolTip { text: Translation.tr("Pause blur/animations when any window is on the current workspace (saves GPU)") }
+            }
+
+            // Status indicator
+            WidgetSettingRow {
+                label: Translation.tr("Current status")
+                icon: "info"
+                trailing: false
+                Rectangle {
+                    width: statusRow.implicitWidth + 16
+                    height: 28
+                    radius: Appearance.rounding.small
+                    color: WidgetPowerManager.widgetsActive 
+                        ? ColorUtils.applyAlpha(Appearance.colors.colSuccess, 0.15)
+                        : ColorUtils.applyAlpha(Appearance.colors.colWarning, 0.15)
+                    
+                    Row {
+                        id: statusRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        MaterialSymbol {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: WidgetPowerManager.widgetsActive ? "play_circle" : "pause_circle"
+                            iconSize: 16
+                            color: WidgetPowerManager.widgetsActive 
+                                ? Appearance.colors.colSuccess 
+                                : Appearance.colors.colWarning
+                        }
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: WidgetPowerManager.widgetsActive 
+                                ? Translation.tr("Active") 
+                                : Translation.tr("Paused")
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: WidgetPowerManager.widgetsActive 
+                                ? Appearance.colors.colSuccess 
+                                : Appearance.colors.colWarning
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ── Clock ────────────────────────────────────────────────
     SettingsCardSection {
         id: clockSection
