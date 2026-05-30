@@ -79,7 +79,7 @@ Primary compositor: **Niri**. Secondary Hyprland support maintained from the for
 | `services/` | [70+ singletons](SERVICES.md). Audio, network, Niri IPC, theming, everything. |
 | `modules/` | [All UI](MODULES.md). 676 QML files across 30+ module directories. |
 | `modules/common/` | Config, Appearance tokens, 130+ shared widgets. |
-| `defaults/config.json` | Default configuration (~1100 lines, 51 sections). |
+| `defaults/config.json` | Default configuration (~60 sections). |
 | `scripts/inir` | CLI launcher and IPC router. |
 | `scripts/colors/` | Wallpaper-to-color pipeline. |
 

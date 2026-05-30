@@ -60,7 +60,7 @@ The direct assignment updates the in-memory QML property but never writes to dis
 
 ### Schema
 
-`Config.qml` is a 1385+ line singleton that defines every config section as typed QML properties. Example:
+`Config.qml` is a large singleton that defines every config section as typed QML properties. Example:
 
 ```qml
 readonly property QtObject bar: QtObject {
@@ -80,7 +80,7 @@ The schema serves three purposes:
 
 ### Defaults
 
-`defaults/config.json` provides the starting config for fresh installs. It currently has 1100+ lines covering 51 top-level sections.
+`defaults/config.json` provides the starting config for fresh installs. It covers ~60 top-level sections.
 
 The defaults file and Config.qml can have different fallback values by design. The defaults file is what gets written to disk on first install. The schema fallbacks are what the code uses if a key is missing at runtime.
 
@@ -90,11 +90,11 @@ Config uses Quickshell's `FileView` with `watchChanges: true`. External edits (f
 
 ### The configChanged signal
 
-After `setNestedValue` writes to disk, `Config.configChanged()` fires. Components that need to react to config changes (beyond just re-reading a property) can connect to this signal.
+`setNestedValue` emits `Config.configChanged()` **immediately**, in the same call — before the debounced 50 ms disk write actually happens. So the signal reflects the new in-memory value, not a confirmed write to disk. Components that need to react to config changes (beyond just re-reading a property) can connect to this signal.
 
 ## Config sections
 
-The 51 top-level sections, roughly grouped:
+The ~60 top-level sections, roughly grouped:
 
 **Shell structure**: `panelFamily`, `enabledPanels`, `bar`, `dock`, `sidebar`
 

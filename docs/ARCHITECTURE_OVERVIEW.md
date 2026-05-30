@@ -60,7 +60,7 @@ Full catalog: [Services Catalog](SERVICES.md)
 
 One JSON file, one QML schema, one write method:
 
-- **Schema**: `modules/common/Config.qml` (1385+ lines, 51 top-level sections)
+- **Schema**: `modules/common/Config.qml` (~60 top-level sections)
 - **User file**: `~/.config/illogical-impulse/config.json`
 - **Defaults**: `defaults/config.json`
 - **Write**: `Config.setNestedValue("section.key", value)` (the only way that persists)
@@ -102,7 +102,7 @@ A simplified map of what lives where:
 |-----------|-------------|------------|
 | `modules/common/` | Config, Appearance, shared widgets | Critical |
 | `services/` | 70+ system integration singletons | High |
-| `scripts/inir` | CLI launcher (2400+ lines of bash) | High |
+| `scripts/inir` | CLI launcher (~3600 lines of bash) | High |
 | `sdata/` | Install, update, migrations | High |
 | `defaults/` | Shipped default config and app configs | Medium |
 | `modules/bar/` | Top bar (ii family) | Normal |

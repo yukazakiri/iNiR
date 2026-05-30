@@ -726,6 +726,16 @@ Custom widget management. Create, list, reload, and remove user-installed widget
 
 ---
 
+### widgetpower
+
+Desktop-widget power management (pauses widget rendering on game mode, fullscreen, present windows, or edit mode). Service: `services/WidgetPowerManager.qml`.
+
+| Function | Description |
+|----------|-------------|
+| `status` | Returns JSON: `enabled`, `widgetsActive`, and the active `triggers` (gameMode, fullscreen, windowsPresent, editMode) |
+
+---
+
 ### recordingOsd
 
 Screen recording floating pill OSD. Shows elapsed time and stop button during active recording.

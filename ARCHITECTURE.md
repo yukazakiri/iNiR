@@ -191,7 +191,7 @@ Two install modes tracked in `version.json`:
 - **Repo-sync**: `./setup install` → syncs to `~/.config/quickshell/inir/`
 - **Package-managed**: `make install` → copies to `/usr/share/quickshell/inir/`
 
-User config always lives at `~/.config/illogical-impulse/config.json` (persistent across updates).
+User config for the running QML shell lives at `~/.config/illogical-impulse/config.json` (legacy namespace, persistent across updates). NOTE: the shell scripts/CLI default to `~/.config/inir/` with a legacy fallback — the two sides are not yet unified.
 
 ### Multi-Distro Support
 

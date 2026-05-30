@@ -102,8 +102,8 @@ The foundation everything else builds on.
 
 | Component | What it is |
 |-----------|-----------|
-| **Config.qml** | Configuration singleton. 1385+ lines, 51 config sections. [Details](CONFIG_SYSTEM.md) |
-| **Appearance.qml** | ii visual tokens. 881 lines, 400+ properties covering colors, rounding, typography, animation. |
+| **Config.qml** | Configuration singleton. ~60 config sections. [Details](CONFIG_SYSTEM.md) |
+| **Appearance.qml** | ii visual tokens. ~500 properties covering colors, rounding, typography, animation. |
 | **Directories.qml** | Centralized path resolution. Config, cache, data, scripts, media directories. |
 | **widgets/** | 130+ reusable widgets registered in `widgets/qmldir`. Layout, input, display, media, and specialized components. |
 | **ThemePresets.qml** | 44 built-in theme presets. |
