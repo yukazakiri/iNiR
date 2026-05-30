@@ -1122,26 +1122,21 @@ Scope {
                                                 visible: navItem.modelData.type === "page"
                                                 width: parent.width
                                                 implicitHeight: visible ? 34 : 0
+                                                z: 1
 
                                                 readonly property int pageRealIndex: navItem.modelData.realIndex !== undefined ? navItem.modelData.realIndex : navItem.index
 
-                                                buttonRadius: Appearance.rounding.small
+                                                buttonRadius: Math.min(width, height) / 2
                                                 toggled: overlayCurrentPage === pageRealIndex
                                                 colBackground: "transparent"
-                                                colBackgroundToggled: Appearance.angelEverywhere
-                                                    ? Appearance.angel.colGlassCard
-                                                    : Appearance.inirEverywhere
-                                                        ? Appearance.inir.colLayer2
-                                                        : Appearance.auroraEverywhere
-                                                            ? Appearance.aurora.colElevatedSurface
-                                                            : Appearance.colors.colLayer1
+                                                colBackgroundToggled: "transparent"
                                                 colBackgroundToggledHover: Appearance.angelEverywhere
                                                     ? Appearance.angel.colGlassCardHover
                                                     : Appearance.inirEverywhere
                                                         ? Appearance.inir.colLayer1Hover
                                                         : Appearance.auroraEverywhere
                                                             ? Appearance.aurora.colElevatedSurface
-                                                            : Appearance.colors.colLayer1Hover
+                                                            : CF.ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5)
                                                 colBackgroundHover: Appearance.angelEverywhere
                                                     ? Appearance.angel.colGlassCard
                                                     : Appearance.inirEverywhere
@@ -1200,70 +1195,86 @@ Scope {
                                             }
                                         }
                                     }
-                                }
-                            }
 
-                            // ── Shared active indicator (travels between nav items) ──
-                            Rectangle {
-                                id: sharedNavIndicator
-                                z: 10
-                                width: 3
-                                radius: 2
-                                x: 4
-                                color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                     : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                     : Appearance.colors.colPrimary
+                                    // Active indicator: pill travelling behind the active item,
+                                    // inside navCol so its y matches the items' coordinate space.
+                                    Rectangle {
+                                        id: sharedNavIndicator
+                                        z: -1
+                                        parent: navCol
+                                        x: 0
+                                        width: navCol.width
+                                        radius: Appearance.rounding.small
+                                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
+                                             : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
+                                             : Appearance.colors.colPrimaryContainer
 
-                                property real targetY: 0
-                                property bool hasTarget: false
+                                        property real targetY: 0
+                                        property real targetH: 0
+                                        property bool hasTarget: false
 
-                                function updatePosition() {
-                                    for (var i = 0; i < navRepeater.count; i++) {
-                                        var item = navRepeater.itemAt(i);
-                                        if (item && item.modelData && item.modelData.type === "page" && item.modelData.realIndex === overlayCurrentPage) {
-                                            var btn = item.children[1]; // navBtn is second child
-                                            if (btn && btn.visible) {
-                                                var pos = btn.mapToItem(navColumn, 0, 0);
-                                                targetY = pos.y + (btn.height - 16) / 2;
-                                                hasTarget = true;
-                                                return;
+                                        function updatePosition() {
+                                            for (var i = 0; i < navRepeater.count; i++) {
+                                                var item = navRepeater.itemAt(i);
+                                                if (item && item.modelData && item.modelData.type === "page" && item.modelData.realIndex === overlayCurrentPage) {
+                                                    var btn = item.children[1];
+                                                    if (btn && btn.visible) {
+                                                        targetY = item.y + btn.y;
+                                                        targetH = btn.height;
+                                                        hasTarget = true;
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                            hasTarget = false;
+                                        }
+
+                                        y: targetY
+                                        height: hasTarget ? targetH : 0
+                                        opacity: hasTarget ? 1 : 0
+
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.leftMargin: 4
+                                            width: 3
+                                            radius: 1.5
+                                            height: parent.hasTarget ? parent.height * 0.5 : 0
+                                            color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                                                 : Appearance.inirEverywhere ? Appearance.inir.colAccent
+                                                 : Appearance.colors.colPrimary
+                                            Behavior on height {
+                                                enabled: Appearance.animationsEnabled
+                                                animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                             }
                                         }
+
+                                        Behavior on y {
+                                            enabled: Appearance.animationsEnabled
+                                            SmoothedAnimation { velocity: Appearance.animation.spatialFollowFast.velocity }
+                                        }
+                                        Behavior on height {
+                                            enabled: Appearance.animationsEnabled
+                                            SmoothedAnimation { velocity: Appearance.animation.spatialFollowFast.velocity }
+                                        }
+                                        Behavior on opacity {
+                                            enabled: Appearance.animationsEnabled
+                                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                                        }
+
+                                        Connections {
+                                            target: root
+                                            function onOverlayCurrentPageChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
+                                            function onVisibleNavItemsChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
+                                        }
+                                        Connections {
+                                            target: navRepeater
+                                            function onCountChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
+                                        }
+                                        Component.onCompleted: Qt.callLater(updatePosition)
                                     }
-                                    hasTarget = false;
                                 }
-
-                                y: targetY
-                                height: hasTarget ? 16 : 0
-                                opacity: hasTarget ? 1 : 0
-
-                                Behavior on y {
-                                    enabled: Appearance.animationsEnabled
-                                    SmoothedAnimation { velocity: Appearance.animation.spatialFollowFast.velocity }
-                                }
-                                Behavior on height {
-                                    enabled: Appearance.animationsEnabled
-                                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                }
-                                Behavior on opacity {
-                                    enabled: Appearance.animationsEnabled
-                                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                }
-
-                                Connections {
-                                    target: root
-                                    function onOverlayCurrentPageChanged() { sharedNavIndicator.updatePosition(); }
-                                    function onVisibleNavItemsChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                                }
-                                Connections {
-                                    target: navFlickable
-                                    function onContentYChanged() { sharedNavIndicator.updatePosition(); }
-                                }
-                                Connections {
-                                    target: navRepeater
-                                    function onCountChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                                }
-                                Component.onCompleted: Qt.callLater(updatePosition)
                             }
 
                             // Window mode toggle at bottom of nav
@@ -1413,7 +1424,11 @@ Scope {
                                 Connections {
                                     target: root
                                     function onOverlayCurrentPageChanged() {
-                                        overlayPagesStack.visitedPages[overlayCurrentPage] = true
+                                        const n = overlayPages.length
+                                        const cur = overlayCurrentPage
+                                        overlayPagesStack.visitedPages[cur] = true
+                                        if (cur + 1 < n) overlayPagesStack.visitedPages[cur + 1] = true
+                                        if (cur - 1 >= 0) overlayPagesStack.visitedPages[cur - 1] = true
                                         overlayPagesStack.visitedPagesChanged()
                                     }
                                 }
