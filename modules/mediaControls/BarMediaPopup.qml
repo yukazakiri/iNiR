@@ -110,9 +110,9 @@ Item {
         // No player placeholder - only show if truly no players after debounce
         Item {
             id: placeholderItem
-            // Never show placeholder while cache is valid (during transitions)
-            readonly property bool _shouldShow: !root._cacheValid && (root.meaningfulPlayers?.length ?? 0) === 0 && (Mpris.players.values?.length ?? 0) === 0
-            visible: _shouldShow
+            readonly property bool _noPlayers: (root.meaningfulPlayers?.length ?? 0) === 0 && (Mpris.players.values?.length ?? 0) === 0
+            readonly property bool _cacheEmpty: !root._cacheValid || root._playerCache.length === 0
+            visible: _cacheEmpty && _noPlayers
             Layout.fillWidth: true
             implicitWidth: placeholderBackground.implicitWidth + Appearance.sizes.elevationMargin
             implicitHeight: placeholderBackground.implicitHeight + Appearance.sizes.elevationMargin
