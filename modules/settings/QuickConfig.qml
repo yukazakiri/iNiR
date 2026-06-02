@@ -449,10 +449,16 @@ ContentPage {
                     }
 
                     Rectangle {
+                        id: placeholderCard
                         Layout.fillWidth: true
-                        Layout.preferredHeight: visible ? quickGridDeferredContent.implicitHeight + 24 : 0
-                        visible: !root.quickGridLoaded
+                        Layout.preferredHeight: quickGridDeferredContent.implicitHeight + 24
+                        opacity: root.quickGridLoaded ? 0 : 1
+                        visible: opacity > 0
+                        scale: root.quickGridLoaded ? 0.96 : 1
                         radius: Appearance.rounding.normal
+                        Behavior on Layout.preferredHeight { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveExit.duration; easing.type: Appearance.animation.elementMoveExit.type; easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve } }
+                        Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveExit.duration; easing.type: Appearance.animation.elementMoveExit.type; easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve } }
+                        Behavior on scale { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveExit.duration; easing.type: Appearance.animation.elementMoveExit.type; easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve } }
                         color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                              : Appearance.inirEverywhere ? Appearance.inir.colLayer0
                              : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
@@ -499,6 +505,8 @@ ContentPage {
                         id: quickGridHost
                         Layout.fillWidth: true
                         Layout.preferredHeight: quickGridLoader.active && quickGridLoader.item ? quickGridLoader.item.implicitHeight : 0
+                        clip: true
+                        Behavior on Layout.preferredHeight { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
 
                         Loader {
                             id: quickGridLoader
@@ -507,8 +515,13 @@ ContentPage {
                             asynchronous: root.isOverlayPage
 
                             sourceComponent: Rectangle {
+                                id: gridCard
                                 width: quickGridHost.width
                                 height: implicitHeight
+                                opacity: quickGridLoader.item ? 1 : 0
+                                scale: quickGridLoader.item ? 1 : 0.95
+                                Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve } }
+                                Behavior on scale { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve } }
                                 implicitHeight: {
                                     const itemCount = Wallpapers.folderModel?.count ?? 0
                                     if (itemCount === 0) return 120
@@ -535,6 +548,15 @@ ContentPage {
                                     anchors.margins: Appearance.sizes.spacingSmall
                                     model: Wallpapers.folderModel
                                     Component.onCompleted: Wallpapers.generateThumbnail("large")
+
+                                    add: Transition {
+                                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                                        NumberAnimation { property: "scale"; from: 0.85; to: 1; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                                    }
+                                    populate: Transition {
+                                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                                        NumberAnimation { property: "scale"; from: 0.85; to: 1; duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                                    }
 
                                     Connections {
                                         target: Wallpapers
