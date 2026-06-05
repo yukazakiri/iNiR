@@ -5,26 +5,30 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 
 /**
  * Drag-and-drop per-zone bar layout editor.
  *
  * Five zones (left, centerLeft, center, centerRight, right) each render their
- * module rows in a DropArea. Rows are draggable across zones; uniform row height
- * makes the insert-index a simple `round(y / pitch)`. The dragged row reparents
- * into `dragLayer` (top z) and follows the cursor; a primary-coloured bar marks
- * the drop slot. Writes go through Config per-leaf (never assign a whole object
- * to the bar.layout JsonObject). The pivot module (workspaces in `center`) is
- * not draggable. Modules not in any zone appear in an "Available" tray.
+ * module rows inside a soft container card with a DropArea. Rows are draggable
+ * across zones AND from the "Available" chip tray; uniform row height makes the
+ * insert-index a simple `round(y / pitch)`. The dragged row reparents into
+ * `dragLayer` (top z) and follows the cursor; a primary-coloured bar marks the
+ * drop slot. Writes go through Config per-leaf (never assign a whole object to
+ * the bar.layout JsonObject). The pivot module (workspaces in `center`) is not
+ * draggable. Modules not in any zone appear as compact chips that can be
+ * either dragged into a zone or added via a single popup menu trigger.
  */
 ColumnLayout {
     id: root
     Layout.fillWidth: true
-    spacing: 10
+    spacing: 12
 
     readonly property int rowH: 36
     readonly property int rowGap: 4
     readonly property real pitch: rowH + rowGap
+    readonly property string availableZone: "__available__"
 
     // ─── Defaults / metadata ────────────────────────────────────────────
     readonly property var _defaultLayout: ({
@@ -35,12 +39,13 @@ ColumnLayout {
         right: ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"],
     })
     readonly property var _knownIds: [
-        "leftSidebarButton", "activeWindow", "resources", "media", "workspaces",
+        "leftSidebarButton", "activeWindow", "taskbar", "resources", "media", "workspaces",
         "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"
     ]
     readonly property var _zones: ["left", "centerLeft", "center", "centerRight", "right"]
     readonly property var _visKeys: ({
         leftSidebarButton: "leftSidebarButton", activeWindow: "activeWindow",
+        taskbar: "taskbar",
         resources: "resources", media: "media", workspaces: "workspaces", clock: "clock",
         utilButtons: "utilButtons", battery: "battery", rightSidebarButton: "rightSidebarButton",
         tray: "sysTray", weather: "weather",
@@ -48,6 +53,7 @@ ColumnLayout {
 
     function _metaIcon(id) {
         return ({ leftSidebarButton: "side_navigation", activeWindow: "window",
+            taskbar: "dock_to_bottom",
             resources: "memory", media: "music_note", workspaces: "workspaces", clock: "schedule",
             utilButtons: "build", battery: "battery_full", rightSidebarButton: "call_to_action",
             tray: "shelf_auto_hide", timer: "timer", shellUpdate: "system_update", spacer: "space_bar",
@@ -55,6 +61,7 @@ ColumnLayout {
     }
     function _metaLabel(id) {
         return ({ leftSidebarButton: Translation.tr("Left sidebar"), activeWindow: Translation.tr("Active window"),
+            taskbar: Translation.tr("Taskbar"),
             resources: Translation.tr("Resources"), media: Translation.tr("Media"),
             workspaces: Translation.tr("Workspaces"), clock: Translation.tr("Clock"), utilButtons: Translation.tr("Utility buttons"),
             battery: Translation.tr("Battery"), rightSidebarButton: Translation.tr("Right sidebar"), tray: Translation.tr("System tray"),
@@ -89,6 +96,7 @@ ColumnLayout {
         // of times in any zone.
         return root._knownIds.filter(id => id === "spacer" || placed.indexOf(id) === -1)
     }
+    readonly property var availableIds: root._available()
 
     // ─── Mutators (per-leaf only) ───────────────────────────────────────
     function _ensureMigrated() {
@@ -104,11 +112,12 @@ ColumnLayout {
             "bar.layout.left": d.left, "bar.layout.centerLeft": d.centerLeft, "bar.layout.center": d.center,
             "bar.layout.centerRight": d.centerRight, "bar.layout.right": d.right, "bar.layout.migrated": true })
     }
-    function _addToZone(id, toZone) {
+    function _addToZone(id, toZone, atIndex) {
         root._ensureMigrated()
         const dst = root._getZone(toZone).slice()
         if (id !== "spacer" && dst.indexOf(id) !== -1) return
-        dst.push(id)
+        const idx = (atIndex === undefined || atIndex < 0) ? dst.length : Math.max(0, Math.min(atIndex, dst.length))
+        dst.splice(idx, 0, id)
         Config.setNestedValue("bar.layout." + toZone, dst)
     }
     function _remove(zone, idx) {
@@ -118,13 +127,20 @@ ColumnLayout {
         Config.setNestedValue("bar.layout." + zone, arr)
     }
     // Move from (srcZone, srcIdx) to dstZone at dstIdx. Handles same- and
-    // cross-zone with a single atomic write per affected zone.
-    function _dropMove(srcZone, srcIdx, dstZone, dstIdx) {
+    // cross-zone with a single atomic write per affected zone. Source zone
+    // `availableZone` means "add new from the tray, no source removal".
+    function _dropMove(srcZone, srcIdx, srcId, dstZone, dstIdx) {
         root._ensureMigrated()
+        if (srcZone === root.availableZone) {
+            root._addToZone(srcId, dstZone, dstIdx)
+            return
+        }
         if (srcZone === dstZone) {
+            // dstIdx is the insert position AMONG the remaining rows (the editor
+            // computes it against liveCount, which already excludes the lifted
+            // row), so no srcIdx adjustment is needed after the splice.
             const arr = root._getZone(srcZone).slice()
             const [m] = arr.splice(srcIdx, 1)
-            if (dstIdx > srcIdx) dstIdx--
             arr.splice(Math.max(0, Math.min(dstIdx, arr.length)), 0, m)
             Config.setNestedValue("bar.layout." + srcZone, arr)
         } else {
@@ -147,7 +163,7 @@ ColumnLayout {
     function _indexFromY(y, count) { return Math.max(0, Math.min(Math.round(y / root.pitch), count)) }
     function _commitDrop(dstZone) {
         if (root.dragInfo && root.dropIndex >= 0)
-            root._dropMove(root.dragInfo.zone, root.dragInfo.index, dstZone, root.dropIndex)
+            root._dropMove(root.dragInfo.zone, root.dragInfo.index, root.dragInfo.id, dstZone, root.dropIndex)
         root._endDrag()
     }
     function _endDrag() { root.dragInfo = null; root.dropZone = ""; root.dropIndex = -1 }
@@ -167,15 +183,27 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         spacing: 8
-        StyledText {
+        ColumnLayout {
             Layout.fillWidth: true
-            text: Translation.tr("Drag modules to reorder or move them between zones. Workspaces stays the centred pivot.")
-            color: Appearance.colors.colSubtext
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            wrapMode: Text.WordWrap
+            spacing: 2
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Drag modules between zones, or drag from the tray below to add.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+            }
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Workspaces stays as the centred pivot — it can't be moved.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                opacity: 0.7
+                wrapMode: Text.WordWrap
+            }
         }
         RippleButton {
-            implicitWidth: 28; implicitHeight: 28
+            implicitWidth: 30; implicitHeight: 30
             buttonRadius: Appearance.rounding.full
             onClicked: root._resetToDefaults()
             contentItem: MaterialSymbol { anchors.centerIn: parent; text: "restart_alt"; iconSize: Appearance.font.pixelSize.small; color: Appearance.colors.colOnLayer1 }
@@ -290,142 +318,282 @@ ColumnLayout {
     // ─── Zones ──────────────────────────────────────────────────────────
     Repeater {
         model: root._zones
-        delegate: ColumnLayout {
-            id: zoneSection
+        delegate: Rectangle {
+            id: zoneCard
             required property string modelData
             required property int index
             readonly property string zoneName: modelData
             readonly property var zoneItems: root._getZone(zoneName)
+            readonly property bool dropActive: root.dragging && root.dropZone === zoneName
+
             Layout.fillWidth: true
-            spacing: 4
+            implicitHeight: zoneInner.implicitHeight + 16
+            radius: Appearance.rounding.normal
+            color: dropActive ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.92)
+                : Appearance.colors.colLayer0
+            border.color: dropActive ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+            border.width: 1
+            Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+            Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
-            RowLayout {
-                Layout.fillWidth: true
+            ColumnLayout {
+                id: zoneInner
+                anchors.fill: parent
+                anchors.margins: 8
                 spacing: 6
-                MaterialSymbol { text: root._zoneIcon(zoneSection.zoneName); iconSize: Appearance.font.pixelSize.normal; color: Appearance.colors.colPrimary }
-                StyledText {
+
+                RowLayout {
                     Layout.fillWidth: true
-                    text: root._zoneLabel(zoneSection.zoneName)
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer0
-                }
-                StyledText { text: zoneSection.zoneItems.length + ""; font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
-            }
-
-            DropArea {
-                id: zoneDrop
-                Layout.fillWidth: true
-                implicitHeight: Math.max(rowCol.implicitHeight, root.rowH)
-                readonly property string zoneName: zoneSection.zoneName
-                onPositionChanged: drag => { root.dropZone = zoneName; root.dropIndex = root._indexFromY(drag.y, zoneSection.zoneItems.length) }
-                onExited: if (root.dropZone === zoneName) { root.dropZone = ""; root.dropIndex = -1 }
-                onDropped: root._commitDrop(zoneName)
-
-                Rectangle {
-                    visible: zoneSection.zoneItems.length === 0
-                    anchors.fill: parent
-                    radius: Appearance.rounding.small
-                    color: "transparent"
-                    border.color: (root.dragging && root.dropZone === zoneSection.zoneName) ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-                    border.width: 1
-                    StyledText { anchors.centerIn: parent; text: Translation.tr("Drop here"); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
-                }
-
-                Column {
-                    id: rowCol
-                    width: parent.width
-                    spacing: root.rowGap
-                    Repeater {
-                        model: zoneSection.zoneItems
-                        delegate: ModuleRow {
-                            required property string modelData
-                            required property int index
-                            moduleId: modelData
-                            zone: zoneSection.zoneName
-                            rowIndex: index
-                            pivot: zoneSection.zoneName === "center" && modelData === "workspaces"
+                    spacing: 8
+                    Rectangle {
+                        implicitWidth: 24; implicitHeight: 24
+                        radius: Appearance.rounding.full
+                        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
+                        MaterialSymbol { anchors.centerIn: parent; text: root._zoneIcon(zoneCard.zoneName); iconSize: Appearance.font.pixelSize.small; color: Appearance.colors.colPrimary }
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root._zoneLabel(zoneCard.zoneName)
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnLayer0
+                    }
+                    Rectangle {
+                        implicitHeight: 18
+                        implicitWidth: Math.max(22, countLabel.implicitWidth + 12)
+                        radius: Appearance.rounding.full
+                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.92)
+                        StyledText {
+                            id: countLabel
+                            anchors.centerIn: parent
+                            text: zoneCard.zoneItems.length + ""
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
                         }
                     }
                 }
 
-                // Drop slot indicator
-                Rectangle {
-                    visible: root.dragging && root.dropZone === zoneSection.zoneName && root.dropIndex >= 0 && zoneSection.zoneItems.length > 0
-                    width: parent.width
-                    height: 3
-                    radius: 1.5
-                    color: Appearance.colors.colPrimary
-                    y: Math.min(root.dropIndex, zoneSection.zoneItems.length) * root.pitch - root.rowGap / 2 - height / 2
-                    z: 50
-                }
-            }
+                DropArea {
+                    id: zoneDrop
+                    Layout.fillWidth: true
+                    implicitHeight: Math.max(rowCol.implicitHeight, root.rowH)
+                    readonly property string zoneName: zoneCard.zoneName
+                    // Live count of rows actually laid out in this zone's Column
+                    // (excludes the row currently lifted out of THIS zone).
+                    readonly property int liveCount: zoneCard.zoneItems.length
+                        - ((root.dragInfo && root.dragInfo.zone === zoneName) ? 1 : 0)
+                    function _update(y) {
+                        root.dropZone = zoneName
+                        root.dropIndex = root._indexFromY(y, zoneDrop.liveCount)
+                    }
+                    onEntered: drag => zoneDrop._update(drag.y)
+                    onPositionChanged: drag => zoneDrop._update(drag.y)
+                    onExited: if (root.dropZone === zoneName) { root.dropZone = ""; root.dropIndex = -1 }
+                    onDropped: root._commitDrop(zoneName)
 
-            Rectangle {
-                visible: zoneSection.index < root._zones.length - 1
-                Layout.fillWidth: true
-                Layout.topMargin: 4
-                implicitHeight: 1
-                color: Appearance.colors.colOutlineVariant
-                opacity: 0.5
+                    Rectangle {
+                        visible: zoneDrop.liveCount === 0
+                        anchors.fill: parent
+                        radius: Appearance.rounding.small
+                        color: zoneCard.dropActive ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9) : "transparent"
+                        border.color: zoneCard.dropActive ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+                        border.width: 1
+                        Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+                            MaterialSymbol {
+                                text: zoneCard.dropActive ? "download" : "drag_handle"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: zoneCard.dropActive ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                            }
+                            StyledText {
+                                text: zoneCard.dropActive ? Translation.tr("Release to drop") : Translation.tr("Drop modules here")
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: zoneCard.dropActive ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                            }
+                        }
+                    }
+
+                    Column {
+                        id: rowCol
+                        width: parent.width
+                        spacing: root.rowGap
+                        Repeater {
+                            model: zoneCard.zoneItems
+                            delegate: ModuleRow {
+                                required property string modelData
+                                required property int index
+                                moduleId: modelData
+                                zone: zoneCard.zoneName
+                                rowIndex: index
+                                pivot: zoneCard.zoneName === "center" && modelData === "workspaces"
+                            }
+                        }
+                        // Reserve the lifted row's height so the Column (and the
+                        // drop-slot math, which is y/pitch) stays stable while a
+                        // row from THIS zone is floating in dragLayer. Without
+                        // this the Column collapses by one pitch mid-drag and the
+                        // computed insert index jumps.
+                        Item {
+                            visible: root.dragInfo && root.dragInfo.zone === zoneDrop.zoneName
+                            width: parent.width
+                            height: visible ? root.rowH : 0
+                        }
+                    }
+
+                    // Drop slot indicator — animates between insert positions.
+                    Rectangle {
+                        id: dropSlot
+                        visible: zoneCard.dropActive && root.dropIndex >= 0 && zoneDrop.liveCount > 0
+                        width: parent.width
+                        height: 3
+                        radius: 1.5
+                        color: Appearance.colors.colPrimary
+                        y: Math.min(root.dropIndex, zoneDrop.liveCount) * root.pitch - root.rowGap / 2 - height / 2
+                        z: 50
+                        Behavior on y {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                        }
+                    }
+                }
             }
         }
     }
 
-    // ─── Available (unplaced) modules ───────────────────────────────────
-    ColumnLayout {
+    // ─── Available (unplaced) modules — compact chip tray ──────────────
+    Rectangle {
         Layout.fillWidth: true
         Layout.topMargin: 4
-        spacing: 4
-        visible: root._available().length > 0
+        visible: root.availableIds.length > 0
+        implicitHeight: trayInner.implicitHeight + 16
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer0
+        border.color: Appearance.colors.colOutlineVariant
+        border.width: 1
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            MaterialSymbol { text: "add_box"; iconSize: Appearance.font.pixelSize.normal; color: Appearance.colors.colPrimary }
-            StyledText {
+        ColumnLayout {
+            id: trayInner
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 8
+
+            RowLayout {
                 Layout.fillWidth: true
-                text: Translation.tr("Available modules")
-                font.pixelSize: Appearance.font.pixelSize.small
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer0
+                spacing: 8
+                Rectangle {
+                    implicitWidth: 24; implicitHeight: 24
+                    radius: Appearance.rounding.full
+                    color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
+                    MaterialSymbol { anchors.centerIn: parent; text: "add_box"; iconSize: Appearance.font.pixelSize.small; color: Appearance.colors.colPrimary }
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Available modules")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer0
+                }
+                StyledText {
+                    text: Translation.tr("drag onto a zone, or use the menu")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.8
+                }
             }
-        }
-        Repeater {
-            model: root._available()
-            delegate: Rectangle {
-                id: availRow
-                required property string modelData
-                readonly property string moduleId: modelData
+
+            Flow {
                 Layout.fillWidth: true
-                implicitHeight: root.rowH
-                radius: Appearance.rounding.small
-                color: "transparent"
-                border.color: Appearance.colors.colOutlineVariant
-                border.width: 1
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 4
-                    spacing: 8
-                    MaterialSymbol { text: root._metaIcon(availRow.moduleId); iconSize: Appearance.font.pixelSize.normal; color: Appearance.colors.colSubtext }
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: root._metaLabel(availRow.moduleId)
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        elide: Text.ElideRight
-                    }
-                    Repeater {
-                        model: root._zones
-                        delegate: RippleButton {
-                            required property string modelData
-                            readonly property string targetZone: modelData
-                            implicitWidth: 26; implicitHeight: 26
-                            buttonRadius: Appearance.rounding.full
-                            onClicked: root._addToZone(availRow.moduleId, targetZone)
-                            contentItem: MaterialSymbol { anchors.centerIn: parent; text: root._zoneIcon(parent.targetZone); iconSize: Appearance.font.pixelSize.small; color: Appearance.colors.colOnLayer1 }
-                            StyledToolTip { text: Translation.tr("Add to ") + root._zoneLabel(parent.targetZone) }
+                spacing: 6
+                Repeater {
+                    model: root.availableIds
+                    delegate: Rectangle {
+                        id: chip
+                        required property string modelData
+                        readonly property string moduleId: modelData
+                        readonly property bool beingDragged: root.dragInfo && root.dragInfo.zone === root.availableZone && root.dragInfo.id === moduleId
+
+                        implicitHeight: 30
+                        implicitWidth: chipRow.implicitWidth + 16
+                        radius: Appearance.rounding.full
+                        color: chipMa.containsMouse || beingDragged
+                            ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
+                            : ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.95)
+                        border.color: beingDragged ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+                        border.width: 1
+                        opacity: beingDragged ? 0.92 : 1
+                        scale: beingDragged ? 1.04 : 1
+                        Behavior on scale { enabled: Appearance.animationsEnabled; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                        Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+
+                        Drag.active: chipMa.drag.active
+                        Drag.source: chip
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
+                        states: State {
+                            when: chipMa.drag.active
+                            ParentChange { target: chip; parent: dragLayer }
+                            PropertyChanges { chip { z: 200 } }
+                        }
+
+                        MouseArea {
+                            id: chipMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            drag.target: chip
+                            drag.axis: Drag.XAndYAxis
+                            onPressed: mouse => {
+                                if (mouse.button === Qt.LeftButton)
+                                    root.dragInfo = { zone: root.availableZone, index: -1, id: chip.moduleId }
+                            }
+                            onReleased: mouse => {
+                                if (mouse.button !== Qt.LeftButton) return
+                                if (chip.Drag.target) chip.Drag.drop()
+                                else root._endDrag()
+                            }
+                            onCanceled: root._endDrag()
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton) addMenu.popup()
+                            }
+                        }
+
+                        RowLayout {
+                            id: chipRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            MaterialSymbol { text: root._metaIcon(chip.moduleId); iconSize: Appearance.font.pixelSize.small; color: Appearance.colors.colOnLayer1 }
+                            StyledText {
+                                text: root._metaLabel(chip.moduleId)
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colOnLayer1
+                            }
+                            MaterialSymbol {
+                                text: "more_vert"
+                                iconSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colSubtext
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    onClicked: addMenu.popup()
+                                    cursorShape: Qt.PointingHandCursor
+                                }
+                            }
+                        }
+
+                        Menu {
+                            id: addMenu
+                            Repeater {
+                                model: root._zones
+                                delegate: MenuItem {
+                                    required property string modelData
+                                    text: Translation.tr("Add to ") + root._zoneLabel(modelData)
+                                    icon.name: root._zoneIcon(modelData)
+                                    onTriggered: root._addToZone(chip.moduleId, modelData, -1)
+                                }
+                            }
                         }
                     }
                 }
