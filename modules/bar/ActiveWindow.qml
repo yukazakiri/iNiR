@@ -74,7 +74,15 @@ Item {
         return shortenText(fbTitle, 80)
     }
 
-    implicitWidth: colLayout.implicitWidth
+    // Intentionally NOT binding implicitWidth to colLayout.implicitWidth:
+    // the bar wrapper assigns this item its width via Layout.fillWidth, and the
+    // texts elide to fit. Binding to content width would let a long title push
+    // the whole bar around on every title change.
+    implicitWidth: 0
+    clip: true
+    // Natural content width, exposed so a content-sized host (e.g. a centre
+    // pill, which gives no fill slack) can grant a sensible, clamped width.
+    readonly property real contentImplicitWidth: colLayout.implicitWidth
 
     ColumnLayout {
         id: colLayout

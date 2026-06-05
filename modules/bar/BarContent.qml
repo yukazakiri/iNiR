@@ -216,12 +216,20 @@ Item { // Bar content region
         "weather": weatherComponent,
         "spacer": spacerComponent,
     })
+    // Edge zones (left/right) are RowLayouts with real slack; the centre zones
+    // are content-sized pills with none. `activeWindow` only fills where there
+    // is slack — in a centre pill it instead reports a clamped intrinsic width
+    // (see _fillSlot below) so it stays visible there.
+    readonly property var _edgeZones: ["left", "right"]
+    function _fillSlot(zone) { return root._edgeZones.indexOf(zone) !== -1 }
+
     // Which ids stretch along the bar axis. `spacer` is a pure gap;
     // activeWindow/taskbar fill the edge section; resources fills only on the
     // tightest screens. Centre pills size tightly to content, so clock/media do
     // NOT fill — they sit at natural width with no leftover space.
-    function _fillWidth(id) {
-        if (id === "spacer" || id === "activeWindow") return true
+    function _fillWidth(id, zone) {
+        if (id === "spacer") return true
+        if (id === "activeWindow") return root._fillSlot(zone)
         if (id === "resources") return root.useShortenedForm === 2
         return false
     }
@@ -294,17 +302,23 @@ Item { // Bar content region
     }
     // activeWindow covers the title display and the optional taskbar (mutually
     // exclusive: taskbar replaces the active window title).
-    // The wrapper caps its implicit width so a long title can't inflate the edge
-    // section (which would shrink centerSideMaxWidth and crush the media pill).
-    // Inside an edge section it then fills (Loader _fillWidth) and elides; inside
-    // a center pill it reports a real, bounded width so the pill isn't empty.
+    // The wrapper deliberately reports implicitWidth: 0 so neither a long title
+    // nor extra taskbar items inflate the edge section (which would shrink
+    // centerSideMaxWidth and shuffle the centre pills on every change). The
+    // Loader's Layout.fillWidth (see root._fillWidth) gives this item the
+    // leftover horizontal space inside the section, and the inner content
+    // elides / clips to fit instead of pushing the bar around.
     Component {
         id: activeWindowComponent
         Item {
-            implicitWidth: Math.min(
-                (root.taskbarEnabled ? _tbLoader.implicitWidth : _awItem.implicitWidth),
-                Appearance.sizes.barCenterSideModuleWidthShortened)
+            id: awWrapper
+            // Set by the host Loader: true in edge zones (gets fill slack →
+            // width 0 + fillWidth), false in centre pills (no slack → adopt a
+            // clamped intrinsic width so the title is actually visible).
+            property bool fillSlot: true
+            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220)
             implicitHeight: Appearance.sizes.baseBarHeight
+            clip: true
             ActiveWindow {
                 id: _awItem
                 anchors.fill: parent
@@ -546,9 +560,10 @@ Item { // Bar content region
                 delegate: Loader {
                     required property string modelData
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: root._fillWidth(modelData)
+                    Layout.fillWidth: root._fillWidth(modelData, "left")
                     Layout.fillHeight: root._fillHeight(modelData)
                     sourceComponent: root._allComponents[modelData] ?? null
+                    onLoaded: if (modelData === "activeWindow" && item) item.fillSlot = true
                 }
             }
         }
@@ -587,9 +602,10 @@ Item { // Bar content region
                 delegate: Loader {
                     required property string modelData
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: root._fillWidth(modelData)
+                    Layout.fillWidth: root._fillWidth(modelData, "center")
                     Layout.fillHeight: root._fillHeight(modelData)
                     sourceComponent: root._allComponents[modelData] ?? null
+                    onLoaded: if (modelData === "activeWindow" && item) item.fillSlot = false
                 }
             }
         }
@@ -619,9 +635,10 @@ Item { // Bar content region
                 delegate: Loader {
                     required property string modelData
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: root._fillWidth(modelData)
+                    Layout.fillWidth: root._fillWidth(modelData, "centerLeft")
                     Layout.fillHeight: root._fillHeight(modelData)
                     sourceComponent: root._allComponents[modelData] ?? null
+                    onLoaded: if (modelData === "activeWindow" && item) item.fillSlot = false
                 }
             }
         }
@@ -665,9 +682,10 @@ Item { // Bar content region
                     delegate: Loader {
                         required property string modelData
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.fillWidth: root._fillWidth(modelData)
+                        Layout.fillWidth: root._fillWidth(modelData, "centerRight")
                         Layout.fillHeight: root._fillHeight(modelData)
                         sourceComponent: root._allComponents[modelData] ?? null
+                        onLoaded: if (modelData === "activeWindow" && item) item.fillSlot = false
                     }
                 }
             }
@@ -770,10 +788,11 @@ Item { // Bar content region
                 delegate: Loader {
                     required property string modelData
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: root._fillWidth(modelData)
+                    Layout.fillWidth: root._fillWidth(modelData, "right")
                     Layout.fillHeight: root._fillHeight(modelData)
                     Layout.leftMargin: modelData === "weather" ? 4 : 0
                     sourceComponent: root._allComponents[modelData] ?? null
+                    onLoaded: if (modelData === "activeWindow" && item) item.fillSlot = true
                 }
             }
         }
