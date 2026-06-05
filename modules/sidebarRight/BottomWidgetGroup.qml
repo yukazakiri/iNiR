@@ -95,7 +95,11 @@ Rectangle {
         return Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
     }
 
-    property var tabs: allTabs.filter(tab => enabledWidgets.includes(tab.type))
+    property var tabs: allTabs.filter(tab => {
+        if (tab.type === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
+            return false
+        return enabledWidgets.includes(tab.type)
+    })
 
     property string currentTabType: ""
     onSelectedTabChanged: {

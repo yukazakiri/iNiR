@@ -728,7 +728,11 @@ Item {
             {id: "timer",      icon: "schedule",      label: Translation.tr("Timer"),      component: timerComponent},
             {id: "screentime", icon: "av_timer",      label: Translation.tr("Screen Time"), component: screenTimeComponent},
         ]
-        return all.filter(w => enabled.includes(w.id))
+        return all.filter(w => {
+            if (w.id === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
+                return false
+            return enabled.includes(w.id)
+        })
     }
 
     readonly property var sections: baseSections.concat(widgetSections)
