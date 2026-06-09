@@ -576,6 +576,16 @@ ContentPage {
                     { "value": "scheme-tonal-spot", "displayName": Translation.tr("Tonal Spot") }
                 ]
             }
+
+            ConfigSwitch {
+                buttonIcon: "contrast"
+                text: Translation.tr("Auto light/dark from wallpaper")
+                checked: Config.options?.appearance?.wallpaperTheming?.autoDarkLightMode ?? false
+                onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.autoDarkLightMode", checked)
+                StyledToolTip {
+                    text: Translation.tr("Pick the light or dark scheme from each wallpaper's brightness so text stays readable. Applies on every wallpaper change, overriding the manual dark-mode toggle.")
+                }
+            }
         }
     }
 

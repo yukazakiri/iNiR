@@ -42,6 +42,7 @@ Singleton {
         termHarmony: terminalAdjCfg?.harmony ?? 0.4,
         termBackgroundBrightness: terminalAdjCfg?.backgroundBrightness ?? 0.5,
         softenColors: Config.options?.appearance?.softenColors ?? true,
+        autoDarkLightMode: wallpaperThemingCfg?.autoDarkLightMode ?? false,
     })
     property string _lastLiveRegenSignature: ""
     property string _lastPanelFamily: ""

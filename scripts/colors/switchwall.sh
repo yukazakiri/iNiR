@@ -528,6 +528,24 @@ switch() {
 
     # Determine mode if not set
     if [[ -z "$mode_flag" ]]; then
+        # Auto light/dark from wallpaper brightness (opt-in). Keeps UI text
+        # readable: a bright wallpaper selects the light scheme (dark text), a
+        # dark one selects dark. Falls back to the gsettings color-scheme on any
+        # failure (missing magick, unreadable image, etc.).
+        if [[ "$cfg_auto_dark_light" == "true" && -n "$imgpath" && -f "$imgpath" ]] \
+            && command -v magick >/dev/null 2>&1; then
+            wp_lum=$(magick "${imgpath}[0]" -resize 64x64\! -colorspace Gray -format '%[fx:mean]' info: 2>/dev/null)
+            if [[ -n "$wp_lum" ]]; then
+                if awk -v l="$wp_lum" 'BEGIN { exit !(l > 0.5) }'; then
+                    mode_flag="light"
+                else
+                    mode_flag="dark"
+                fi
+                echo "[switchwall.sh] auto dark/light: wallpaper luminance ${wp_lum} -> ${mode_flag}"
+            fi
+        fi
+    fi
+    if [[ -z "$mode_flag" ]]; then
         current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
         if [[ "$current_mode" == "prefer-dark" ]]; then
             mode_flag="dark"
@@ -747,7 +765,8 @@ main() {
             (.appearance.softenColors | tostring),
             (.appearance.wallpaperTheming.terminalGenerationProps.forceDarkMode // false),
             (.appearance.wallpaperTheming.enableVesktop // true),
-            (.background.hideUpscaleNotification // false)
+            (.background.hideUpscaleNotification // false),
+            (.appearance.wallpaperTheming.autoDarkLightMode // false)
         ] | .[]' "$SHELL_CONFIG_FILE" 2>/dev/null)
     fi
     cfg_palette_type="${_cfg[0]:-auto}"
@@ -774,6 +793,7 @@ main() {
     cfg_force_dark_terminal="${_cfg[21]:-false}"
     cfg_enable_vesktop="${_cfg[22]:-true}"
     cfg_hide_upscale="${_cfg[23]:-false}"
+    cfg_auto_dark_light="${_cfg[24]:-false}"
 
     set_accent_color() {
         local color="$1"
