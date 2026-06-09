@@ -44,7 +44,9 @@ install-shell:
 
 install-systemd:
 	@mkdir -p $(SYSTEMD_USER_DIR)
-	@sed 's|^ExecStart=.*|ExecStart=$(BINDIR)/inir run --session|' assets/systemd/inir.service > $(SYSTEMD_USER_DIR)/inir.service
+	@sed -e 's|^ExecStart=.*|ExecStart=$(BINDIR)/inir run --session|' \
+		-e 's|^ExecStopPost=-.*|ExecStopPost=-$(BINDIR)/inir cleanup-orphans|' \
+		assets/systemd/inir.service > $(SYSTEMD_USER_DIR)/inir.service
 	@chmod 644 $(SYSTEMD_USER_DIR)/inir.service
 
 install-icon:
