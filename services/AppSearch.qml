@@ -346,10 +346,9 @@ Singleton {
 
         const desktopId = String(entry.id ?? entry.originalEntry?.id ?? "").trim()
         const displayName = String(entry.name ?? entry.originalEntry?.name ?? desktopId).trim()
-        if (desktopId.length > 0 && ShellExec.launchDesktopEntry(desktopId, displayName.length > 0 ? `Launch ${displayName}` : "")) {
-            return true
-        }
 
+        // 1. Prefer direct command execution — most reliable, fixes DBusActivatable apps
+        //    like Telegram where gtk-launch may fail silently.
         const command = Array.from(entry.command ?? entry.originalEntry?.command ?? []).map(arg => String(arg ?? "")).filter(arg => arg.length > 0)
         if (command.length > 0) {
             if (entry.runInTerminal ?? entry.originalEntry?.runInTerminal ?? false) {
@@ -367,9 +366,23 @@ Singleton {
             return true
         }
 
+        // 2. Custom entry execute callback
+        //    - If wrapped (_decorateEntry result), call the raw originalEntry's execute
+        //    - If raw object with execute (non-desktop-entry results), call it directly
+        //    - Never call the decorated wrapper's execute — that wrapper recurses into launchEntry
         if (entry.originalEntry && typeof entry.originalEntry.execute === "function") {
             entry.originalEntry.execute()
             return true
+        }
+        if (!entry.originalEntry && typeof entry.execute === "function") {
+            entry.execute()
+            return true
+        }
+
+        // 3. Fall back to gtk-launch for DBusActivatable / odd desktop entries
+        //    that have no usable Exec line.
+        if (desktopId.length > 0) {
+            return ShellExec.launchDesktopEntry(desktopId, displayName.length > 0 ? `Launch ${displayName}` : "")
         }
 
         return false

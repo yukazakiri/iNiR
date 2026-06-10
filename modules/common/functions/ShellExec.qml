@@ -87,7 +87,7 @@ Singleton {
     }
 
     function launchDesktopEntry(desktopId: string, description = ""): bool {
-        const id = String(desktopId ?? "").trim()
+        const id = String(desktopId ?? "").trim().replace(/\.desktop$/, "")
         if (id.length === 0) return false
         root.execDetachedArgs([root.gtkLaunchPath, id], description.length > 0 ? description : `Launch ${id}`)
         return true
