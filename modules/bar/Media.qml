@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Mpris
+import Quickshell.Services.Pipewire
 import Quickshell.Io
 import Quickshell.Wayland
 
@@ -38,7 +39,33 @@ Item {
     // Volume popup
     property bool volumePopupVisible: false
     property real volumePopupValue: Math.max(0, Math.min(1, MprisController.getVolume()))
-    
+
+    // PipeWire stream fallback: players without MPRIS volume support (browser
+    // MPRIS bridges, some Electron apps) still have an audio stream whose
+    // volume we can drive directly.
+    readonly property var playerStreamNode: {
+        const p = root.activePlayer
+        if (!p) return null
+        const id = (p.identity ?? "").toLowerCase()
+        const entry = (p.desktopEntry ?? "").toLowerCase()
+        if (!id && !entry) return null
+        return Audio.outputAppNodes.find(n => {
+            const an = ((n.properties?.["application.name"] ?? n.name) ?? "").toLowerCase()
+            if (!an) return false
+            return (id && (an.includes(id) || id.includes(an)))
+                || (entry && (an.includes(entry) || entry.includes(an)))
+        }) ?? null
+    }
+    PwObjectTracker { objects: root.playerStreamNode ? [root.playerStreamNode] : [] }
+
+    // Track switch can swap the active player object; a stale popup value
+    // would then be applied to the new player on the next wheel tick.
+    onActivePlayerChanged: {
+        volumePopupVisible = false
+        volumePopupValue = Math.max(0, Math.min(1, MprisController.getVolume()))
+    }
+
+
     // Bar-anchored media popup
     property bool barMediaPopupVisible: false
     
@@ -212,14 +239,18 @@ Item {
             }
         }
         onWheel: (event) => {
-            if (!MprisController.canChangeVolume) return
+            const mprisOk = MprisController.canChangeVolume
+            const node = root.playerStreamNode
+            const streamOk = !mprisOk && node?.audio
+            if (!mprisOk && !streamOk) return
             const step = 0.05
             const current = root.volumePopupVisible
                 ? root.volumePopupValue
-                : Math.max(0, Math.min(1, MprisController.getVolume()))
+                : Math.max(0, Math.min(1, mprisOk ? MprisController.getVolume() : node.audio.volume))
             if (event.angleDelta.y > 0) root.volumePopupValue = Math.min(1, current + step)
             else if (event.angleDelta.y < 0) root.volumePopupValue = Math.max(0, current - step)
-            MprisController.setVolume(root.volumePopupValue)
+            if (mprisOk) MprisController.setVolume(root.volumePopupValue)
+            else node.audio.volume = root.volumePopupValue
             volumePopupVisible = true
             hideTimer.restart()
         }
