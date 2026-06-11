@@ -2881,6 +2881,32 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("overview.dashboard.showSystem", checked)
                 visible: Config.options?.overview?.dashboard?.enable ?? false
             }
+            ContentSubsection {
+                title: Translation.tr("All-apps grid")
+
+                SettingsSwitch {
+                    buttonIcon: "apps"
+                    text: Translation.tr("Show all-apps grid")
+                    checked: Config.options?.overview?.allAppsGrid ?? false
+                    enabled: !(Config.options?.overview?.dashboard?.enable ?? false)
+                    onCheckedChanged: Config.setNestedValue("overview.allAppsGrid", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Replace workspace previews with a scrollable grid of all installed applications")
+                    }
+                }
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.overview?.allAppsGridMode ?? "minimal"
+                    enabled: (Config.options?.overview?.allAppsGrid ?? false) && !(Config.options?.overview?.dashboard?.enable ?? false)
+                    onSelected: (newValue) => {
+                        Config.setNestedValue("overview.allAppsGridMode", newValue)
+                    }
+                    options: [
+                        { displayName: Translation.tr("Alphabetical (A-Z)"), icon: "sort_by_alpha", value: "minimal" },
+                        { displayName: Translation.tr("By category"), icon: "folder", value: "folder" }
+                    ]
+                }
+            }
             SettingsSwitch {
                 buttonIcon: "center_focus_strong"
                 text: Translation.tr("Center icons")

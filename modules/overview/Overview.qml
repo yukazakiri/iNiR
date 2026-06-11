@@ -107,8 +107,13 @@ Scope {
                     const inDashboard = dashboardPanel.visible && dashPos &&
                                         dashPos.x >= 0 && dashPos.x <= dashboardPanel.width &&
                                         dashPos.y >= 0 && dashPos.y <= dashboardPanel.height
+
+                    const allAppsPos = allAppsGridLoader.item ? mapToItem(allAppsGridLoader.item, mouse.x, mouse.y) : null
+                    const inAllApps = allAppsGridLoader.item && allAppsPos &&
+                                      allAppsPos.x >= 0 && allAppsPos.x <= allAppsGridLoader.item.width &&
+                                      allAppsPos.y >= 0 && allAppsPos.y <= allAppsGridLoader.item.height
                     
-                    if (!inSearch && !inOverview && !inDashboard) {
+                    if (!inSearch && !inOverview && !inDashboard && !inAllApps) {
                         GlobalStates.overviewOpen = false
                     }
                 }
@@ -310,9 +315,20 @@ Scope {
                     id: overviewLoader
                     anchors.horizontalCenter: parent.horizontalCenter
                     readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
-                    active: GlobalStates.overviewOpen && !dashboardMode && (Config.options?.overview?.enable ?? true)
+                    readonly property bool allAppsGridEnabled: Config.options?.overview?.allAppsGrid ?? false
+                    active: GlobalStates.overviewOpen && !dashboardMode && !allAppsGridEnabled && (Config.options?.overview?.enable ?? true)
                     visible: active && (root.searchingText == "")
                     sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
+                }
+
+                Loader {
+                    id: allAppsGridLoader
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    readonly property bool allAppsEnabled: Config.options?.overview?.allAppsGrid ?? false
+                    readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
+                    active: GlobalStates.overviewOpen && allAppsEnabled && !dashboardMode
+                    visible: active && (root.searchingText == "")
+                    sourceComponent: allAppsGridComponent
                 }
 
                 Component {
@@ -328,6 +344,15 @@ Scope {
                     OverviewNiriWidget {
                         panelWindow: root
                         visible: (root.searchingText == "")
+                    }
+                }
+
+                Component {
+                    id: allAppsGridComponent
+                    OverviewAllAppsGrid {
+                        panelVisible: root.visible
+                        availableHeight: Math.max(400, root.height * 0.78)
+                        onAppLaunched: GlobalStates.overviewOpen = false
                     }
                 }
 

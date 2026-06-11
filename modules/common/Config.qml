@@ -1572,6 +1572,8 @@ Singleton {
                 property bool closeAfterWindowMove: true
                 property bool showPreviews: false // Show window thumbnails in overview
                 property bool activeScreenOnly: false // Show only on active screen (multi-monitor)
+                property bool allAppsGrid: false // Show an all-apps grid instead of the workspace overview
+                property string allAppsGridMode: "minimal" // "minimal" (alphabetical) or "folder" (by category)
                 property JsonObject dashboard: JsonObject {
                     property bool enable: false
                     property bool showToggles: true

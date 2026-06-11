@@ -961,6 +961,8 @@
     },
     "overview": {
         "activeScreenOnly": false,
+        "allAppsGrid": false,
+        "allAppsGridMode": "minimal",
         "backgroundBlurEnable": true,
         "backgroundBlurRadius": 50,
         "backgroundDim": 40,
