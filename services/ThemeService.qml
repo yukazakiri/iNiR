@@ -35,6 +35,7 @@ Singleton {
         enableChrome: wallpaperThemingCfg?.enableChrome ?? true,
         enableZed: wallpaperThemingCfg?.enableZed ?? true,
         enableVSCode: wallpaperThemingCfg?.enableVSCode ?? true,
+        enableNeovim: wallpaperThemingCfg?.enableNeovim ?? false,
         useBackdropForColors: wallpaperThemingCfg?.useBackdropForColors ?? false,
         forceTerminalDarkMode: wallpaperThemingCfg?.terminalGenerationProps?.forceDarkMode ?? false,
         termSaturation: terminalAdjCfg?.saturation ?? 0.65,
@@ -113,6 +114,7 @@ Singleton {
         case "regalia": return styles?.regalia ?? 1
         case "zzz": return styles?.zzz ?? 0
         case "cookie": return styles?.cookie ?? 1
+        case "editorial": return styles?.editorial ?? 1
         default: return styles?.material ?? 1
         }
     }

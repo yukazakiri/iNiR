@@ -30,13 +30,15 @@ AbstractBackgroundWidget {
         shape: "Cookie4Sided",
         fitMode: "cover",
         size: 220,
+        contentWidth: 0,
+        contentHeight: 0,
         dim: 0,
         widgetScale: 100,
         widgetOpacity: 100,
         x: 120,
         y: 320
     })
-    resizableAxes: ({ uniform: "size" })
+    resizableAxes: ({ width: "contentWidth", height: "contentHeight" })
 
     readonly property string sourceMode: root._readConfigKey("sourceMode") === "folder" ? "folder" : "file"
     readonly property string mediaPath: String(root._readConfigKey("path") ?? "")
@@ -55,7 +57,16 @@ AbstractBackgroundWidget {
     readonly property string fitMode:
         root._readConfigKey("fitMode") === "contain" ? "contain" : "cover"
     readonly property real logicalSize: Math.max(80, Number(root._readConfigKey("size") ?? 220))
-    readonly property real renderedSize: Math.round(root.logicalSize * root.scaleFactor)
+    readonly property real logicalWidth: {
+        const value = Number(root._readConfigKey("contentWidth") ?? 0)
+        return value > 0 ? Math.max(80, value) : root.logicalSize
+    }
+    readonly property real logicalHeight: {
+        const value = Number(root._readConfigKey("contentHeight") ?? 0)
+        return value > 0 ? Math.max(80, value) : root.logicalSize
+    }
+    readonly property real renderedWidth: Math.round(root.logicalWidth * root.scaleFactor)
+    readonly property real renderedHeight: Math.round(root.logicalHeight * root.scaleFactor)
     readonly property int effectiveTransitionDuration: root.animationsActive
         ? Appearance.calcEffectiveDuration(root.transitionDuration) : 0
     property var mediaPaths: []
@@ -86,8 +97,8 @@ AbstractBackgroundWidget {
 
     property bool dropHover: false
 
-    implicitWidth: root.renderedSize
-    implicitHeight: root.renderedSize
+    implicitWidth: root.renderedWidth
+    implicitHeight: root.renderedHeight
 
     function fileUrl(path: string): string {
         const value = String(path ?? "")
@@ -535,7 +546,7 @@ AbstractBackgroundWidget {
                 Row {
                     visible: root.sourceMode === "folder" && root.mediaCount > 1
                     spacing: 2
-                    SelectionGroupButton {
+                    WidgetChoiceButton {
                         width: 32; height: 32
                         horizontalPadding: 6; verticalPadding: 5
                         leftmost: true; rightmost: true
@@ -543,7 +554,7 @@ AbstractBackgroundWidget {
                         onClicked: root.advance(-1, false)
                         StyledToolTip { text: Translation.tr("Previous") }
                     }
-                    SelectionGroupButton {
+                    WidgetChoiceButton {
                         width: 32; height: 32
                         horizontalPadding: 6; verticalPadding: 5
                         leftmost: true; rightmost: true
@@ -551,7 +562,7 @@ AbstractBackgroundWidget {
                         onClicked: root.advance(1, true)
                         StyledToolTip { text: Translation.tr("Shuffle") }
                     }
-                    SelectionGroupButton {
+                    WidgetChoiceButton {
                         width: 32; height: 32
                         horizontalPadding: 6; verticalPadding: 5
                         leftmost: true; rightmost: true
@@ -570,7 +581,7 @@ AbstractBackgroundWidget {
 
                 Repeater {
                     model: mediaQuickControls.sourceChoices
-                    SelectionGroupButton {
+                    WidgetChoiceButton {
                         required property var modelData
                         Layout.fillWidth: true
                         leftmost: true; rightmost: true
@@ -587,7 +598,7 @@ AbstractBackgroundWidget {
                 Layout.fillWidth: true
                 spacing: 4
 
-                SelectionGroupButton {
+                WidgetChoiceButton {
                     Layout.fillWidth: true
                     leftmost: true; rightmost: true
                     toggled: root.rotationPaused
@@ -601,7 +612,7 @@ AbstractBackgroundWidget {
                     onValueModified: root.setInterval(value)
                     StyledToolTip { text: Translation.tr("Seconds between changes") }
                 }
-                SelectionGroupButton {
+                WidgetChoiceButton {
                     Layout.fillWidth: true
                     leftmost: true; rightmost: true
                     toggled: root.rotationOrder === "random"
@@ -625,7 +636,7 @@ AbstractBackgroundWidget {
 
                 Repeater {
                     model: [10, 30, 60, 180]
-                    SelectionGroupButton {
+                    WidgetChoiceButton {
                         required property int modelData
                         Layout.fillWidth: true
                         leftmost: true; rightmost: true
@@ -636,53 +647,17 @@ AbstractBackgroundWidget {
                 }
             }
 
-            GridLayout {
+            WidgetShapePicker {
                 Layout.fillWidth: true
-                columns: 4
-                columnSpacing: 4
-                rowSpacing: 4
-                Repeater {
-                    model: [
-                        { label: Translation.tr("Circle"), value: "Circle", shape: MaterialShape.Shape.Circle },
-                        { label: Translation.tr("Square"), value: "Square", shape: MaterialShape.Shape.Square },
-                        { label: Translation.tr("Cookie"), value: "Cookie4Sided", shape: MaterialShape.Shape.Cookie4Sided },
-                        { label: Translation.tr("Heart"), value: "Heart", shape: MaterialShape.Shape.Heart }
-                    ]
-                    Rectangle {
-                        id: quickShape
-                        required property var modelData
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 38
-                        radius: Appearance.rounding.small
-                        color: root.shapeName === modelData.value
-                            ? ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.16)
-                            : quickShapeHover.hovered
-                                ? Appearance.colors.colLayer2Hover : "transparent"
-                        border.width: root.shapeName === modelData.value ? 1.5 : 1
-                        border.color: root.shapeName === modelData.value
-                            ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-
-                        MaterialShape {
-                            anchors.centerIn: parent
-                            implicitSize: 23
-                            shape: quickShape.modelData.shape
-                            color: root.shapeName === quickShape.modelData.value
-                                ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
-                        }
-                        HoverHandler { id: quickShapeHover }
-                        TapHandler {
-                            onTapped: Config.setNestedValue(root._configPath + ".shape", quickShape.modelData.value)
-                        }
-                        StyledToolTip { text: quickShape.modelData.label }
-                    }
-                }
+                selectedShape: root.shapeName
+                onShapeSelected: name => root._setOutputValue("shape", name)
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
 
-                SelectionGroupButton {
+                WidgetChoiceButton {
                     Layout.fillWidth: true
                     leftmost: true; rightmost: false
                     toggled: root.fitMode === "cover"
@@ -690,7 +665,7 @@ AbstractBackgroundWidget {
                     buttonText: Translation.tr("Fill")
                     onClicked: Config.setNestedValue(root._configPath + ".fitMode", "cover")
                 }
-                SelectionGroupButton {
+                WidgetChoiceButton {
                     Layout.fillWidth: true
                     leftmost: false; rightmost: true
                     toggled: root.fitMode === "contain"
@@ -698,7 +673,7 @@ AbstractBackgroundWidget {
                     buttonText: Translation.tr("Fit")
                     onClicked: Config.setNestedValue(root._configPath + ".fitMode", "contain")
                 }
-                SelectionGroupButton {
+                WidgetChoiceButton {
                     visible: root.currentIsVideo || root.currentIsAnimatedImage
                     width: 36
                     leftmost: true; rightmost: true
@@ -781,7 +756,7 @@ AbstractBackgroundWidget {
             visible: root.currentPath.length === 0 || root.activeFailed
             text: root.activeFailed ? "broken_image" : (root.dropHover ? "download" : "perm_media")
             fill: root.dropHover ? 1 : 0
-            iconSize: Math.max(28, Math.round(root.renderedSize * 0.24))
+            iconSize: Math.max(28, Math.round(Math.min(root.renderedWidth, root.renderedHeight) * 0.24))
             color: root.widgetSemanticOnContainer(root.widgetPrimaryRole)
         }
 

@@ -57,7 +57,22 @@ Singleton {
 
         root.internalPreviewMonitor = String(monitorName ?? "")
         root.internalPreviewPath = normalizedPath
-        // No-op for videos, GIFs, and when awww is not running.
+        // Internal shader previews are owned completely by the in-shell
+        // crossfader. Do not ask awww to repaint underneath while browsing:
+        // Qt.callLater only waits for another event-loop turn, not for the QML
+        // overlay to reach the compositor. On a busy/large decode that allowed
+        // the target awww frame to appear for a few refreshes before the
+        // outgoing shader overlay was actually presented (target -> old ->
+        // shader), which is the visible "flash" users report.
+        //
+        // Keep awww on the configured wallpaper until Apply. The QML shader
+        // already owns both outgoing/incoming textures, so this also makes
+        // preview timing independent of image resolution and GPU scheduling.
+        if (AwwwBackend.internalShaderTransitionActive)
+            return
+
+        // Native awww transitions still preview through the backend that owns
+        // the visible desktop so browsing and applying remain identical.
         AwwwBackend.previewImage(normalizedPath, monitorName)
     }
 
@@ -68,7 +83,9 @@ Singleton {
         AwwwBackend.cancelPreview()
     }
 
-    // The caller is about to apply for real; that apply repaints on its own.
+    // The caller has committed the preview. Visible static targets may already
+    // have been adopted by AwwwBackend, so releasing transient state here must
+    // not imply another repaint.
     function clearWallpaperPreview(): void {
         root._clearInternalPreview()
         AwwwBackend.clearPreview()
@@ -77,6 +94,19 @@ Singleton {
     function _clearInternalPreview(): void {
         root.internalPreviewPath = ""
         root.internalPreviewMonitor = ""
+    }
+
+    function _previewMatches(path: string, monitorName = ""): bool {
+        const normalizedPath = FileUtils.trimFileProtocol(String(path ?? ""))
+        return root.internalPreviewActive
+            && root.internalPreviewPath === normalizedPath
+            && root.internalPreviewMonitor === String(monitorName ?? "")
+    }
+
+    function _adoptVisiblePreview(path: string, monitorName = ""): bool {
+        if (!root._previewMatches(path, monitorName))
+            return false
+        return AwwwBackend.adoptPreview(path, monitorName)
     }
 
     function internalPreviewFor(monitorName: string, fallbackPath: string): string {
@@ -188,20 +218,18 @@ Singleton {
         return root.currentThemingWallpaperPath()
     }
 
-    readonly property string effectiveWallpaperUrl: {
-        const path = root.effectiveWallpaperPath
-        if (!path || path.length === 0) return ""
-        // For videos, return image-safe URL (all consumers are Image/ColorQuantizer)
-        if (root.isVideoFile(path)) {
-            const _dep = root.videoFirstFrames // reactive binding
-            const ff = root.videoFirstFrames[path]
-            // Cache-bust so Image(cache:true) surfaces reload when the first frame appears.
-            if (ff) return (ff.startsWith("file://") ? ff : "file://" + ff) + "?ff=1"
-            const expected = root._videoThumbDir + "/" + MD5.hash(path) + ".jpg"
-            root.ensureVideoFirstFrame(path)
-            return "file://" + expected + "?ff=0"
-        }
-        return path.startsWith("file://") ? path : ("file://" + path)
+    readonly property string effectiveWallpaperUrl: root.stillUrlFor(root.effectiveWallpaperPath)
+
+    // An image-safe URL for a wallpaper: the file itself, or a video's cached still frame.
+    // Empty until that frame exists, so Image consumers never request a missing file.
+    function stillUrlFor(path: string): string {
+        const clean = FileUtils.trimFileProtocol(String(path ?? ""))
+        if (!clean) return ""
+        if (!root.isVideoFile(clean)) return "file://" + clean
+        const frame = root.videoFirstFrames[clean]
+        if (frame) return frame.startsWith("file://") ? frame : "file://" + frame
+        root.ensureVideoFirstFrame(clean)
+        return ""
     }
 
     onEffectiveWallpaperUrlChanged: {
@@ -219,6 +247,16 @@ Singleton {
         id: _gcTimer
         interval: 2000
         onTriggered: gc()
+    }
+
+    // Whether a live wallpaper may animate on an output: "never" pauses nothing,
+    // "fullscreen" pauses behind a fullscreen window, "covered" also once tiled windows span the output.
+    readonly property string videoPauseMode: Config.options?.background?.videoPause ?? "covered"
+    function videoMotionAllowedOn(outputName: string): bool {
+        if (root.videoPauseMode === "never") return true
+        const output = String(outputName ?? "")
+        if (output.length > 0 ? GameMode.hasFullscreenOnOutput(output) : GameMode.hasVisibleFullscreenWindow) return false
+        return root.videoPauseMode !== "covered" || !(CompositorService.isNiri && output.length > 0 && NiriService.activeWorkspaceCovers(output))
     }
 
     // ── Video first-frame system ──────────────────────────────────────────
@@ -306,10 +344,10 @@ Singleton {
                     // this file a nearly black palette — and this frame is what the
                     // theming pipeline quantizes. Pick a representative frame.
                     "mkdir -p " + JSON.stringify(root._videoThumbDir) +
-                    " && ffmpeg -y -i " + JSON.stringify(_ffCheckProc._videoPath) +
-                    " -vf " + JSON.stringify("thumbnail=n=100") +
+                    " && ffmpeg -hide_banner -loglevel error -y -ss 1 -i " + JSON.stringify(_ffCheckProc._videoPath) +
+                    " -vf " + JSON.stringify("thumbnail=n=30") +
                     " -frames:v 1 -update 1 -q:v 2 " + JSON.stringify(_ffCheckProc._outputPath) +
-                    " || ffmpeg -y -i " + JSON.stringify(_ffCheckProc._videoPath) +
+                    " || ffmpeg -hide_banner -loglevel error -y -i " + JSON.stringify(_ffCheckProc._videoPath) +
                     " -vframes 1 -update 1 -q:v 2 " + JSON.stringify(_ffCheckProc._outputPath)]
                 _ffGenProc.running = true
             }
@@ -633,11 +671,17 @@ Singleton {
             root.changed()
             return
         case "waffle":
-            if ((Config.options?.panelFamily ?? "ii") === "waffle")
+            const waffleVisible = (Config.options?.panelFamily ?? "ii") === "waffle"
+            const adoptedWafflePreview = waffleVisible
+                ? root._adoptVisiblePreview(normalizedPath, monitorName)
+                : false
+            if (waffleVisible && !adoptedWafflePreview)
                 root.requestWallpaperBlurTransition("")
             Config.setNestedValue("waffles.background.useMainWallpaper", false)
             Config.setNestedValue("waffles.background.wallpaperPath", normalizedPath)
             Config.setNestedValue("waffles.background.thumbnailPath", thumbnailPath)
+            if (adoptedWafflePreview)
+                root._clearInternalPreview()
             if (needsThumbnail)
                 root.ensureThumbnailForPath(normalizedPath, "large")
             // Regen colors from this wallpaper when waffle is active
@@ -672,12 +716,16 @@ Singleton {
         const normalizedPath = FileUtils.trimFileProtocol(String(path ?? ""))
         if (!normalizedPath || normalizedPath.length === 0) return
 
-        root.requestWallpaperBlurTransition(monitorName)
+        const adoptedPreview = root._adoptVisiblePreview(normalizedPath, monitorName)
+        if (!adoptedPreview)
+            root.requestWallpaperBlurTransition(monitorName)
 
         if (monitorName !== "") {
             // Per-monitor: update config directly in QML to avoid race condition
             // (switchwall.sh and QML both write config.json — the 50ms write timer causes data loss)
             updatePerMonitorConfig(normalizedPath, monitorName)
+            if (adoptedPreview)
+                root._clearInternalPreview()
             root.changed()
             return
         }
@@ -689,6 +737,8 @@ Singleton {
         if (root.awwwBackendEnabled && AwwwBackend.supportsMainWallpaper(normalizedPath)) {
             Config.setNestedValue("background.wallpaperPath", normalizedPath)
             Config.setNestedValue("background.thumbnailPath", "")
+            if (adoptedPreview)
+                root._clearInternalPreview()
             root._queueWallpaperScript(normalizedPath, darkMode, false)
             root.changed()
             return
@@ -697,6 +747,8 @@ Singleton {
         // Always set wallpaper path from QML to avoid race condition with Config write timer
         Config.setNestedValue("background.wallpaperPath", normalizedPath)
         Config.setNestedValue("background.thumbnailPath", "")
+        if (adoptedPreview)
+            root._clearInternalPreview()
         root._queueWallpaperScript(normalizedPath, darkMode, false)
         root.changed()
     }
@@ -1023,7 +1075,7 @@ Singleton {
         const outputDir = FileUtils.parentDirectory(item.outputPath)
         const commandBody = root.isVideoFile(item.filePath)
             ? "mkdir -p " + JSON.stringify(outputDir)
-                + " && [ -f " + JSON.stringify(item.outputPath) + " ] && exit 0 || { ffmpeg -y -i " + JSON.stringify(item.filePath)
+                + " && [ -f " + JSON.stringify(item.outputPath) + " ] && exit 0 || { ffmpeg -hide_banner -loglevel error -y -i " + JSON.stringify(item.filePath)
                 + " -vf " + JSON.stringify(`thumbnail=n=100,scale='min(${maxSize},iw)':'min(${maxSize},ih)':force_original_aspect_ratio=decrease`)
                 + " -frames:v 1 -update 1 "
                 + " " + JSON.stringify(item.outputPath) + " >/dev/null 2>&1 && exit 1; }"

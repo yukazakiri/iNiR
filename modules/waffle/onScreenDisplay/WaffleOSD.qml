@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs
@@ -162,7 +161,9 @@ Scope {
                 color: "transparent"
             exclusiveZone: 0
             WlrLayershell.namespace: "quickshell:wOnScreenDisplay"
-            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.layer: root.currentIndicator === "keyboardLayout"
+                ? WlrLayer.Top
+                : WlrLayer.Overlay
             anchors {
                 top: root.currentIndicator === "keyboardLayout" ? true : !(Config.options?.waffles?.bar?.bottom ?? false)
                 bottom: root.currentIndicator === "keyboardLayout" ? false : Config.options?.waffles?.bar?.bottom ?? false
@@ -210,11 +211,4 @@ Scope {
     }
     }
 
-    IpcHandler {
-        target: "osd"
-
-        function trigger(): void {
-            root.trigger();
-        }
-    }
 }

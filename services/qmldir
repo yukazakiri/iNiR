@@ -31,6 +31,8 @@ singleton Hyprsunset 1.0 Hyprsunset.qml
 singleton IconThemeService 1.0 IconThemeService.qml
 singleton Idle 1.0 Idle.qml
 singleton KeyboardIndicators 1.0 KeyboardIndicators.qml
+singleton JapaneseDictionary 1.0 JapaneseDictionary.qml
+singleton LiveActivities 1.0 LiveActivities.qml
 singleton LyricsService 1.0 LyricsService.qml
 singleton MaterialThemeLoader 1.0 MaterialThemeLoader.qml
 singleton MemoryPressureService 1.0 MemoryPressureService.qml
@@ -65,6 +67,7 @@ singleton Wallhaven 1.0 Wallhaven.qml
 singleton WallpaperListener 1.0 WallpaperListener.qml
 singleton Wallpapers 1.0 Wallpapers.qml
 singleton Weather 1.0 Weather.qml
+singleton WebWallpaper 1.0 WebWallpaper.qml
 singleton WidgetPowerManager 1.0 WidgetPowerManager.qml
 singleton WindowPreviewService 1.0 WindowPreviewService.qml
 singleton WorldClock 1.0 WorldClock.qml

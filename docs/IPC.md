@@ -76,6 +76,39 @@ bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
 
 ---
 
+### orbit
+
+Niri-only Material session navigator for the ii family. Orbit presents nearby workspaces and readable window previews, with MRU Trail navigation and temporary Stash parking.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close Orbit |
+| `open` | Open Orbit on the focused output |
+| `close` | Close Orbit if it is active |
+| `pocket` | Open Orbit directly into Pocket |
+| `studio` | Open Orbit directly into the live Studio editor |
+| `find` | Open Orbit Focus Lens and filter session windows by app or title |
+| `stage` | Open Orbit in the classic Stage view for this session |
+| `orbital` | Open Orbit in the Orbital workspace view for this session |
+| `next` | Switch Niri to the next workspace while Orbit stays open |
+| `previous` | Switch Niri to the previous workspace while Orbit stays open |
+| `status` | Print the effective Orbit runtime state used by diagnostics and visual audits |
+| `toggleView` | Switch the open Orbit session between Stage and Orbital |
+
+---
+
+### taskview
+
+Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on ii/Niri it routes to Orbit.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close the active family's task navigator |
+| `open` | Open the active family's task navigator |
+| `close` | Close the active family's task navigator |
+
+---
+
 ### workspaceStrip
 
 Workspace edge strip. Shows a compact per-workspace rail and expands it for switching without opening the full overview.
@@ -100,6 +133,7 @@ Floating tools (Super+G): notes, images, crosshair, recorder, resources and othe
 | Function | Description |
 |----------|-------------|
 | `toggle` | Open/close Floating tools |
+| `tool` | Show or hide one floating tool by id (`crosshair`, `fpsLimiter`, `floatingImage`, `recorder`, `resources`, `notes`, `discord`, `volumeMixer`, `notifications`): `on`, `off` or `toggle` |
 
 ```kdl
 bind "Super+G" { spawn "inir" "overlay" "toggle"; }
@@ -225,8 +259,9 @@ Lock screen. For when you need to pretend you're working.
 | Function | Description |
 |----------|-------------|
 | `activate` | Lock the screen |
+| `prepareSleep` | Suspend handshake: activate immediately and wait until the compositor confirms the session lock is secure |
 | `deactivate` | Cancel lock and mark screen unlocked |
-| `status` | Return lock state (`locked`, `activating`, or `unlocked`) |
+| `status` | Return lock state (`secure`, `locked`, `activating`, or `unlocked`) |
 | `focus` | Refocus the lock screen input |
 
 ```kdl
@@ -296,7 +331,11 @@ Open or toggle the settings window. GUI config so you don't have to edit JSON by
 | Function | Description |
 |----------|-------------|
 | `open` | Open the settings window |
-| `toggle` | Toggle settings (overlay mode toggles, window mode opens) |
+| `toggle` | Toggle settings in the active host (overlay or window) |
+| `openOverlay` | Switch to overlay mode and open Settings |
+| `openOverlayAt index` | Switch to overlay mode, open Settings and preserve/jump to page `index` |
+| `openWindowAt index` | Switch to standalone Window mode and open page `index` |
+| `setOverlayStyle style index` | Switch overlay chrome while preserving page `index` |
 
 ```kdl
 bind "Super+Comma" { spawn "inir" "settings"; }
@@ -306,11 +345,12 @@ bind "Super+Comma" { spawn "inir" "settings"; }
 
 ### settingsNav
 
-Navigate the settings overlay to a specific page (same as clicking the nav rail). Opening the window itself is the `inir settings` CLI command (target `settings` above).
+Navigate the settings overlay to a specific page (same as clicking the nav rail). `inir settings` toggles the current Settings host; use the `settings` IPC target above when you need explicit open/toggle semantics.
 
 | Function | Description |
 |----------|-------------|
 | `page(index)` | Open the overlay and jump to page `index` |
+| `section(index, name)` | Open a page at its named section; for example `inir settingsNav section 28 sidebars` |
 | `count` | Number of settings pages |
 | `current` | Current page index, or `-1` when no page is open |
 
@@ -360,7 +400,8 @@ Playful mascot companion (needs `mascot.enable` and the companion switch in Sett
 | `chase` | Chase game: she hunts your mouse, every click is a spot she pounces on; click *her* to catch her and win |
 | `hideSeek` | Hide-and-seek: she tucks into a spot on the desktop. Click her before the 20s timeout to find her, otherwise she wins by default |
 | `tidy` | Undo the chaos: every displaced widget returns to its pre-chaos position |
-| `hide` | Send her away immediately |
+| `hide` | Dismiss the peek or active chaos, cancel follow-ups, tidy widgets and pause automatic visits for 30 minutes |
+| `snooze <minutes>` | Dismiss Kira and pause automatic visits for 1–480 minutes |
 
 ---
 
@@ -377,7 +418,7 @@ Session-long mood state that flavors the mascot's idle lines (needs `mascot.pers
 
 ### sidebarLeft
 
-Left sidebar (AI chat, apps).
+Left sidebar: AI chat and apps in Material; the customizable Focus panel in iRiS. In iRiS, `open`, `close` and `toggle` use the family-owned panel; AI detach and expanded-layout actions apply to Material.
 
 | Function | Description |
 |----------|-------------|
@@ -394,7 +435,7 @@ Left sidebar (AI chat, apps).
 
 ### sidebarRight
 
-Right sidebar (quick toggles, notepad, settings).
+Right sidebar: quick toggles, notepad and settings in Material; the customizable Today panel in iRiS.
 
 | Function | Description |
 |----------|-------------|
@@ -448,10 +489,13 @@ Wallpaper picker with grid, coverflow and compact launcher styles.
 | `openLauncher <mode>` | Open the compact launcher in `static` or `animated` mode |
 | `toggleOnMonitor <name>` | Open wallpaper selector on a specific monitor |
 | `random` | Pick a random wallpaper from the current folder |
+| `set <path>` | Apply a wallpaper (picture, GIF or video) by path, the same way the picker does |
+| `browse <source> <query>` | Open the picker on a source — `library`, `wallhaven` or `live` (anime live wallpapers) — with a search, a folder to open (`~/Videos`), or `-` for none. Sources are an iRiS feature; other families just open the picker |
 | `status` | Return picker style, open surface, target monitor and selection target as JSON |
 
 ```kdl
 bind "Ctrl+Alt+T" { spawn "inir" "wallpaperSelector" "toggle"; }
+bind "Ctrl+Alt+L" { spawn "inir" "wallpaperSelector" "browse" "live" "-"; }
 bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; }
 ```
 
@@ -499,6 +543,28 @@ Floating media controls panel.
 | `toggle` | Open/close media controls |
 | `open` | Show media controls |
 | `close` | Hide media controls |
+
+---
+
+### equalizer
+
+Open the ii-family EasyEffects output equalizer. The integration is optional and disabled until you enable it. Run `inir settings`, then go to **Modules → Optional → EasyEffects Equalizer** and enable the switch. While it is disabled the IPC target is intentionally not constructed. On a fresh empty EasyEffects output pipeline, iNiR bootstraps a neutral 10-band `iNiR Equalizer` preset. Existing non-empty effect chains are never replaced automatically.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close equalizer |
+| `open` | Show equalizer |
+| `close` | Hide equalizer |
+| `refresh` | Refresh EasyEffects equalizer state |
+| `ensure` | Ensure Equalizer control is available; bootstraps a neutral Equalizer only when the output pipeline is empty |
+| `status` | Return current equalizer state as JSON |
+| `setBand <index> <gain>` | Set one 0-based band gain in dB |
+| `preset <name>` | Apply one built-in EQ preset |
+| `configure` | Convert the active Equalizer to the iNiR 10-band layout |
+
+```kdl
+bind "Ctrl+Alt+F" { spawn "inir" "equalizer" "toggle"; }
+```
 
 ---
 
@@ -587,6 +653,25 @@ On-screen volume indicator.
 
 ---
 
+### osd
+
+On-screen feedback for any family. The active family's OSD or Island decides where it is drawn.
+
+| Function | Description |
+|----------|-------------|
+| `volume` | Show the volume level |
+| `brightness` | Show the brightness level |
+| `mic` | Show the microphone level |
+| `keyboard` | Show the keyboard layout |
+| `media <action>` | Show now playing with a transport action: `play`, `pause`, `next` or `previous` |
+| `hide` | Hide whatever is showing |
+
+```kdl
+bind "Mod+Shift+K" { spawn "inir" "osd" "keyboard"; }
+```
+
+---
+
 ### cliphistService
 
 Clipboard history service. The backend that makes clipboard panel work. You probably don't need to call this directly.
@@ -654,14 +739,68 @@ bind "Super+F12" { spawn "inir" "gamemode" "toggle"; }
 
 ---
 
-### panelFamily
+### iris
 
-Switch between panel styles. ii supports two visual styles: Material ii (default) and Waffle (Windows 11-like).
+iRiS bar and Island design. Available while the iRiS bar is enabled.
 
 | Function | Description |
 |----------|-------------|
-| `cycle` | Cycle to next panel family (ii → waffle → ii) |
-| `set` | Set specific family ("ii" or "waffle") |
+| `open` | Expand the island on the focused output |
+| `close` | Collapse the island |
+| `page` | Expand the island on a page: `media`, `activity`, `desktop`, `tray` or `tools`, or step through its navigation with `next` / `prev` (the same path as scrolling over the navigation row) |
+| `toggle` | Expand or collapse the island on the focused output |
+| `card` | `open`, `close` or `toggle` the media bubble's floating card, or `pin` to keep it open |
+| `settings` | Open iRiS Settings on a section: `bar`, `player`, `bubbles`, `dock`, `appearance`, `desktop`, `sidebars`, `surfaces` or `system`; add `/<group>` to open that group, e.g. `bubbles/behaviour` |
+| `bubble` | Place an Island bubble (`left`, `right`, `utility`) or an extra bubble (`weather`, `notifications`, `controls`, `sound`, `mic`, `tools`, `media`, `tray`): a zone (`top-left`, `top-right`, `left`, `right`, `bottom-left`, `bottom-right`), `edge:<top|bottom|left|right>` with an optional `:<fraction>` along that edge (e.g. `edge:top:0.3`), `x,y` fractions of the output, `island` (slots) or `off` (extras) |
+| `dock` | `reveal`, `hide` or `toggle` the iRiS Dock (revealed stays until hidden or an app is chosen) |
+| `dockApp` | Open a Dock app's `windows` or `menu` by app id (e.g. `kitty windows`), or `<any> close` |
+| `appBubble` | Carry a Dock app out as a bubble of its own (e.g. `kitty right`): a zone, `x,y` fractions of the output, or `dock` to send it back |
+| `pin` | Keep the `left` (Focus) or `right` (Today) panel open beside windows, or stop |
+| `accent` | Set iRiS accent: `blue`, `mint`, `rose`, `lilac` or `wallpaper` |
+| `arrange` | Arrange the Island's desktop page in place — move, remove and add its blocks: `on`, `off` or `toggle` |
+| `activity` | Publish a live activity into the Island from any script: `<action> <id> <value>` — `start <id> <title>`, `title`, `progress` (`0.4`, `40`, `40%` or `-1` for indeterminate), `detail`, `glyph` (a Material Symbol), `tint` (`blue`, `sky`, `teal`, `green`, `yellow`, `orange`, `red`, `pink`, `indigo`, `purple`, `lavender`, `gray`), `end <id> <detail>` (shows a done event and retires), `dismiss <id> -`, `clear all -`. Values cannot contain commas |
+| `activities` | Return the live activities scripts have published, as JSON |
+| `edit` | Edit iRiS in place: every piece becomes grabbable and the edit bar holds the pieces, the look and the sizes — `on`, `off`, `toggle`, a tab of the edit bar (`tab:pieces`, `tab:look`, `tab:motion`, `tab:layout`), a target to inspect (`material`, `colour`, `type`, `motion`, `island`, `pieces`, `bodies`, `places`, `transients`, `dock`, `desktop`) or a piece (`vitals`, `left`, `app:kitty`) |
+| `studio` | Open iRiS Studio, the live editor for the whole family's appearance: `on`, `off`, `toggle`, or a target to open it on (`material`, `colour`, `type`, `motion`, `island`, `pieces`, `bodies`, `places`, `transients`, `dock`, `desktop`, `themes`) |
+| `barPiece` | Turn one of the Island's own pieces on or off: `weather`, `notifications`, `controls`, `sound`, `mic`, `tools`, `media` or `tray`, plus `on`, `off` or `toggle` |
+| `notch` | Melt the Island into its edge (or into the Surround band): `on`, `off` or `toggle` |
+| `surround` | Close the shell around the screen with a band on every edge: `on`, `off` or `toggle` |
+| `layout` | How the Island sits on its edge: `island`, `left`, `right` or `full` |
+| `edge` | Move the Island to a screen edge: `top`, `bottom`, `left` or `right` (on a side edge it rests as an upright capsule and its pages grow inward) |
+| `dockEdge` | Move the Dock: `auto` (opposite the Island), `top`, `bottom`, `left` or `right` |
+| `zone` | What a full-width Island carries in a zone: `start`, `center` or `end`, then kinds joined by `+` (`island`, `workspaces`, `window`, `time` or a piece kind), or `none` |
+| `preset` | Set the iRiS appearance preset: `iris`, `soft`, `round`, `crisp`, `angular` or `contrast` |
+| `theme <action>` | iRiS themes, each a whole redesign of the family: `list`, `apply:<id>`, `save:<name>` (what you see now becomes a theme file), `import:<path>` (a shared `.json`), `export` or `export:<id>` (prints the theme as JSON to share) and `folder` (where theme files live, `~/.config/inir/iris/themes`) |
+| `morph` | Set how iRiS morphs: `direct`, `liquid`, `glide`, `snap`, `elastic` or `instant` |
+| `set` | Set any iRiS option by path, e.g. `iris.appearance.theme.pieceShape squircle` or `iris.bubbles.scale 120` (values are JSON when they parse) |
+| `adaptive` | How much the wallpaper shapes iRiS, `0`-`100`; any other word prints what was read from the wallpaper |
+| `spotlight` | Open Spotlight with a query already typed, e.g. `firefox` or `12*7` (empty for suggestions) |
+| `bubbleCard` | Grow a bubble's own card: `weather`, `notifications`, `sound`, `mic`, `tools` or `tray` (from the bubble showing it, else the Island), or `close` |
+| `bubbleMenu` | Open a floating bubble's own menu — what it opens, where it rests and how to put it away — by kind (`weather`, `sound`, …) or piece id (`app:kitty`) |
+| `utility` | Set the utility satellite: `tray`, `tools`, `sound`, `mic` or `none` |
+| `status` | JSON with the Island, Dock, Control Center, Spotlight and side panel state |
+
+```bash
+inir iris open
+inir iris page desktop
+inir iris toggle
+inir iris dock toggle
+inir iris card toggle
+inir iris bubble right top-right
+inir iris appBubble kitty top-right
+inir iris pin right
+inir iris status
+inir iris close
+```
+
+### panelFamily
+
+Switch between the three shell families: Material ii (default), Waffle (Windows 11-like), and iRiS (the Island family).
+
+| Function | Description |
+|----------|-------------|
+| `cycle` | Cycle to next panel family (ii → waffle → iris → ii) |
+| `set` | Set specific family ("ii", "waffle", or "iris") |
 
 ```kdl
 bind "Mod+Shift+W" { spawn "inir" "panelFamily" "cycle"; }
@@ -749,7 +888,9 @@ Window minimization (Niri workaround - moves windows to hidden workspace).
 | Function | Description |
 |----------|-------------|
 | `minimize` | Minimize focused window |
+| `minimizeId` | Minimize a window by Niri window ID |
 | `restore` | Restore a minimized window by ID |
+| `restoreOriginal` | Restore a minimized window to the workspace it came from |
 
 ---
 
@@ -860,28 +1001,6 @@ Waffle taskbar visibility.
 
 ---
 
-### taskview
-
-Waffle task view (Win+Tab style).
-
-| Function | Description |
-|----------|-------------|
-| `toggle` | Open/close task view |
-| `open` | Show task view |
-| `close` | Hide task view |
-
----
-
-### osd
-
-Waffle on-screen display indicator (volume, brightness).
-
-| Function | Description |
-|----------|-------------|
-| `trigger` | Show the OSD indicator |
-
----
-
 ### waffleAltSwitcher
 
 Waffle Alt+Tab window switcher. Separate from the ii `altSwitcher`, supports quick-switch (first tab switches instantly, second opens UI) and no-visual-UI mode.
@@ -903,6 +1022,7 @@ Desktop background and widget controls.
 | Function | Description |
 |----------|-------------|
 | `toggleEditMode` | Toggle widget edit mode (drag, resize, configure desktop widgets) |
+| `toggleWidgetManager` | Enter edit mode if needed and toggle the widget manager on the focused output |
 | `setEditMode enabled` | Set widget edit mode explicitly |
 | `editState` | Report the active selection, physical panel insets, full desktop work area and panel-aware zone work area for each output |
 | `desktopItemsState` | Report desktop-item persistence, availability, item count, validation errors and undo state |
@@ -910,6 +1030,12 @@ Desktop background and widget controls.
 | `promoteWidget widgetName` | Move a desktop widget to the top of the persistent layer order |
 | `resetLayerOrder` | Reset desktop widgets to their built-in stacking order |
 | `setWidgetEnabled widgetName enabled` | Enable or disable a built-in desktop widget |
+| `applyOrganicEdgePreset name` | Apply an Organic Edge scene by name without changing enabled displays |
+| `applyOrganicEdgeComposition name` | Apply only an Organic Edge topology/geometry preset |
+| `applyOrganicEdgeMaterial name` | Apply only an Organic Edge material/light preset |
+| `applyOrganicEdgeResponse name` | Apply only an Organic Edge music-response preset |
+| `organicEdgeState` | Report each Organic Edge output, selected edges, frame, audio subscription and shader status |
+| `setOrganicEdgeEnabled enabled` | Enable or disable the independent Organic Edge screen field |
 | `clockDebugState` | Report clock palette, renderer and quick-control geometry diagnostics |
 | `clockDebugSetMode digital\|cookie adaptToWallpaper` | Temporarily select a diagnostic clock mode |
 | `clockDebugSetRegion color brightness spread` | Inject a temporary wallpaper-region sample |
@@ -946,7 +1072,7 @@ Desktop-widget power management (pauses widget rendering on game mode, fullscree
 
 | Function | Description |
 |----------|-------------|
-| `status` | Returns JSON: `enabled`, `widgetsActive`, and the active `triggers` (gameMode, fullscreen, windowsPresent, editMode) |
+| `status` | Returns JSON: `enabled`, `widgetsActive`, `pauseReason`, and the active `triggers` (gameMode, fullscreen, windowsPresent, editMode) |
 
 ---
 

@@ -21,11 +21,18 @@ Singleton {
     property string focusedWorkspaceId: ""
     property var currentOutputWorkspaces: []
     property string currentOutput: ""
+    readonly property bool actionReady: requestSocket.connected
 
     // Config load status (updated from ConfigLoaded event)
     property bool configLoaded: false
     property bool configLoadFailed: false
     property string configError: ""
+    property var overviewHotCornersGlobal: ["topLeft"]
+    property var overviewHotCornersByOutput: ({})
+    property var overviewHotCornerOverrides: ({})
+    property bool overviewHotCornersReady: false
+    property string overviewHotCornersError: ""
+    property bool _overviewHotCornersRefreshQueued: false
 
     signal configLoadFinished(bool ok, string error)
 
@@ -70,6 +77,7 @@ Singleton {
             if (connected) {
                 send('"EventStream"')
                 fetchOutputs()
+                refreshOverviewHotCorners()
             }
         }
 
@@ -114,6 +122,41 @@ Singleton {
         }
     }
 
+    Process {
+        id: overviewHotCornersProcess
+        command: [
+            "/usr/bin/python3",
+            Quickshell.shellPath("scripts/niri-config.py"),
+            "get-hot-corners"
+        ]
+
+        stdout: StdioCollector { id: overviewHotCornersCollector }
+
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                try {
+                    const data = JSON.parse(overviewHotCornersCollector.text)
+                    root.overviewHotCornersGlobal = Array.isArray(data.global)
+                        ? data.global : ["topLeft"]
+                    root.overviewHotCornerOverrides = data.overrides ?? ({})
+                    root.overviewHotCornersByOutput = data.effective ?? ({})
+                    root.overviewHotCornersReady = true
+                    root.overviewHotCornersError = ""
+                } catch (e) {
+                    root.overviewHotCornersError = String(e)
+                }
+            } else {
+                root.overviewHotCornersError = "get-hot-corners exited " + exitCode
+            }
+
+            if (root._overviewHotCornersRefreshQueued) {
+                root._overviewHotCornersRefreshQueued = false
+                overviewHotCornersProcess.running = true
+            }
+        }
+    }
+
+
     // Debounce timer for fetchOutputs
     Timer {
         id: fetchOutputsDebounce
@@ -136,6 +179,31 @@ Singleton {
         if (!CompositorService.isNiri)
             return
         fetchOutputsDebounce.restart()
+    }
+
+    function refreshOverviewHotCorners(): void {
+        if (!CompositorService.isNiri)
+            return
+        if (overviewHotCornersProcess.running) {
+            root._overviewHotCornersRefreshQueued = true
+            return
+        }
+        overviewHotCornersProcess.running = true
+    }
+
+    function overviewHotCornersForOutput(outputName: string): var {
+        const configured = root.overviewHotCornersByOutput?.[outputName]
+        if (Array.isArray(configured))
+            return configured
+        const exactOverride = root.overviewHotCornerOverrides?.[outputName]
+        if (Array.isArray(exactOverride))
+            return exactOverride
+        return Array.isArray(root.overviewHotCornersGlobal)
+            ? root.overviewHotCornersGlobal : ["topLeft"]
+    }
+
+    function isOverviewHotCornerActive(outputName: string, cornerName: string): bool {
+        return root.overviewHotCornersForOutput(outputName).includes(cornerName)
     }
 
     // Schedule a single-window check for a specific workspace after niri settles focus
@@ -266,6 +334,7 @@ Singleton {
                 'WorkspacesChanged',
                 'OutputsChanged',
                 'ConfigLoaded',
+                'OverviewOpenedOrClosed',
                 'KeyboardLayoutsChanged',
                 'KeyboardLayoutSwitched',
             ]
@@ -325,10 +394,22 @@ Singleton {
 
         for (const ws of data.workspaces) {
             const oldWs = root.workspaces[ws.id]
-            newWorkspaces[ws.id] = ws
-            if (oldWs && oldWs.active_window_id !== undefined) {
-                newWorkspaces[ws.id].active_window_id = oldWs.active_window_id
-            }
+            const updatedWs = {}
+            for (const prop in ws)
+                updatedWs[prop] = ws[prop]
+
+            // Current Niri includes active_window_id in WorkspacesChanged and
+            // that snapshot is authoritative. The original integration predates
+            // that field and always copied the cached value over the fresh one;
+            // once the cache held null, fullscreen/output ownership could stay
+            // stale even while `niri msg workspaces` reported the real active
+            // window. Preserve the cached value only for older event payloads
+            // that genuinely omit the field.
+            if (updatedWs.active_window_id === undefined
+                    && oldWs && oldWs.active_window_id !== undefined)
+                updatedWs.active_window_id = oldWs.active_window_id
+
+            newWorkspaces[ws.id] = updatedWs
         }
 
         root.workspaces = newWorkspaces
@@ -513,6 +594,12 @@ Singleton {
     property bool _windowOrderDirty: false
     property var _latestFocusedWindowId
 
+    // WindowLayoutsChanged is applied to _pendingWindows immediately, while the
+    // public sorted list is intentionally batched for UI consumers. Behavioural
+    // gates such as fullscreen detection must not wait for that presentation
+    // batching or an edge interaction can observe the previous geometry.
+    readonly property var liveWindows: _windowsDirty ? _pendingWindows : windows
+
     Timer {
         id: windowsUpdateTimer
         interval: root.windowListUpdateIntervalMs
@@ -662,6 +749,9 @@ Singleton {
         configLoadFailed = !!failed
         configError = (failed && data && data.error) ? data.error : ""
 
+        if (!failed)
+            refreshOverviewHotCorners()
+
         configLoadFinished(!failed, configError)
     }
 
@@ -758,7 +848,12 @@ Singleton {
                     })
     }
 
+    // Emitted before the shell asks Niri to focus a window, so a surface holding
+    // on-demand keyboard focus (the desktop) can yield it to that window.
+    signal windowFocusRequested()
+
     function focusWindow(windowId) {
+        root.windowFocusRequested()
         return send({
                         "Action": {
                             "FocusWindow": {
@@ -1027,6 +1122,29 @@ Singleton {
         }
 
         return enriched
+    }
+
+    function hasWindowsOnActiveWorkspace(outputName: string): bool {
+        const active = Object.values(root.workspaces ?? {}).filter(workspace => workspace?.is_active
+            && (outputName.length === 0 || workspace.output === outputName))
+        if (active.length === 0 || !Array.isArray(root.windows)) return false
+        return root.windows.some(window => !window?.is_minimized
+            && active.some(workspace => workspace.id === window.workspace_id))
+    }
+
+    // True when the tiled columns of the output's active workspace span its width,
+    // so only gaps of the wallpaper remain visible.
+    function activeWorkspaceCovers(outputName: string): bool {
+        const workspace = Object.values(root.workspaces ?? {}).find(entry => entry?.is_active && entry.output === outputName)
+        const width = Number(root.outputs?.[outputName]?.logical?.width ?? 0)
+        if (!workspace || width <= 0 || !Array.isArray(root.windows)) return false
+        const columns = {}
+        for (const window of root.windows) {
+            const pos = window?.layout?.pos_in_scrolling_layout
+            if (window?.workspace_id !== workspace.id || window.is_floating || window.is_minimized || !pos) continue
+            columns[pos[0]] = Math.max(columns[pos[0]] ?? 0, Number(window.layout?.tile_size?.[0] ?? 0))
+        }
+        return Object.values(columns).reduce((sum, column) => sum + column, 0) >= width * 0.95
     }
 
     function filterCurrentWorkspace(toplevels, screenName) {
